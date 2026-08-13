@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -77,6 +79,8 @@ import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
+import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
+import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.ZoneId
 import java.time.LocalDate
@@ -115,13 +119,17 @@ fun FixedEntriesScreen(
             TopAppBar(
                 title = { Text("FIJOS", style = MaterialTheme.typography.titleLarge) },
                 actions = {
-                    IconButton(onClick = onSettings) {
-                        Icon(Icons.Outlined.Settings, "Ajustes de la app")
-                    }
-                    IconButton(onClick = {
-                        editorEntry = null
-                        showEditor = true
-                    }) { Icon(Icons.Outlined.Add, "Nueva plantilla") }
+                    GlobalOutlinedIconButton(
+                        icon = Icons.Outlined.Add,
+                        contentDescription = "Nueva plantilla",
+                        onClick = {
+                            editorEntry = null
+                            showEditor = true
+                        },
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    GlobalSettingsButton(onClick = onSettings)
+                    Spacer(Modifier.width(14.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )

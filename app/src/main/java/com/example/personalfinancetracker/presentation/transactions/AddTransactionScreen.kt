@@ -23,7 +23,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Circle
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,6 +56,7 @@ import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
+import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.LocalDate
 
@@ -111,7 +111,8 @@ fun AddTransactionScreen(
             },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver") } },
             actions = {
-                IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, "Ajustes de la app") }
+                GlobalSettingsButton(onClick = onSettings)
+                Spacer(Modifier.width(14.dp))
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.background,
