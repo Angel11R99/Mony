@@ -20,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.presentation.home.HomeScreen
+import com.example.personalfinancetracker.presentation.statistics.StatisticsScreen
 import com.example.personalfinancetracker.presentation.transactions.AddTransactionScreen
 import com.example.personalfinancetracker.presentation.transactions.HistoryScreen
 
@@ -82,6 +83,9 @@ fun FinanceApp(initialType: TransactionType? = null) {
                         navController.navigate("edit/${type.name}/$id")
                     },
                 )
+            }
+            composable("statistics") {
+                StatisticsScreen()
             }
         }
 

@@ -8,6 +8,7 @@ class FloatingModuleBarTest {
     @Test fun `selects each fixed module`() {
         assertTrue(isModuleSelected("home", "home"))
         assertTrue(isModuleSelected("history", "history"))
+        assertTrue(isModuleSelected("statistics", "statistics"))
         assertFalse(isModuleSelected("home", "history"))
     }
 }

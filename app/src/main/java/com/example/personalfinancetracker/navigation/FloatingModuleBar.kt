@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ internal data class ModuleDestination(
 
 internal val moduleDestinations = listOf(
     ModuleDestination("Inicio", "home", Icons.Outlined.AccountBalanceWallet),
+    ModuleDestination("Estadísticas", "statistics", Icons.Outlined.Insights),
     ModuleDestination("Historial", "history", Icons.Outlined.History),
 )
 
