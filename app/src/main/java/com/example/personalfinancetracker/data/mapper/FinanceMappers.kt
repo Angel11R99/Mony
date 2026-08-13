@@ -2,9 +2,11 @@ package com.example.personalfinancetracker.data.mapper
 
 import com.example.personalfinancetracker.data.local.entity.CategoryEntity
 import com.example.personalfinancetracker.data.local.entity.TransactionEntity
+import com.example.personalfinancetracker.data.local.entity.FixedEntryEntity
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.domain.model.FixedEntry
 import java.time.Instant
 import java.time.LocalDate
 
@@ -30,4 +32,24 @@ fun FinanceTransaction.toEntity() = TransactionEntity(
     dateEpochDay = date.toEpochDay(),
     createdAtEpochMillis = createdAt.toEpochMilli(),
     updatedAtEpochMillis = updatedAt.toEpochMilli(),
+)
+
+fun FixedEntryEntity.toDomain() = FixedEntry(
+    id = id,
+    type = TransactionType.valueOf(type),
+    description = description,
+    amountInCents = amountInCents,
+    categoryId = categoryId,
+    comment = comment,
+    isActive = isActive,
+)
+
+fun FixedEntry.toEntity() = FixedEntryEntity(
+    id = id,
+    type = type.name,
+    description = description,
+    amountInCents = amountInCents,
+    categoryId = categoryId,
+    comment = comment,
+    isActive = isActive,
 )

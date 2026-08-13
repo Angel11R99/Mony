@@ -9,6 +9,7 @@ class FloatingModuleBarTest {
         assertTrue(isModuleSelected("home", "home"))
         assertTrue(isModuleSelected("history", "history"))
         assertTrue(isModuleSelected("statistics", "statistics"))
+        assertTrue(isModuleSelected("fixed", "fixed"))
         assertFalse(isModuleSelected("home", "history"))
     }
 }

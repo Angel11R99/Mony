@@ -4,6 +4,7 @@ import com.example.personalfinancetracker.data.local.dao.CategoryDao
 import com.example.personalfinancetracker.data.local.dao.BudgetConfigDao
 import com.example.personalfinancetracker.data.local.dao.BudgetCycleDao
 import com.example.personalfinancetracker.data.local.dao.TransactionDao
+import com.example.personalfinancetracker.data.local.dao.FixedEntryDao
 import com.example.personalfinancetracker.data.local.entity.BudgetConfigEntity
 import com.example.personalfinancetracker.data.local.entity.BudgetCycleEntity
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
@@ -19,6 +20,7 @@ import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
+import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import androidx.room.withTransaction
@@ -46,6 +48,15 @@ class RoomCategoryRepository @Inject constructor(
         dao.observeActive(type.name).map { items -> items.map { it.toDomain() } }
     override fun observeAll(): Flow<List<Category>> =
         dao.observeAll().map { items -> items.map { it.toDomain() } }
+}
+
+class RoomFixedEntryRepository @Inject constructor(
+    private val dao: FixedEntryDao,
+) : FixedEntryRepository {
+    override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
+    override suspend fun save(entry: com.example.personalfinancetracker.domain.model.FixedEntry) =
+        dao.upsert(entry.toEntity())
+    override suspend fun delete(id: Long) = dao.delete(id)
 }
 
 class RoomBudgetRepository @Inject constructor(

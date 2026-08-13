@@ -9,13 +9,16 @@ import com.example.personalfinancetracker.data.local.dao.CategoryDao
 import com.example.personalfinancetracker.data.local.dao.BudgetConfigDao
 import com.example.personalfinancetracker.data.local.dao.BudgetCycleDao
 import com.example.personalfinancetracker.data.local.dao.TransactionDao
+import com.example.personalfinancetracker.data.local.dao.FixedEntryDao
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
 import com.example.personalfinancetracker.data.repository.RoomCategoryRepository
 import com.example.personalfinancetracker.data.repository.RoomBudgetRepository
 import com.example.personalfinancetracker.data.repository.RoomTransactionRepository
+import com.example.personalfinancetracker.data.repository.RoomFixedEntryRepository
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
+import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -60,11 +63,30 @@ object DatabaseModule {
         }
     }
 
+    private val migration4To5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS fixed_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    type TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    amountInCents INTEGER NOT NULL,
+                    categoryId INTEGER NOT NULL,
+                    comment TEXT,
+                    isActive INTEGER NOT NULL,
+                    FOREIGN KEY(categoryId) REFERENCES categories(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )""".trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_fixed_entries_categoryId ON fixed_entries(categoryId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_fixed_entries_type ON fixed_entries(type)")
+        }
+    }
+
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): FinanceDatabase =
         Room.databaseBuilder(context, FinanceDatabase::class.java, "personal_finance.db")
-            .addMigrations(migration1To2, migration2To3, migration3To4)
+            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -83,6 +105,7 @@ object DatabaseModule {
     @Provides fun transactionDao(db: FinanceDatabase): TransactionDao = db.transactionDao()
     @Provides fun budgetConfigDao(db: FinanceDatabase): BudgetConfigDao = db.budgetConfigDao()
     @Provides fun budgetCycleDao(db: FinanceDatabase): BudgetCycleDao = db.budgetCycleDao()
+    @Provides fun fixedEntryDao(db: FinanceDatabase): FixedEntryDao = db.fixedEntryDao()
 
     private val initialCategories = listOf(
         Triple("Salario", "INCOME", "payments"),
@@ -115,4 +138,5 @@ abstract class RepositoryModule {
     @Binds abstract fun transactions(implementation: RoomTransactionRepository): TransactionRepository
     @Binds abstract fun categories(implementation: RoomCategoryRepository): CategoryRepository
     @Binds abstract fun budget(implementation: RoomBudgetRepository): BudgetRepository
+    @Binds abstract fun fixedEntries(implementation: RoomFixedEntryRepository): FixedEntryRepository
 }
