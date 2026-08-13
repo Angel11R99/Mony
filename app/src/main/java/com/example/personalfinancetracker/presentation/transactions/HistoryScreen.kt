@@ -59,6 +59,7 @@ import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.TransactionRow
+import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -81,6 +82,7 @@ fun HistoryScreen(
     var startDate by remember { mutableStateOf<LocalDate?>(null) }
     var endDate by remember { mutableStateOf<LocalDate?>(null) }
     var pendingDelete by remember { mutableStateOf<FinanceTransaction?>(null) }
+    var selectedTransaction by remember { mutableStateOf<FinanceTransaction?>(null) }
 
     val availableCategories = remember(state.categories, typeFilter) {
         state.categories.values
@@ -164,6 +166,7 @@ fun HistoryScreen(
                         transaction,
                         state.categories[transaction.categoryId],
                         Modifier.weight(1f),
+                        onClick = { selectedTransaction = transaction },
                     )
                     IconButton(onClick = { onEdit(transaction.id, transaction.type) }) {
                         Icon(Icons.Outlined.Edit, "Editar")
@@ -210,6 +213,14 @@ fun HistoryScreen(
             },
             shape = MaterialTheme.shapes.medium,
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+    }
+
+    selectedTransaction?.let { transaction ->
+        TransactionDetailsDialog(
+            transaction = transaction,
+            category = state.categories[transaction.categoryId],
+            onDismiss = { selectedTransaction = null },
         )
     }
 }

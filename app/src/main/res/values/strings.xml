@@ -2,6 +2,7 @@
     <string name="app_name">PersonalFinanceTracker</string>
     <string name="widget_description">Balance y registro rápido de movimientos</string>
     <string name="widget_available">DISPONIBLE</string>
+    <string name="widget_latest_expense">ÚLTIMO GASTO</string>
     <string name="widget_add_expense">+ Gasto</string>
     <string name="widget_add_income">+ Ingreso</string>
 </resources>

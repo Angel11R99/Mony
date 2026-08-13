@@ -3,8 +3,12 @@ package com.example.personalfinancetracker.presentation.statistics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.personalfinancetracker.domain.model.Category
+import com.example.personalfinancetracker.domain.model.BudgetConfig
+import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
+import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,6 +22,7 @@ import javax.inject.Inject
 data class StatisticsUiState(
     val transactions: List<FinanceTransaction> = emptyList(),
     val categories: Map<Long, Category> = emptyMap(),
+    val budget: BudgetConfig? = null,
 )
 
 data class CategoryStatistic(
@@ -26,6 +31,7 @@ data class CategoryStatistic(
 )
 
 internal enum class StatisticsRange(val label: String) {
+    CURRENT_BUDGET("Ciclo actual"),
     CURRENT_MONTH("Este mes"),
     LAST_30_DAYS("30 días"),
     CURRENT_YEAR("Este año"),
@@ -40,7 +46,11 @@ internal data class StatisticsPeriod(
 internal fun statisticsPeriod(
     range: StatisticsRange,
     today: LocalDate = LocalDate.now(),
+    budget: BudgetConfig? = null,
 ): StatisticsPeriod = when (range) {
+    StatisticsRange.CURRENT_BUDGET -> activeBudgetPeriod(budget, today).let {
+        StatisticsPeriod(startDate = it.start, endDate = it.endInclusive)
+    }
     StatisticsRange.CURRENT_MONTH -> StatisticsPeriod(
         startDate = YearMonth.from(today).atDay(1),
         endDate = today,
@@ -72,11 +82,24 @@ data class StatisticsReport(
 class StatisticsViewModel @Inject constructor(
     transactions: TransactionRepository,
     categories: CategoryRepository,
+    budget: BudgetRepository,
 ) : ViewModel() {
-    val state = combine(transactions.observeAll(), categories.observeAll()) { items, categoryList ->
-        StatisticsUiState(items, categoryList.associateBy(Category::id))
+    val state = combine(
+        transactions.observeAll(),
+        categories.observeAll(),
+        budget.observe(),
+    ) { items, categoryList, budgetConfig ->
+        StatisticsUiState(
+            transactions = items,
+            categories = categoryList.associateBy(Category::id),
+            budget = budgetConfig,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatisticsUiState())
 }
+
+internal fun StatisticsRange.displayLabel(budget: BudgetConfig?): String =
+    if (this != StatisticsRange.CURRENT_BUDGET) label
+    else if (budget?.period == BudgetPeriod.MONTHLY) "Este ciclo mensual" else "Esta quincena"
 
 internal fun calculateStatistics(
     transactions: List<FinanceTransaction>,

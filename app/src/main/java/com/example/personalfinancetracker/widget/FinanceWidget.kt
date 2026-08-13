@@ -51,12 +51,13 @@ class FinanceWidget : GlanceAppWidget() {
         val transactions = entryPoint.transactions().observeAll().first()
         val budget = entryPoint.budgets().observe().first()
         val available = availableForBudget(budget, transactions)
-        provideContent { WidgetContent(context, available) }
+        val latestExpense = transactions.firstOrNull { it.type == TransactionType.EXPENSE }
+        provideContent { WidgetContent(context, available, latestExpense?.amountInCents) }
     }
 }
 
 @Composable
-private fun WidgetContent(context: Context, available: Long) {
+private fun WidgetContent(context: Context, available: Long, latestExpense: Long?) {
     val primaryText = ColorProvider(Color(0xFFF7F4EF))
     val secondaryText = ColorProvider(Color(0xFFA7A7AD))
     val buttonColors = ButtonDefaults.buttonColors(
@@ -71,19 +72,41 @@ private fun WidgetContent(context: Context, available: Long) {
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.Vertical.CenterVertically,
     ) {
-        Text(
-            text = context.getString(R.string.widget_available),
-            style = TextStyle(color = secondaryText, fontSize = 12.sp),
-        )
-        Text(
-            text = MoneyFormatter.format(available),
-            style = TextStyle(
-                color = primaryText,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-            maxLines = 1,
-        )
+        Row(GlanceModifier.fillMaxWidth()) {
+            Column(GlanceModifier.defaultWeight()) {
+                Text(
+                    text = context.getString(R.string.widget_available),
+                    style = TextStyle(color = secondaryText, fontSize = 11.sp),
+                    maxLines = 1,
+                )
+                Text(
+                    text = MoneyFormatter.format(available),
+                    style = TextStyle(
+                        color = primaryText,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                )
+            }
+            Spacer(GlanceModifier.width(12.dp))
+            Column(GlanceModifier.defaultWeight()) {
+                Text(
+                    text = context.getString(R.string.widget_latest_expense),
+                    style = TextStyle(color = secondaryText, fontSize = 11.sp),
+                    maxLines = 1,
+                )
+                Text(
+                    text = latestExpense?.let { "−${MoneyFormatter.format(it)}" } ?: "—",
+                    style = TextStyle(
+                        color = if (latestExpense == null) secondaryText else ColorProvider(Color(0xFFFF5D73)),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                )
+            }
+        }
         Spacer(GlanceModifier.height(12.dp))
         Row(GlanceModifier.fillMaxWidth()) {
             Button(

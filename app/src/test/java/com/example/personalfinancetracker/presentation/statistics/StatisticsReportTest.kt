@@ -1,6 +1,8 @@
 package com.example.personalfinancetracker.presentation.statistics
 
 import com.example.personalfinancetracker.domain.model.Category
+import com.example.personalfinancetracker.domain.model.BudgetConfig
+import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import org.junit.Assert.assertEquals
@@ -79,6 +81,20 @@ class StatisticsReportTest {
             StatisticsPeriod(null, null),
             statisticsPeriod(StatisticsRange.ALL_TIME, today),
         )
+    }
+
+    @Test fun `current budget filter follows the active fortnight`() {
+        val today = LocalDate.of(2026, 8, 20)
+        val budget = BudgetConfig(
+            amountInCents = 1_500_000,
+            period = BudgetPeriod.FORTNIGHTLY,
+        )
+
+        assertEquals(
+            StatisticsPeriod(LocalDate.of(2026, 8, 16), LocalDate.of(2026, 8, 31)),
+            statisticsPeriod(StatisticsRange.CURRENT_BUDGET, today, budget),
+        )
+        assertEquals("Esta quincena", StatisticsRange.CURRENT_BUDGET.displayLabel(budget))
     }
 
     private fun transaction(

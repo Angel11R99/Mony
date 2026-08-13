@@ -42,21 +42,47 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
+import com.example.personalfinancetracker.domain.model.Category
+import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
+import com.example.personalfinancetracker.domain.model.belongsToActiveBudgetCycle
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var range by remember { mutableStateOf(StatisticsRange.CURRENT_MONTH) }
-    val period = remember(range) { statisticsPeriod(range) }
-    val report = remember(state, period) {
+    var range by remember { mutableStateOf(StatisticsRange.CURRENT_BUDGET) }
+    var categoryId by remember { mutableStateOf<Long?>(null) }
+    val expenseCategories = remember(state.categories) {
+        state.categories.values
+            .filter { it.type == TransactionType.EXPENSE }
+            .sortedBy(Category::name)
+    }
+    val period = remember(range, state.budget) {
+        statisticsPeriod(range = range, budget = state.budget)
+    }
+    val periodTransactions = remember(state.transactions, state.budget, range, period) {
+        if (range != StatisticsRange.CURRENT_BUDGET) state.transactions
+        else {
+            val activePeriod = activeBudgetPeriod(state.budget)
+            state.transactions.filter { it.belongsToActiveBudgetCycle(state.budget, activePeriod) }
+        }
+    }
+    val report = remember(periodTransactions, state.categories, period) {
         calculateStatistics(
-            transactions = state.transactions,
+            transactions = periodTransactions,
             categories = state.categories,
             startDate = period.startDate,
             endDate = period.endDate,
         )
+    }
+    val selectedCategory = categoryId?.let(state.categories::get)
+    val selectedStatistic = report.expenseByCategory.firstOrNull { it.category.id == categoryId }
+    val comparisonAmount = if (range == StatisticsRange.CURRENT_BUDGET) {
+        state.budget?.amountInCents ?: report.incomeInCents
+    } else {
+        report.expenseInCents
     }
 
     Scaffold(
@@ -81,7 +107,30 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                         FilterChip(
                             selected = range == option,
                             onClick = { range = option },
-                            label = { Text(option.label) },
+                            label = { Text(option.displayLabel(state.budget)) },
+                            shape = MaterialTheme.shapes.small,
+                        )
+                    }
+                }
+            }
+            item {
+                Text("FILTRAR CATEGORÍA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item {
+                        FilterChip(
+                            selected = categoryId == null,
+                            onClick = { categoryId = null },
+                            label = { Text("Todas") },
+                            shape = MaterialTheme.shapes.small,
+                        )
+                    }
+                    items(expenseCategories, key = Category::id) { category ->
+                        FilterChip(
+                            selected = categoryId == category.id,
+                            onClick = { categoryId = category.id },
+                            label = { Text(category.name) },
                             shape = MaterialTheme.shapes.small,
                         )
                     }
@@ -90,23 +139,70 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
             item { BalanceCard(report) }
             item { IncomeExpenseChart(report) }
             item { ActivityCard(report) }
-            item {
-                Text("GASTOS POR CATEGORÍA", style = MaterialTheme.typography.titleLarge)
+            if (selectedCategory != null) {
+                item {
+                    CategoryFocusCard(
+                        category = selectedCategory,
+                        amountInCents = selectedStatistic?.amountInCents ?: 0,
+                        comparisonAmountInCents = comparisonAmount,
+                        periodLabel = range.displayLabel(state.budget),
+                    )
+                }
             }
-            if (report.expenseByCategory.isEmpty()) {
+            item {
+                Text(
+                    if (selectedCategory == null) "GASTOS POR CATEGORÍA" else "DETALLE DE CATEGORÍA",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
+            val visibleStatistics = if (categoryId == null) {
+                report.expenseByCategory
+            } else {
+                report.expenseByCategory.filter { it.category.id == categoryId }
+            }
+            if (visibleStatistics.isEmpty()) {
                 item {
                     Text(
-                        "No hay gastos registrados en este periodo.",
+                        if (selectedCategory == null) "No hay gastos registrados en este periodo."
+                        else "No hay gastos de ${selectedCategory.name} en este periodo.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-            items(report.expenseByCategory, key = { it.category.id }) { statistic ->
+            items(visibleStatistics, key = { it.category.id }) { statistic ->
                 CategoryBar(
                     statistic = statistic,
-                    totalExpense = report.expenseInCents,
+                    comparisonAmount = comparisonAmount,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun CategoryFocusCard(
+    category: Category,
+    amountInCents: Long,
+    comparisonAmountInCents: Long,
+    periodLabel: String,
+) {
+    val fraction = if (comparisonAmountInCents <= 0) 0f
+    else amountInCents.toFloat() / comparisonAmountInCents
+    val percent = (fraction * 100).toInt()
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "${category.name.uppercase()} · ${periodLabel.uppercase()}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            Text(MoneyFormatter.format(amountInCents), style = MaterialTheme.typography.displaySmall)
+            Text(
+                "$percent% de ${MoneyFormatter.format(comparisonAmountInCents)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            RatioBar(fraction)
         }
     }
 }
@@ -284,8 +380,8 @@ private fun RatioBar(ratio: Float) {
 }
 
 @Composable
-private fun CategoryBar(statistic: CategoryStatistic, totalExpense: Long) {
-    val fraction = if (totalExpense <= 0) 0f else statistic.amountInCents.toFloat() / totalExpense
+private fun CategoryBar(statistic: CategoryStatistic, comparisonAmount: Long) {
+    val fraction = if (comparisonAmount <= 0) 0f else statistic.amountInCents.toFloat() / comparisonAmount
     val animatedFraction by animateFloatAsState(fraction.coerceIn(0f, 1f), label = "categoryFraction")
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

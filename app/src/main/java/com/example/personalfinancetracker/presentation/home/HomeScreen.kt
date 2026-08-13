@@ -1,5 +1,6 @@
 package com.example.personalfinancetracker.presentation.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -50,6 +52,7 @@ import com.example.personalfinancetracker.presentation.components.FinanceTextFie
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.TransactionRow
+import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.format.DateTimeFormatter
 
@@ -64,6 +67,7 @@ fun HomeScreen(
     var editingBudget by remember { mutableStateOf(false) }
     var confirmingClose by remember { mutableStateOf(false) }
     var showingHistory by remember { mutableStateOf(false) }
+    var selectedTransaction by remember { mutableStateOf<com.example.personalfinancetracker.domain.model.FinanceTransaction?>(null) }
 
     LazyColumn(
         modifier = Modifier
@@ -73,12 +77,37 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            Column(
-                modifier = Modifier.padding(top = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                SectionLabel("DISPONIBLE")
-                Text(MoneyFormatter.format(state.availableInCents), style = MaterialTheme.typography.displaySmall)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SectionLabel("DISPONIBLE")
+                    Text(
+                        MoneyFormatter.format(state.availableInCents),
+                        style = MaterialTheme.typography.headlineMedium,
+                        maxLines = 1,
+                    )
+                }
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .then(
+                            state.latestExpense?.let { expense ->
+                                Modifier.clickable(role = Role.Button) { selectedTransaction = expense }
+                            } ?: Modifier
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    SectionLabel("ÚLTIMO GASTO")
+                    Text(
+                        state.latestExpense?.let { "−${MoneyFormatter.format(it.amountInCents)}" } ?: "—",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = if (state.latestExpense == null) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.error,
+                        maxLines = 1,
+                    )
+                }
             }
         }
         item {
@@ -167,7 +196,13 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        items(state.recent, key = { it.id }) { transaction -> TransactionRow(transaction, state.categories[transaction.categoryId]) }
+        items(state.recent, key = { it.id }) { transaction ->
+            TransactionRow(
+                transaction = transaction,
+                category = state.categories[transaction.categoryId],
+                onClick = { selectedTransaction = transaction },
+            )
+        }
         item { Spacer(Modifier.height(24.dp)) }
     }
 
@@ -210,6 +245,14 @@ fun HomeScreen(
         BudgetHistoryDialog(
             cycles = state.cycleHistory,
             onDismiss = { showingHistory = false },
+        )
+    }
+
+    selectedTransaction?.let { transaction ->
+        TransactionDetailsDialog(
+            transaction = transaction,
+            category = state.categories[transaction.categoryId],
+            onDismiss = { selectedTransaction = null },
         )
     }
 }
