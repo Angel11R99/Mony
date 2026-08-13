@@ -1,8 +1,11 @@
 package com.example.personalfinancetracker.presentation.settings
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,16 +15,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -29,7 +31,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,21 +40,27 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntSize
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.ui.theme.AppAppearance
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
-import com.example.personalfinancetracker.ui.theme.parseHexColor
-import com.example.personalfinancetracker.ui.theme.toHexColor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -224,23 +231,64 @@ private fun ColorPickerDialog(
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
 ) {
-    var hex by remember(currentArgb) { mutableStateOf(currentArgb.toHexColor()) }
-    val parsed = parseHexColor(hex)
+    val initialHsv = remember(currentArgb) { currentArgb.toHsv() }
+    var hue by remember(currentArgb) { mutableFloatStateOf(initialHsv[0]) }
+    var saturation by remember(currentArgb) { mutableFloatStateOf(initialHsv[1]) }
+    var brightness by remember(currentArgb) { mutableFloatStateOf(initialHsv[2]) }
+    val selectedColor = remember(hue, saturation, brightness) {
+        Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, brightness)))
+    }
+    val selectedArgb = selectedColor.toArgb()
+
+    fun selectPreset(argb: Int) {
+        val hsv = argb.toHsv()
+        hue = hsv[0]
+        saturation = hsv[1]
+        brightness = hsv[2]
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Outlined.Palette, null, tint = MaterialTheme.colorScheme.primary) },
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Elige una muestra o escribe cualquier código hexadecimal.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Arrastra sobre la paleta hasta encontrar el color que quieras.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SaturationBrightnessPalette(
+                    hue = hue,
+                    saturation = saturation,
+                    brightness = brightness,
+                    onChange = { newSaturation, newBrightness ->
+                        saturation = newSaturation
+                        brightness = newBrightness
+                    },
+                )
+                HueBar(hue = hue, onHueChange = { hue = it })
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Surface(
+                        modifier = Modifier.size(36.dp),
+                        color = selectedColor,
+                        shape = MaterialTheme.shapes.small,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    ) {}
+                    Column {
+                        Text("Color seleccionado", style = MaterialTheme.typography.labelLarge)
+                        Text("Puedes ajustarlo libremente", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Text("COLORES RÁPIDOS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     presets.forEach { argb ->
-                        val selected = parsed == argb
+                        val selected = selectedArgb == argb
                         Surface(
-                            modifier = Modifier.size(42.dp).clickable { hex = argb.toHexColor() },
+                            modifier = Modifier.size(42.dp).clickable { selectPreset(argb) },
                             color = Color(argb),
                             shape = CircleShape,
                             border = BorderStroke(if (selected) 3.dp else 1.dp, if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline),
@@ -255,28 +303,95 @@ private fun ColorPickerDialog(
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = hex,
-                    onValueChange = { if (it.length <= 7) hex = it.uppercase() },
-                    label = { Text("Color hexadecimal") },
-                    placeholder = { Text("#7C3AED") },
-                    leadingIcon = { Box(Modifier.size(18.dp).background(parsed?.let(::Color) ?: Color.Transparent, CircleShape)) },
-                    isError = hex.isNotBlank() && parsed == null,
-                    supportingText = if (hex.isNotBlank() && parsed == null) ({ Text("Usa 6 caracteres, por ejemplo #2563EB") }) else null,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { parsed?.let(onSelect) }, enabled = parsed != null) { Text("Aplicar") }
+            TextButton(onClick = { onSelect(selectedArgb) }) { Text("Aplicar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.medium,
     )
 }
+
+@Composable
+private fun SaturationBrightnessPalette(
+    hue: Float,
+    saturation: Float,
+    brightness: Float,
+    onChange: (Float, Float) -> Unit,
+) {
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    fun update(position: Offset) {
+        if (canvasSize.width == 0 || canvasSize.height == 0) return
+        onChange(
+            (position.x / canvasSize.width).coerceIn(0f, 1f),
+            (1f - position.y / canvasSize.height).coerceIn(0f, 1f),
+        )
+    }
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clip(MaterialTheme.shapes.small)
+            .onSizeChanged { canvasSize = it }
+            .pointerInput(hue) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    update(down.position)
+                    do {
+                        val change = awaitPointerEvent().changes.first()
+                        update(change.position)
+                        change.consume()
+                    } while (change.pressed)
+                }
+            }
+    ) {
+        drawRect(Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, 1f))))
+        drawRect(Brush.horizontalGradient(listOf(Color.White, Color.Transparent)))
+        drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black)))
+        val center = Offset(saturation * size.width, (1f - brightness) * size.height)
+        drawCircle(Color.Black.copy(alpha = 0.7f), radius = 10.dp.toPx(), center = center, style = Stroke(4.dp.toPx()))
+        drawCircle(Color.White, radius = 9.dp.toPx(), center = center, style = Stroke(2.dp.toPx()))
+    }
+}
+
+@Composable
+private fun HueBar(hue: Float, onHueChange: (Float) -> Unit) {
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    fun update(position: Offset) {
+        if (canvasSize.width == 0) return
+        onHueChange((position.x / canvasSize.width).coerceIn(0f, 1f) * 360f)
+    }
+    val colors = remember {
+        listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red)
+    }
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(28.dp)
+            .clip(MaterialTheme.shapes.extraSmall)
+            .onSizeChanged { canvasSize = it }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    update(down.position)
+                    do {
+                        val change = awaitPointerEvent().changes.first()
+                        update(change.position)
+                        change.consume()
+                    } while (change.pressed)
+                }
+            }
+    ) {
+        drawRect(Brush.horizontalGradient(colors))
+        val x = (hue / 360f).coerceIn(0f, 1f) * size.width
+        drawLine(Color.Black.copy(alpha = 0.75f), Offset(x, 0f), Offset(x, size.height), 6.dp.toPx())
+        drawLine(Color.White, Offset(x, 0f), Offset(x, size.height), 3.dp.toPx())
+    }
+}
+
+private fun Int.toHsv(): FloatArray = FloatArray(3).also { android.graphics.Color.colorToHSV(this, it) }
 
 private enum class ColorRole { PRIMARY, ACCENT }
 

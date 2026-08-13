@@ -47,14 +47,6 @@ class AppearancePreferences(context: Context) {
     }
 }
 
-internal fun parseHexColor(value: String): Int? {
-    val hex = value.trim().removePrefix("#")
-    if (hex.length != 6 || hex.any { it.digitToIntOrNull(16) == null }) return null
-    return (hex.toLong(16).toInt() or OPAQUE_ALPHA)
-}
-
-internal fun Int.toHexColor(): String = "#%06X".format(this and 0xFFFFFF)
-
 internal const val DEFAULT_PRIMARY_ARGB: Int = 0xFF7C3AED.toInt()
 internal const val DEFAULT_ACCENT_ARGB: Int = 0xFFFF6B73.toInt()
 private const val OPAQUE_ALPHA: Int = 0xFF000000.toInt()
