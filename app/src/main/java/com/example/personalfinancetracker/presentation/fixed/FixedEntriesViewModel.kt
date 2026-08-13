@@ -8,10 +8,13 @@ import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.FixedEntry
+import com.example.personalfinancetracker.domain.model.FixedDateMode
+import com.example.personalfinancetracker.domain.model.FixedScheduleMode
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.domain.model.calculateNextRun
+import com.example.personalfinancetracker.domain.model.manualPostingDate
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
-import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.widget.FinanceWidget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -33,7 +36,6 @@ data class FixedEntriesUiState(
 class FixedEntriesViewModel @Inject constructor(
     private val fixedEntries: FixedEntryRepository,
     categories: CategoryRepository,
-    private val transactions: TransactionRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val state = combine(fixedEntries.observeAll(), categories.observeAll()) { entries, categoryList ->
@@ -61,8 +63,15 @@ class FixedEntriesViewModel @Inject constructor(
             categoryId == null -> message.value = "Selecciona una categoría"
             else -> viewModelScope.launch {
                 runCatching {
+                    val base = existing ?: FixedEntry(
+                        type = type,
+                        description = description.trim(),
+                        amountInCents = cents,
+                        categoryId = categoryId,
+                        comment = null,
+                    )
                     fixedEntries.save(
-                        FixedEntry(
+                        base.copy(
                             id = existing?.id ?: 0,
                             type = type,
                             description = description.trim(),
@@ -89,22 +98,67 @@ class FixedEntriesViewModel @Inject constructor(
         message.value = "Plantilla eliminada"
     }
 
-    fun addToday(entry: FixedEntry) {
+    fun configure(
+        entry: FixedEntry,
+        manualDateMode: FixedDateMode,
+        manualSpecificDate: LocalDate?,
+        scheduleMode: FixedScheduleMode,
+        scheduleHour: Int,
+        scheduleSpecificDate: LocalDate?,
+        onSaved: () -> Unit,
+    ) {
+        val now = Instant.now()
+        val nextRun = calculateNextRun(
+            mode = scheduleMode,
+            hour = scheduleHour,
+            specificDate = scheduleSpecificDate,
+            after = now,
+        )
+        when {
+            manualDateMode == FixedDateMode.SPECIFIC_DATE && manualSpecificDate == null ->
+                message.value = "Selecciona la fecha del movimiento"
+            scheduleMode == FixedScheduleMode.SPECIFIC_DATE_TIME && nextRun == null ->
+                message.value = "Selecciona una fecha futura para programar"
+            else -> viewModelScope.launch {
+                fixedEntries.save(
+                    entry.copy(
+                        manualDateMode = manualDateMode,
+                        manualSpecificDate = manualSpecificDate,
+                        scheduleMode = scheduleMode,
+                        scheduleHour = scheduleHour.coerceIn(0, 23),
+                        scheduleSpecificDate = scheduleSpecificDate,
+                        nextRunAt = nextRun,
+                    )
+                )
+                message.value = "Configuración guardada"
+                onSaved()
+            }
+        }
+    }
+
+    fun addNow(entry: FixedEntry) {
         if (!entry.isActive) {
             message.value = "Activa la plantilla antes de agregarla"
             return
         }
         viewModelScope.launch {
             val now = Instant.now()
+            val postingDate = entry.manualPostingDate()
+            val deactivate = entry.manualDateMode == FixedDateMode.SPECIFIC_DATE
             runCatching {
-                transactions.create(entry.toTransaction(date = LocalDate.now(), now = now))
+                fixedEntries.post(
+                    entry = entry.copy(
+                        isActive = if (deactivate) false else entry.isActive,
+                        lastAddedAt = now,
+                        lastAddedDate = postingDate,
+                    ),
+                    transaction = entry.toTransaction(date = postingDate, now = now),
+                )
                 FinanceWidget().updateAll(context)
             }.onSuccess {
-                message.value = if (entry.type == TransactionType.EXPENSE) {
-                    "Gasto agregado con fecha de hoy"
-                } else {
-                    "Ingreso agregado con fecha de hoy"
-                }
+                val kind = if (entry.type == TransactionType.EXPENSE) "Gasto" else "Ingreso"
+                message.value = if (deactivate) "$kind agregado y plantilla desactivada"
+                else "$kind agregado correctamente"
             }.onFailure { message.value = "No se pudo agregar el movimiento" }
         }
     }

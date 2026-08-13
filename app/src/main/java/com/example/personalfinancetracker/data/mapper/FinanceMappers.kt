@@ -7,6 +7,8 @@ import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.FixedEntry
+import com.example.personalfinancetracker.domain.model.FixedDateMode
+import com.example.personalfinancetracker.domain.model.FixedScheduleMode
 import java.time.Instant
 import java.time.LocalDate
 
@@ -42,6 +44,14 @@ fun FixedEntryEntity.toDomain() = FixedEntry(
     categoryId = categoryId,
     comment = comment,
     isActive = isActive,
+    manualDateMode = FixedDateMode.valueOf(manualDateMode),
+    manualSpecificDate = manualSpecificDateEpochDay?.let(LocalDate::ofEpochDay),
+    scheduleMode = FixedScheduleMode.valueOf(scheduleMode),
+    scheduleHour = scheduleHour,
+    scheduleSpecificDate = scheduleSpecificDateEpochDay?.let(LocalDate::ofEpochDay),
+    nextRunAt = nextRunAtEpochMillis?.let(Instant::ofEpochMilli),
+    lastAddedAt = lastAddedAtEpochMillis?.let(Instant::ofEpochMilli),
+    lastAddedDate = lastAddedDateEpochDay?.let(LocalDate::ofEpochDay),
 )
 
 fun FixedEntry.toEntity() = FixedEntryEntity(
@@ -52,4 +62,12 @@ fun FixedEntry.toEntity() = FixedEntryEntity(
     categoryId = categoryId,
     comment = comment,
     isActive = isActive,
+    manualDateMode = manualDateMode.name,
+    manualSpecificDateEpochDay = manualSpecificDate?.toEpochDay(),
+    scheduleMode = scheduleMode.name,
+    scheduleHour = scheduleHour,
+    scheduleSpecificDateEpochDay = scheduleSpecificDate?.toEpochDay(),
+    nextRunAtEpochMillis = nextRunAt?.toEpochMilli(),
+    lastAddedAtEpochMillis = lastAddedAt?.toEpochMilli(),
+    lastAddedDateEpochDay = lastAddedDate?.toEpochDay(),
 )

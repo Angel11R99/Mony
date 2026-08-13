@@ -23,4 +23,12 @@ data class FixedEntryEntity(
     val categoryId: Long,
     val comment: String?,
     val isActive: Boolean,
+    val manualDateMode: String,
+    val manualSpecificDateEpochDay: Long?,
+    val scheduleMode: String,
+    val scheduleHour: Int,
+    val scheduleSpecificDateEpochDay: Long?,
+    val nextRunAtEpochMillis: Long?,
+    val lastAddedAtEpochMillis: Long?,
+    val lastAddedDateEpochDay: Long?,
 )

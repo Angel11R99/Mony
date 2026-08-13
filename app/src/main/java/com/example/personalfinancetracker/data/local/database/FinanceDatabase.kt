@@ -15,7 +15,7 @@ import com.example.personalfinancetracker.data.local.entity.FixedEntryEntity
 
 @Database(
     entities = [CategoryEntity::class, TransactionEntity::class, BudgetConfigEntity::class, BudgetCycleEntity::class, FixedEntryEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class FinanceDatabase : RoomDatabase() {

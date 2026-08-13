@@ -82,11 +82,24 @@ object DatabaseModule {
         }
     }
 
+    private val migration5To6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE fixed_entries ADD COLUMN manualDateMode TEXT NOT NULL DEFAULT 'TODAY'")
+            db.execSQL("ALTER TABLE fixed_entries ADD COLUMN manualSpecificDateEpochDay INTEGER")
+            db.execSQL("ALTER TABLE fixed_entries ADD COLUMN scheduleMode TEXT NOT NULL DEFAULT 'MANUAL'")
+            db.execSQL("ALTER TABLE fixed_entries ADD COLUMN scheduleHour INTEGER NOT NULL DEFAULT 9")
+            db.execSQL("ALTER TABLE fixed_entries ADD COLUMN scheduleSpecificDateEpochDay INTEGER")
+            db.execSQL("ALTER TABLE fixed_entries ADD COLUMN nextRunAtEpochMillis INTEGER")
+            db.execSQL("ALTER TABLE fixed_entries ADD COLUMN lastAddedAtEpochMillis INTEGER")
+            db.execSQL("ALTER TABLE fixed_entries ADD COLUMN lastAddedDateEpochDay INTEGER")
+        }
+    }
+
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): FinanceDatabase =
         Room.databaseBuilder(context, FinanceDatabase::class.java, "personal_finance.db")
-            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5)
+            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)

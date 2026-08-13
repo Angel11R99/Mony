@@ -52,10 +52,20 @@ class RoomCategoryRepository @Inject constructor(
 
 class RoomFixedEntryRepository @Inject constructor(
     private val dao: FixedEntryDao,
+    private val transactionDao: TransactionDao,
+    private val database: FinanceDatabase,
 ) : FixedEntryRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
     override suspend fun save(entry: com.example.personalfinancetracker.domain.model.FixedEntry) =
         dao.upsert(entry.toEntity())
+    override suspend fun post(
+        entry: com.example.personalfinancetracker.domain.model.FixedEntry,
+        transaction: FinanceTransaction,
+    ) = database.withTransaction {
+        transactionDao.insert(transaction.toEntity())
+        dao.upsert(entry.toEntity())
+        Unit
+    }
     override suspend fun delete(id: Long) = dao.delete(id)
 }
 

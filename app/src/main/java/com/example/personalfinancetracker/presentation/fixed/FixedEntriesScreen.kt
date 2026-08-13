@@ -1,7 +1,11 @@
 package com.example.personalfinancetracker.presentation.fixed
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,11 +19,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -32,11 +41,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -55,6 +69,8 @@ import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FixedEntry
+import com.example.personalfinancetracker.domain.model.FixedDateMode
+import com.example.personalfinancetracker.domain.model.FixedScheduleMode
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceCard
@@ -62,6 +78,10 @@ import com.example.personalfinancetracker.presentation.components.FinanceTextFie
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
+import java.time.ZoneId
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +93,7 @@ fun FixedEntriesScreen(viewModel: FixedEntriesViewModel = hiltViewModel()) {
     var editorEntry by remember { mutableStateOf<FixedEntry?>(null) }
     var showEditor by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<FixedEntry?>(null) }
+    var configEntry by remember { mutableStateOf<FixedEntry?>(null) }
     val visibleEntries = remember(state.entries, selectedType) {
         state.entries.filter { it.type == selectedType }
     }
@@ -123,7 +144,7 @@ fun FixedEntriesScreen(viewModel: FixedEntriesViewModel = hiltViewModel()) {
                             Icon(Icons.AutoMirrored.Outlined.PlaylistAdd, null, tint = MaterialTheme.colorScheme.primary)
                             Text("Todavía no tienes plantillas", style = MaterialTheme.typography.titleLarge)
                             Text(
-                                "Guarda aquí los movimientos que repites y agrégalos con la fecha del día.",
+                                "Guarda aquí los movimientos que repites y agrégalos con la fecha que elijas.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             PrimaryButton("Crear la primera", {
@@ -139,7 +160,8 @@ fun FixedEntriesScreen(viewModel: FixedEntriesViewModel = hiltViewModel()) {
                     entry = entry,
                     category = state.categories[entry.categoryId],
                     onToggle = { viewModel.toggle(entry) },
-                    onAddToday = { viewModel.addToday(entry) },
+                    onAddNow = { viewModel.addNow(entry) },
+                    onConfigure = { configEntry = entry },
                     onEdit = {
                         editorEntry = entry
                         showEditor = true
@@ -161,6 +183,23 @@ fun FixedEntriesScreen(viewModel: FixedEntriesViewModel = hiltViewModel()) {
                     selectedType = type
                     showEditor = false
                 }
+            },
+        )
+    }
+
+    configEntry?.let { entry ->
+        FixedEntryConfigurationDialog(
+            entry = entry,
+            onDismiss = { configEntry = null },
+            onSave = { dateMode, manualDate, scheduleMode, hour, scheduleDate ->
+                viewModel.configure(
+                    entry = entry,
+                    manualDateMode = dateMode,
+                    manualSpecificDate = manualDate,
+                    scheduleMode = scheduleMode,
+                    scheduleHour = hour,
+                    scheduleSpecificDate = scheduleDate,
+                ) { configEntry = null }
             },
         )
     }
@@ -214,7 +253,8 @@ private fun FixedEntryCard(
     entry: FixedEntry,
     category: Category?,
     onToggle: () -> Unit,
-    onAddToday: () -> Unit,
+    onAddNow: () -> Unit,
+    onConfigure: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -240,13 +280,19 @@ private fun FixedEntryCard(
             entry.comment?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            FixedEntryTimingStatus(entry)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 PrimaryButton(
-                    text = if (entry.isActive) "Agregar hoy" else "Inactivo",
-                    onClick = onAddToday,
+                    text = when {
+                        entry.isActive -> "Agregar ahora"
+                        entry.lastAddedAt != null -> "Agregado"
+                        else -> "Inactivo"
+                    },
+                    onClick = onAddNow,
                     modifier = Modifier.weight(1f),
                     enabled = entry.isActive,
                 )
+                IconButton(onClick = onConfigure) { Icon(Icons.Outlined.Settings, "Configurar fechas") }
                 IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Editar") }
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
@@ -255,6 +301,284 @@ private fun FixedEntryCard(
         }
     }
 }
+
+@Composable
+private fun FixedEntryTimingStatus(entry: FixedEntry) {
+    val zone = remember { ZoneId.systemDefault() }
+    val dateTimeFormatter = remember {
+        DateTimeFormatter.ofPattern("d MMM · h:mm a", Locale.forLanguageTag("es-DO"))
+    }
+    val dateFormatter = remember {
+        DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-DO"))
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(
+            "AL AGREGAR · " + if (entry.manualDateMode == FixedDateMode.SPECIFIC_DATE) {
+                entry.manualSpecificDate?.format(dateFormatter) ?: "FECHA PENDIENTE"
+            } else {
+                manualDateModeLabel(entry.manualDateMode).uppercase()
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        entry.nextRunAt?.let {
+            Text(
+                "PRÓXIMO · ${it.atZone(zone).format(dateTimeFormatter)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        entry.lastAddedAt?.let {
+            Text(
+                "ÚLTIMO AGREGADO · ${it.atZone(zone).format(dateTimeFormatter)}" +
+                    (entry.lastAddedDate?.let { date -> " · FECHA ${date.format(dateFormatter)}" } ?: ""),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun FixedEntryConfigurationDialog(
+    entry: FixedEntry,
+    onDismiss: () -> Unit,
+    onSave: (FixedDateMode, LocalDate?, FixedScheduleMode, Int, LocalDate?) -> Unit,
+) {
+    var dateMode by remember(entry) { mutableStateOf(entry.manualDateMode) }
+    var manualDate by remember(entry) { mutableStateOf(entry.manualSpecificDate) }
+    var scheduleMode by remember(entry) { mutableStateOf(entry.scheduleMode) }
+    var scheduleDate by remember(entry) { mutableStateOf(entry.scheduleSpecificDate) }
+    var scheduleHour by remember(entry) { mutableStateOf(entry.scheduleHour) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Configurar fechas") },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    Text(
+                        "AL AGREGAR MANUALMENTE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+                item {
+                    Text(
+                        "El movimiento se guardará usando esta fecha.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                item {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        FixedDateMode.entries.forEach { option ->
+                            ConfigChip(
+                                selected = dateMode == option,
+                                text = manualDateModeLabel(option),
+                                onClick = { dateMode = option },
+                            )
+                        }
+                    }
+                }
+                if (dateMode == FixedDateMode.SPECIFIC_DATE) {
+                    item {
+                        FixedDateField(
+                            label = "Fecha del movimiento",
+                            value = manualDate,
+                            onValueChange = { manualDate = it },
+                        )
+                    }
+                    item {
+                        Text(
+                            "Después de agregarla una vez, la plantilla se desactivará.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+                item {
+                    Text(
+                        "PROGRAMACIÓN AUTOMÁTICA",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+                item {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        FixedScheduleMode.entries.forEach { option ->
+                            ConfigChip(
+                                selected = scheduleMode == option,
+                                text = scheduleModeLabel(option),
+                                onClick = { scheduleMode = option },
+                            )
+                        }
+                    }
+                }
+                if (scheduleMode == FixedScheduleMode.SPECIFIC_DATE_TIME) {
+                    item {
+                        FixedDateField(
+                            label = "Fecha programada",
+                            value = scheduleDate,
+                            onValueChange = { scheduleDate = it },
+                        )
+                    }
+                }
+                if (scheduleMode != FixedScheduleMode.MANUAL) {
+                    item {
+                        FixedHourField(
+                            hour = scheduleHour,
+                            onHourChange = { scheduleHour = it },
+                        )
+                    }
+                    item {
+                        Text(
+                            if (scheduleMode == FixedScheduleMode.SPECIFIC_DATE_TIME) {
+                                "Al registrarse se desactivará automáticamente."
+                            } else {
+                                "Se repetirá y mostrará la próxima ejecución en la tarjeta."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            PrimaryButton("Guardar", {
+                onSave(dateMode, manualDate, scheduleMode, scheduleHour, scheduleDate)
+            })
+        },
+        dismissButton = { SecondaryButton("Cancelar", onDismiss) },
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+    )
+}
+
+@Composable
+private fun ConfigChip(selected: Boolean, text: String, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(text) },
+        shape = MaterialTheme.shapes.small,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FixedDateField(label: String, value: LocalDate?, onValueChange: (LocalDate) -> Unit) {
+    var showPicker by remember { mutableStateOf(false) }
+    val formatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    Surface(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+            .clickable(role = Role.Button) { showPicker = true },
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                Text(value?.format(formatter) ?: "Seleccionar fecha")
+            }
+            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+    if (showPicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = (value ?: LocalDate.now()).toEpochDay() * MILLIS_PER_DAY,
+        )
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { onValueChange(LocalDate.ofEpochDay(it / MILLIS_PER_DAY)) }
+                    showPicker = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = { TextButton(onClick = { showPicker = false }) { Text("Cancelar") } },
+        ) { DatePicker(pickerState) }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FixedHourField(hour: Int, onHourChange: (Int) -> Unit) {
+    var showPicker by remember { mutableStateOf(false) }
+    val display = remember(hour) {
+        LocalDate.now().atTime(hour.coerceIn(0, 23), 0)
+            .format(DateTimeFormatter.ofPattern("h:mm a", Locale.forLanguageTag("es-DO")))
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+            .clickable(role = Role.Button) { showPicker = true },
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Hora aproximada", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                Text(display)
+            }
+            Icon(Icons.Outlined.AccessTime, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+    if (showPicker) {
+        val timeState = rememberTimePickerState(initialHour = hour.coerceIn(0, 23), initialMinute = 0)
+        AlertDialog(
+            onDismissRequest = { showPicker = false },
+            title = { Text("Elegir hora") },
+            text = { TimePicker(timeState) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onHourChange(timeState.hour)
+                    showPicker = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = { TextButton(onClick = { showPicker = false }) { Text("Cancelar") } },
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+    }
+}
+
+private fun manualDateModeLabel(mode: FixedDateMode): String = when (mode) {
+    FixedDateMode.TODAY -> "Hoy"
+    FixedDateMode.PREVIOUS_FORTNIGHT -> "Quincena anterior"
+    FixedDateMode.PREVIOUS_MONTH -> "Mes anterior"
+    FixedDateMode.SPECIFIC_DATE -> "Fecha específica"
+}
+
+private fun scheduleModeLabel(mode: FixedScheduleMode): String = when (mode) {
+    FixedScheduleMode.MANUAL -> "Sin programación"
+    FixedScheduleMode.AFTER_FORTNIGHT -> "Después de cada quincena"
+    FixedScheduleMode.AFTER_MONTH -> "Después de cada mes"
+    FixedScheduleMode.SPECIFIC_DATE_TIME -> "Fecha específica"
+}
+
+private const val MILLIS_PER_DAY = 86_400_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
