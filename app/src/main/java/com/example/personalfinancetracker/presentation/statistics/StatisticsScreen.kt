@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -42,24 +43,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.presentation.components.FinanceCard
-import java.time.YearMonth
-
-private enum class StatisticsRange(val label: String) {
-    CURRENT_MONTH("Este mes"),
-    ALL_TIME("Todo"),
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var range by remember { mutableStateOf(StatisticsRange.CURRENT_MONTH) }
-    val monthStart = remember { YearMonth.now().atDay(1) }
-    val report = remember(state, range) {
+    val period = remember(range) { statisticsPeriod(range) }
+    val report = remember(state, period) {
         calculateStatistics(
             transactions = state.transactions,
             categories = state.categories,
-            startDate = if (range == StatisticsRange.CURRENT_MONTH) monthStart else null,
+            startDate = period.startDate,
+            endDate = period.endDate,
         )
     }
 
@@ -80,13 +76,12 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatisticsRange.entries.forEach { option ->
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(StatisticsRange.entries) { option ->
                         FilterChip(
                             selected = range == option,
                             onClick = { range = option },
                             label = { Text(option.label) },
-                            modifier = Modifier.weight(1f),
                             shape = MaterialTheme.shapes.small,
                         )
                     }

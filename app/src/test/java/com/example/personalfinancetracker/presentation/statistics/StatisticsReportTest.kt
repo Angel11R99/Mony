@@ -44,6 +44,43 @@ class StatisticsReportTest {
         assertEquals(1, report.transactionCount)
     }
 
+    @Test fun `date range includes its first and last day`() {
+        val report = calculateStatistics(
+            transactions = listOf(
+                transaction(1, 1_000, TransactionType.EXPENSE, food.id, LocalDate.of(2026, 8, 1)),
+                transaction(2, 2_000, TransactionType.EXPENSE, food.id, LocalDate.of(2026, 8, 31)),
+                transaction(3, 4_000, TransactionType.EXPENSE, food.id, LocalDate.of(2026, 9, 1)),
+            ),
+            categories = mapOf(food.id to food),
+            startDate = LocalDate.of(2026, 8, 1),
+            endDate = LocalDate.of(2026, 8, 31),
+        )
+
+        assertEquals(3_000, report.expenseInCents)
+        assertEquals(2, report.transactionCount)
+    }
+
+    @Test fun `creates expected quick filter periods`() {
+        val today = LocalDate.of(2026, 8, 13)
+
+        assertEquals(
+            StatisticsPeriod(LocalDate.of(2026, 8, 1), today),
+            statisticsPeriod(StatisticsRange.CURRENT_MONTH, today),
+        )
+        assertEquals(
+            StatisticsPeriod(LocalDate.of(2026, 7, 15), today),
+            statisticsPeriod(StatisticsRange.LAST_30_DAYS, today),
+        )
+        assertEquals(
+            StatisticsPeriod(LocalDate.of(2026, 1, 1), today),
+            statisticsPeriod(StatisticsRange.CURRENT_YEAR, today),
+        )
+        assertEquals(
+            StatisticsPeriod(null, null),
+            statisticsPeriod(StatisticsRange.ALL_TIME, today),
+        )
+    }
+
     private fun transaction(
         id: Long,
         amount: Long,
