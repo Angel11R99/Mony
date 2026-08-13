@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -51,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.core.showTopToast
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
@@ -68,6 +70,7 @@ fun AddTransactionScreen(
     val saving by viewModel.saving.collectAsStateWithLifecycle()
     val editing by viewModel.editingTransaction.collectAsStateWithLifecycle()
     val suggestedCategoryId by viewModel.suggestedCategoryId.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
@@ -86,6 +89,12 @@ fun AddTransactionScreen(
             categoryId = suggestedCategoryId?.takeIf { suggested ->
                 categories.any { it.id == suggested }
             }
+        }
+    }
+    LaunchedEffect(error) {
+        error?.let { message ->
+            context.showTopToast(message)
+            viewModel.consumeError()
         }
     }
     Scaffold(topBar = {
@@ -196,7 +205,6 @@ fun AddTransactionScreen(
                     placeholder = "Añade un detalle opcional",
                 )
             }
-            error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
         }
     }
 

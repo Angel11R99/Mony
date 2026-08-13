@@ -51,6 +51,10 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
+    fun consumeError() {
+        error.value = null
+    }
+
     fun save(amount: String, categoryId: Long?, note: String, date: String, onSaved: () -> Unit) {
         val cents = MoneyFormatter.parseToCents(amount)
         val parsedDate = runCatching { LocalDate.parse(date) }.getOrNull()

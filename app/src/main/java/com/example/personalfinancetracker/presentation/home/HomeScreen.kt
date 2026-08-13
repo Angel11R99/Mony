@@ -33,12 +33,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
+import com.example.personalfinancetracker.core.showTopToast
 import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.BudgetCycle
 import com.example.personalfinancetracker.domain.model.TransactionType
@@ -306,6 +308,7 @@ private fun BudgetDialog(
     onDismiss: () -> Unit,
     onSave: (String, BudgetPeriod) -> Unit,
 ) {
+    val context = LocalContext.current
     var amount by remember(currentAmount) {
         mutableStateOf(currentAmount?.let { java.math.BigDecimal.valueOf(it, 2).stripTrailingZeros().toPlainString() }.orEmpty())
     }
@@ -345,7 +348,15 @@ private fun BudgetDialog(
                 }
             }
         },
-        confirmButton = { PrimaryButton("Guardar", { onSave(amount, period) }, enabled = valid) },
+        confirmButton = {
+            PrimaryButton(
+                text = "Guardar",
+                onClick = {
+                    if (valid) onSave(amount, period)
+                    else context.showTopToast("Introduce un monto válido")
+                },
+            )
+        },
         dismissButton = { SecondaryButton("Cancelar", onDismiss) },
     )
 }
