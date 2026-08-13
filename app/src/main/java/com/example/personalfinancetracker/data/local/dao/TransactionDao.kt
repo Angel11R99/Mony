@@ -19,6 +19,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
     suspend fun get(id: Long): TransactionEntity?
 
+    @Query("SELECT * FROM transactions WHERE fixedEntryId = :fixedEntryId ORDER BY createdAtEpochMillis DESC LIMIT 1")
+    suspend fun latestForFixedEntry(fixedEntryId: Long): TransactionEntity?
+
     @Insert suspend fun insert(transaction: TransactionEntity): Long
     @Update suspend fun update(transaction: TransactionEntity)
     @Query("DELETE FROM transactions WHERE id = :id") suspend fun delete(id: Long)

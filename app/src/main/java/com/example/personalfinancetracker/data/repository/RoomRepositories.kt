@@ -30,6 +30,8 @@ import javax.inject.Inject
 
 class RoomTransactionRepository @Inject constructor(
     private val dao: TransactionDao,
+    private val fixedEntryDao: FixedEntryDao,
+    private val database: FinanceDatabase,
 ) : TransactionRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
     override fun observeByPeriod(period: DateRange) = dao.observeByPeriod(
@@ -38,7 +40,22 @@ class RoomTransactionRepository @Inject constructor(
     override suspend fun get(id: Long) = dao.get(id)?.toDomain()
     override suspend fun create(transaction: FinanceTransaction) = dao.insert(transaction.toEntity())
     override suspend fun update(transaction: FinanceTransaction) = dao.update(transaction.toEntity())
-    override suspend fun delete(id: Long) = dao.delete(id)
+    override suspend fun delete(id: Long) = database.withTransaction {
+        val deleted = dao.get(id)
+        dao.delete(id)
+        val fixedEntryId = deleted?.let {
+            it.fixedEntryId ?: fixedEntryDao.findIdByLastAddedAt(it.createdAtEpochMillis)
+        }
+        fixedEntryId?.let {
+            val latest = dao.latestForFixedEntry(it)
+            fixedEntryDao.updateLastAdded(
+                id = it,
+                addedAt = latest?.createdAtEpochMillis,
+                date = latest?.dateEpochDay,
+            )
+        }
+        Unit
+    }
 }
 
 class RoomCategoryRepository @Inject constructor(

@@ -33,6 +33,7 @@ class FixedEntryTest {
         assertEquals("BHD Crédito · Pago de la tarjeta", transaction.description)
         assertEquals(1_100_000, transaction.amountInCents)
         assertEquals(TransactionType.EXPENSE, transaction.type)
+        assertEquals(9L, transaction.fixedEntryId)
     }
 
     @Test fun `manual modes resolve previous periods and specific date`() {

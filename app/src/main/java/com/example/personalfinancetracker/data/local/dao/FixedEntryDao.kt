@@ -16,4 +16,10 @@ interface FixedEntryDao {
 
     @Query("DELETE FROM fixed_entries WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("UPDATE fixed_entries SET lastAddedAtEpochMillis = :addedAt, lastAddedDateEpochDay = :date WHERE id = :id")
+    suspend fun updateLastAdded(id: Long, addedAt: Long?, date: Long?)
+
+    @Query("SELECT id FROM fixed_entries WHERE lastAddedAtEpochMillis = :addedAt LIMIT 1")
+    suspend fun findIdByLastAddedAt(addedAt: Long): Long?
 }

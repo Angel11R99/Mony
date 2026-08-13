@@ -23,6 +23,7 @@ fun TransactionEntity.toDomain() = FinanceTransaction(
     date = LocalDate.ofEpochDay(dateEpochDay),
     createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
     updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+    fixedEntryId = fixedEntryId,
 )
 
 fun FinanceTransaction.toEntity() = TransactionEntity(
@@ -34,6 +35,7 @@ fun FinanceTransaction.toEntity() = TransactionEntity(
     dateEpochDay = date.toEpochDay(),
     createdAtEpochMillis = createdAt.toEpochMilli(),
     updatedAtEpochMillis = updatedAt.toEpochMilli(),
+    fixedEntryId = fixedEntryId,
 )
 
 fun FixedEntryEntity.toDomain() = FixedEntry(

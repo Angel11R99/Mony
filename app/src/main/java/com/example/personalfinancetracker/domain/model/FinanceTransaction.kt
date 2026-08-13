@@ -12,4 +12,5 @@ data class FinanceTransaction(
     val date: LocalDate,
     val createdAt: Instant = Instant.now(),
     val updatedAt: Instant = Instant.now(),
+    val fixedEntryId: Long? = null,
 )

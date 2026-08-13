@@ -69,9 +69,9 @@ import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FixedEntry
-import com.example.personalfinancetracker.domain.model.FixedDateMode
 import com.example.personalfinancetracker.domain.model.FixedScheduleMode
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.domain.model.previousFortnightEnd
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
@@ -80,6 +80,7 @@ import com.example.personalfinancetracker.presentation.components.SecondaryButto
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.ZoneId
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -94,6 +95,7 @@ fun FixedEntriesScreen(viewModel: FixedEntriesViewModel = hiltViewModel()) {
     var showEditor by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<FixedEntry?>(null) }
     var configEntry by remember { mutableStateOf<FixedEntry?>(null) }
+    var manualEntry by remember { mutableStateOf<FixedEntry?>(null) }
     val visibleEntries = remember(state.entries, selectedType) {
         state.entries.filter { it.type == selectedType }
     }
@@ -160,7 +162,7 @@ fun FixedEntriesScreen(viewModel: FixedEntriesViewModel = hiltViewModel()) {
                     entry = entry,
                     category = state.categories[entry.categoryId],
                     onToggle = { viewModel.toggle(entry) },
-                    onAddNow = { viewModel.addNow(entry) },
+                    onAddNow = { manualEntry = entry },
                     onConfigure = { configEntry = entry },
                     onEdit = {
                         editorEntry = entry
@@ -191,15 +193,24 @@ fun FixedEntriesScreen(viewModel: FixedEntriesViewModel = hiltViewModel()) {
         FixedEntryConfigurationDialog(
             entry = entry,
             onDismiss = { configEntry = null },
-            onSave = { dateMode, manualDate, scheduleMode, hour, scheduleDate ->
+            onSave = { scheduleMode, hour, scheduleDate ->
                 viewModel.configure(
                     entry = entry,
-                    manualDateMode = dateMode,
-                    manualSpecificDate = manualDate,
                     scheduleMode = scheduleMode,
                     scheduleHour = hour,
                     scheduleSpecificDate = scheduleDate,
                 ) { configEntry = null }
+            },
+        )
+    }
+
+    manualEntry?.let { entry ->
+        FixedEntryManualActionsDialog(
+            entry = entry,
+            onDismiss = { manualEntry = null },
+            onAdd = { date ->
+                viewModel.addNow(entry, date)
+                manualEntry = null
             },
         )
     }
@@ -284,7 +295,7 @@ private fun FixedEntryCard(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 PrimaryButton(
                     text = when {
-                        entry.isActive -> "Agregar ahora"
+                        entry.isActive -> "Agregar"
                         entry.lastAddedAt != null -> "Agregado"
                         else -> "Inactivo"
                     },
@@ -312,15 +323,6 @@ private fun FixedEntryTimingStatus(entry: FixedEntry) {
         DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-DO"))
     }
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(
-            "AL AGREGAR · " + if (entry.manualDateMode == FixedDateMode.SPECIFIC_DATE) {
-                entry.manualSpecificDate?.format(dateFormatter) ?: "FECHA PENDIENTE"
-            } else {
-                manualDateModeLabel(entry.manualDateMode).uppercase()
-            },
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.secondary,
-        )
         entry.nextRunAt?.let {
             Text(
                 "PRÓXIMO · ${it.atZone(zone).format(dateTimeFormatter)}",
@@ -339,71 +341,88 @@ private fun FixedEntryTimingStatus(entry: FixedEntry) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FixedEntryManualActionsDialog(
+    entry: FixedEntry,
+    onDismiss: () -> Unit,
+    onAdd: (LocalDate) -> Unit,
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    val today = LocalDate.now()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Agregar ${entry.description}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Elige la fecha. Al tocar una opción, el movimiento se agrega de inmediato.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                PrimaryButton(
+                    text = "Hoy",
+                    onClick = { onAdd(today) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SecondaryButton(
+                    text = "Quincena anterior",
+                    onClick = { onAdd(previousFortnightEnd(today)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SecondaryButton(
+                    text = "Mes anterior",
+                    onClick = { onAdd(YearMonth.from(today).minusMonths(1).atEndOfMonth()) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SecondaryButton(
+                    text = "Fecha específica",
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+    )
+
+    if (showDatePicker) {
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = today.toEpochDay() * MILLIS_PER_DAY)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { onAdd(LocalDate.ofEpochDay(it / MILLIS_PER_DAY)) }
+                    showDatePicker = false
+                }) { Text("Agregar") }
+            },
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") } },
+        ) { DatePicker(pickerState) }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun FixedEntryConfigurationDialog(
     entry: FixedEntry,
     onDismiss: () -> Unit,
-    onSave: (FixedDateMode, LocalDate?, FixedScheduleMode, Int, LocalDate?) -> Unit,
+    onSave: (FixedScheduleMode, Int, LocalDate?) -> Unit,
 ) {
-    var dateMode by remember(entry) { mutableStateOf(entry.manualDateMode) }
-    var manualDate by remember(entry) { mutableStateOf(entry.manualSpecificDate) }
     var scheduleMode by remember(entry) { mutableStateOf(entry.scheduleMode) }
     var scheduleDate by remember(entry) { mutableStateOf(entry.scheduleSpecificDate) }
     var scheduleHour by remember(entry) { mutableStateOf(entry.scheduleHour) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Configurar fechas") },
+        title = { Text("Programación automática") },
         text = {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item {
-                    Text(
-                        "AL AGREGAR MANUALMENTE",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                }
-                item {
-                    Text(
-                        "El movimiento se guardará usando esta fecha.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                item {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        FixedDateMode.entries.forEach { option ->
-                            ConfigChip(
-                                selected = dateMode == option,
-                                text = manualDateModeLabel(option),
-                                onClick = { dateMode = option },
-                            )
-                        }
-                    }
-                }
-                if (dateMode == FixedDateMode.SPECIFIC_DATE) {
-                    item {
-                        FixedDateField(
-                            label = "Fecha del movimiento",
-                            value = manualDate,
-                            onValueChange = { manualDate = it },
-                        )
-                    }
-                    item {
-                        Text(
-                            "Después de agregarla una vez, la plantilla se desactivará.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
                 item {
                     Text(
                         "PROGRAMACIÓN AUTOMÁTICA",
@@ -457,7 +476,7 @@ private fun FixedEntryConfigurationDialog(
         },
         confirmButton = {
             PrimaryButton("Guardar", {
-                onSave(dateMode, manualDate, scheduleMode, scheduleHour, scheduleDate)
+                onSave(scheduleMode, scheduleHour, scheduleDate)
             })
         },
         dismissButton = { SecondaryButton("Cancelar", onDismiss) },
@@ -562,13 +581,6 @@ private fun FixedHourField(hour: Int, onHourChange: (Int) -> Unit) {
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         )
     }
-}
-
-private fun manualDateModeLabel(mode: FixedDateMode): String = when (mode) {
-    FixedDateMode.TODAY -> "Hoy"
-    FixedDateMode.PREVIOUS_FORTNIGHT -> "Quincena anterior"
-    FixedDateMode.PREVIOUS_MONTH -> "Mes anterior"
-    FixedDateMode.SPECIFIC_DATE -> "Fecha específica"
 }
 
 private fun scheduleModeLabel(mode: FixedScheduleMode): String = when (mode) {

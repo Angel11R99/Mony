@@ -8,11 +8,9 @@ import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.FixedEntry
-import com.example.personalfinancetracker.domain.model.FixedDateMode
 import com.example.personalfinancetracker.domain.model.FixedScheduleMode
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.calculateNextRun
-import com.example.personalfinancetracker.domain.model.manualPostingDate
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
 import com.example.personalfinancetracker.widget.FinanceWidget
@@ -100,8 +98,6 @@ class FixedEntriesViewModel @Inject constructor(
 
     fun configure(
         entry: FixedEntry,
-        manualDateMode: FixedDateMode,
-        manualSpecificDate: LocalDate?,
         scheduleMode: FixedScheduleMode,
         scheduleHour: Int,
         scheduleSpecificDate: LocalDate?,
@@ -115,15 +111,11 @@ class FixedEntriesViewModel @Inject constructor(
             after = now,
         )
         when {
-            manualDateMode == FixedDateMode.SPECIFIC_DATE && manualSpecificDate == null ->
-                message.value = "Selecciona la fecha del movimiento"
             scheduleMode == FixedScheduleMode.SPECIFIC_DATE_TIME && nextRun == null ->
                 message.value = "Selecciona una fecha futura para programar"
             else -> viewModelScope.launch {
                 fixedEntries.save(
                     entry.copy(
-                        manualDateMode = manualDateMode,
-                        manualSpecificDate = manualSpecificDate,
                         scheduleMode = scheduleMode,
                         scheduleHour = scheduleHour.coerceIn(0, 23),
                         scheduleSpecificDate = scheduleSpecificDate,
@@ -136,19 +128,16 @@ class FixedEntriesViewModel @Inject constructor(
         }
     }
 
-    fun addNow(entry: FixedEntry) {
+    fun addNow(entry: FixedEntry, postingDate: LocalDate) {
         if (!entry.isActive) {
             message.value = "Activa la plantilla antes de agregarla"
             return
         }
         viewModelScope.launch {
             val now = Instant.now()
-            val postingDate = entry.manualPostingDate()
-            val deactivate = entry.manualDateMode == FixedDateMode.SPECIFIC_DATE
             runCatching {
                 fixedEntries.post(
                     entry = entry.copy(
-                        isActive = if (deactivate) false else entry.isActive,
                         lastAddedAt = now,
                         lastAddedDate = postingDate,
                     ),
@@ -157,8 +146,7 @@ class FixedEntriesViewModel @Inject constructor(
                 FinanceWidget().updateAll(context)
             }.onSuccess {
                 val kind = if (entry.type == TransactionType.EXPENSE) "Gasto" else "Ingreso"
-                message.value = if (deactivate) "$kind agregado y plantilla desactivada"
-                else "$kind agregado correctamente"
+                message.value = "$kind agregado correctamente"
             }.onFailure { message.value = "No se pudo agregar el movimiento" }
         }
     }
@@ -176,4 +164,5 @@ internal fun FixedEntry.toTransaction(
     date = date,
     createdAt = now,
     updatedAt = now,
+    fixedEntryId = id,
 )
