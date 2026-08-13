@@ -10,4 +10,5 @@ data class BudgetConfigEntity(
     val period: String,
     val cycleStartEpochDay: Long? = null,
     val cycleStartedAtEpochMillis: Long? = null,
+    val incomeTransactionId: Long? = null,
 )

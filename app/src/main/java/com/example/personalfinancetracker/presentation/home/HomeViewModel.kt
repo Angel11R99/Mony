@@ -1,5 +1,7 @@
 package com.example.personalfinancetracker.presentation.home
 
+import android.content.Context
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.personalfinancetracker.domain.model.Category
@@ -9,19 +11,26 @@ import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.DateRange
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
+import com.example.personalfinancetracker.domain.model.belongsToActiveBudgetCycle
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.core.MoneyFormatter
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import java.time.Instant
 import java.time.LocalDate
+import com.example.personalfinancetracker.widget.FinanceWidget
 
 data class CategorySpending(val category: Category, val amountInCents: Long)
 
@@ -40,10 +49,12 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val transactions: TransactionRepository,
-    categories: CategoryRepository,
+    private val categories: CategoryRepository,
     private val budgetRepository: BudgetRepository,
+    @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val closingCycle = MutableStateFlow(false)
+    private val budgetIncomeMutex = Mutex()
 
     val state = combine(
         transactions.observeAll(),
@@ -72,19 +83,56 @@ class HomeViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
+    init {
+        viewModelScope.launch {
+            budgetRepository.observe().first { it != null }
+            budgetIncomeMutex.withLock {
+                val budget = budgetRepository.observe().first() ?: return@withLock
+                val linkedIncome = budget.incomeTransactionId?.let { transactions.get(it) }
+                if (linkedIncome == null) {
+                    val categoryId = incomeCategoryId() ?: return@withLock
+                    val transactionId = upsertBudgetIncome(
+                        amountInCents = budget.amountInCents,
+                        period = budget.period,
+                        categoryId = categoryId,
+                        existingId = null,
+                        date = budget.cycleStart ?: activeBudgetPeriod(budget).start,
+                        now = Instant.now(),
+                    )
+                    budgetRepository.save(budget.copy(incomeTransactionId = transactionId))
+                    FinanceWidget().updateAll(context)
+                }
+            }
+        }
+    }
+
     fun saveBudget(amount: String, period: BudgetPeriod, onSaved: () -> Unit) {
         val amountInCents = MoneyFormatter.parseToCents(amount)
         if (amountInCents == null || amountInCents <= 0) return
         viewModelScope.launch {
-            val existing = state.value.budget
-            budgetRepository.save(
-                BudgetConfig(
+            budgetIncomeMutex.withLock {
+                val existing = budgetRepository.observe().first()
+                val categoryId = incomeCategoryId() ?: return@withLock
+                val now = Instant.now()
+                val incomeTransactionId = upsertBudgetIncome(
                     amountInCents = amountInCents,
                     period = period,
-                    cycleStart = existing?.cycleStart,
-                    cycleStartedAt = existing?.cycleStartedAt,
+                    categoryId = categoryId,
+                    existingId = existing?.incomeTransactionId,
+                    date = LocalDate.now(),
+                    now = now,
                 )
-            )
+                budgetRepository.save(
+                    BudgetConfig(
+                        amountInCents = amountInCents,
+                        period = period,
+                        cycleStart = existing?.cycleStart,
+                        cycleStartedAt = existing?.cycleStartedAt,
+                        incomeTransactionId = incomeTransactionId,
+                    )
+                )
+                FinanceWidget().updateAll(context)
+            }
             onSaved()
         }
     }
@@ -106,30 +154,62 @@ class HomeViewModel @Inject constructor(
                 endDate = today.coerceAtLeast(current.period.start),
                 closedAt = now,
             )
-            val nextConfig = budget.copy(cycleStart = today, cycleStartedAt = now)
-            runCatching { budgetRepository.closeCycle(closedCycle, nextConfig) }
+            runCatching {
+                budgetIncomeMutex.withLock {
+                    val categoryId = incomeCategoryId() ?: error("No hay categoría de ingreso disponible")
+                    val nextIncomeId = upsertBudgetIncome(
+                        amountInCents = budget.amountInCents,
+                        period = budget.period,
+                        categoryId = categoryId,
+                        existingId = null,
+                        date = today,
+                        now = now,
+                    )
+                    val nextConfig = budget.copy(
+                        cycleStart = today,
+                        cycleStartedAt = now,
+                        incomeTransactionId = nextIncomeId,
+                    )
+                    budgetRepository.closeCycle(closedCycle, nextConfig)
+                    FinanceWidget().updateAll(context)
+                }
+            }
                 .onSuccess { onClosed() }
             closingCycle.value = false
         }
     }
-}
 
-internal fun activeBudgetPeriod(
-    budget: BudgetConfig?,
-    today: LocalDate = LocalDate.now(),
-): DateRange {
-    val calendarPeriod = DateRange.current(budget?.period ?: BudgetPeriod.FORTNIGHTLY, today)
-    val activeCycleStart = budget?.cycleStart?.takeIf {
-        it in calendarPeriod.start..calendarPeriod.endInclusive
+    private suspend fun incomeCategoryId(): Long? {
+        val incomeCategories = categories.observeActive(TransactionType.INCOME).first()
+        return incomeCategories.firstOrNull { it.name.equals("Salario", ignoreCase = true) }?.id
+            ?: incomeCategories.firstOrNull()?.id
     }
-    return DateRange(activeCycleStart ?: calendarPeriod.start, calendarPeriod.endInclusive)
+
+    private suspend fun upsertBudgetIncome(
+        amountInCents: Long,
+        period: BudgetPeriod,
+        categoryId: Long,
+        existingId: Long?,
+        date: LocalDate,
+        now: Instant,
+    ): Long {
+        val existing = existingId?.let { transactions.get(it) }
+        val transaction = FinanceTransaction(
+            id = existing?.id ?: 0,
+            amountInCents = amountInCents,
+            type = TransactionType.INCOME,
+            categoryId = existing?.categoryId ?: categoryId,
+            description = budgetIncomeDescription(period),
+            date = existing?.date ?: date,
+            createdAt = existing?.createdAt ?: now,
+            updatedAt = now,
+        )
+        return if (existing == null) transactions.create(transaction) else {
+            transactions.update(transaction)
+            transaction.id
+        }
+    }
 }
 
-internal fun FinanceTransaction.belongsToActiveBudgetCycle(
-    budget: BudgetConfig?,
-    period: DateRange,
-): Boolean {
-    if (date !in period.start..period.endInclusive) return false
-    val boundary = budget?.cycleStartedAt?.takeIf { budget.cycleStart == period.start }
-    return boundary == null || !createdAt.isBefore(boundary)
-}
+internal fun budgetIncomeDescription(period: BudgetPeriod): String =
+    if (period == BudgetPeriod.MONTHLY) "Ingreso mensual" else "Ingreso quincenal"

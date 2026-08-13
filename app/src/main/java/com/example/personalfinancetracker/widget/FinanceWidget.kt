@@ -33,6 +33,8 @@ import com.example.personalfinancetracker.MainActivity
 import com.example.personalfinancetracker.R
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.domain.model.availableForBudget
+import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -42,14 +44,13 @@ import kotlinx.coroutines.flow.first
 
 class FinanceWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val repository = EntryPointAccessors.fromApplication(
+        val entryPoint = EntryPointAccessors.fromApplication(
             context.applicationContext,
             WidgetEntryPoint::class.java,
-        ).transactions()
-        val transactions = repository.observeAll().first()
-        val available = transactions.sumOf {
-            if (it.type == TransactionType.INCOME) it.amountInCents else -it.amountInCents
-        }
+        )
+        val transactions = entryPoint.transactions().observeAll().first()
+        val budget = entryPoint.budgets().observe().first()
+        val available = availableForBudget(budget, transactions)
         provideContent { WidgetContent(context, available) }
     }
 }
@@ -120,4 +121,5 @@ class FinanceWidgetReceiver : GlanceAppWidgetReceiver() {
 @InstallIn(SingletonComponent::class)
 interface WidgetEntryPoint {
     fun transactions(): TransactionRepository
+    fun budgets(): BudgetRepository
 }

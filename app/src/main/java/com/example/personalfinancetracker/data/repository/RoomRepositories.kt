@@ -60,6 +60,7 @@ class RoomBudgetRepository @Inject constructor(
                 period = BudgetPeriod.valueOf(it.period),
                 cycleStart = it.cycleStartEpochDay?.let(LocalDate::ofEpochDay),
                 cycleStartedAt = it.cycleStartedAtEpochMillis?.let(Instant::ofEpochMilli),
+                incomeTransactionId = it.incomeTransactionId,
             )
         }
     }
@@ -96,6 +97,7 @@ private fun BudgetConfig.toEntity() = BudgetConfigEntity(
     period = period.name,
     cycleStartEpochDay = cycleStart?.toEpochDay(),
     cycleStartedAtEpochMillis = cycleStartedAt?.toEpochMilli(),
+    incomeTransactionId = incomeTransactionId,
 )
 
 private fun BudgetCycle.toEntity() = BudgetCycleEntity(

@@ -19,7 +19,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Circle
@@ -67,6 +67,7 @@ fun AddTransactionScreen(
     val error by viewModel.error.collectAsStateWithLifecycle()
     val saving by viewModel.saving.collectAsStateWithLifecycle()
     val editing by viewModel.editingTransaction.collectAsStateWithLifecycle()
+    val suggestedCategoryId by viewModel.suggestedCategoryId.collectAsStateWithLifecycle()
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
@@ -80,6 +81,13 @@ fun AddTransactionScreen(
             categoryId = it.categoryId
         }
     }
+    LaunchedEffect(suggestedCategoryId, categories) {
+        if (!viewModel.isEditing && categoryId == null) {
+            categoryId = suggestedCategoryId?.takeIf { suggested ->
+                categories.any { it.id == suggested }
+            }
+        }
+    }
     Scaffold(topBar = {
         TopAppBar(
             title = {
@@ -90,7 +98,7 @@ fun AddTransactionScreen(
                     style = MaterialTheme.typography.titleLarge,
                 )
             },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, "Volver") } },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver") } },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.background,
                 titleContentColor = MaterialTheme.colorScheme.onBackground,

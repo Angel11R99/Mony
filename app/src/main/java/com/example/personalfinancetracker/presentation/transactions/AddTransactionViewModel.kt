@@ -18,6 +18,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -30,7 +31,7 @@ class AddTransactionViewModel @Inject constructor(
     categories: CategoryRepository,
     private val saveTransaction: SaveTransaction,
     private val transactionRepository: TransactionRepository,
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val type = TransactionType.valueOf(savedStateHandle.get<String>("type") ?: TransactionType.EXPENSE.name)
     val categories: StateFlow<List<Category>> = categories.observeActive(type)
@@ -39,6 +40,10 @@ class AddTransactionViewModel @Inject constructor(
     val saving = MutableStateFlow(false)
     val editingTransaction = MutableStateFlow<FinanceTransaction?>(null)
     private val transactionId = savedStateHandle.get<Long>("transactionId") ?: 0L
+    val isEditing: Boolean = transactionId != 0L
+    val suggestedCategoryId: StateFlow<Long?> = transactionRepository.observeAll()
+        .map { transactions -> lastCategoryForType(transactions, type) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     init {
         if (transactionId != 0L) viewModelScope.launch {
@@ -75,3 +80,8 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 }
+
+internal fun lastCategoryForType(
+    transactions: List<FinanceTransaction>,
+    type: TransactionType,
+): Long? = transactions.firstOrNull { it.type == type }?.categoryId
