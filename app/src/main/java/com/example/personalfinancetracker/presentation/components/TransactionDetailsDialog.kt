@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material3.AlertDialog
@@ -99,16 +100,16 @@ private fun DetailField(
     labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(
             label.uppercase(),
-            modifier = Modifier.weight(0.35f),
+            modifier = Modifier.width(88.dp).alignByBaseline(),
             style = MaterialTheme.typography.labelSmall,
             color = labelColor,
         )
         Text(
             value,
-            modifier = Modifier.weight(0.65f),
+            modifier = Modifier.weight(1f).alignByBaseline(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = valueColor,
