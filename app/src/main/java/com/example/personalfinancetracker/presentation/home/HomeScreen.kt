@@ -1,6 +1,5 @@
 package com.example.personalfinancetracker.presentation.home
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -78,41 +76,7 @@ fun HomeScreen(
     ) {
         item {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SectionLabel("DISPONIBLE")
-                    Text(
-                        MoneyFormatter.format(state.availableInCents),
-                        style = MaterialTheme.typography.headlineMedium,
-                        maxLines = 1,
-                    )
-                }
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .then(
-                            state.latestExpense?.let { expense ->
-                                Modifier.clickable(role = Role.Button) { selectedTransaction = expense }
-                            } ?: Modifier
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    SectionLabel("ÚLTIMO GASTO")
-                    Text(
-                        state.latestExpense?.let { "−${MoneyFormatter.format(it.amountInCents)}" } ?: "—",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = if (state.latestExpense == null) MaterialTheme.colorScheme.onSurfaceVariant
-                        else MaterialTheme.colorScheme.error,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-        item {
-            Row(
-                Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                Modifier.fillMaxWidth().padding(top = 10.dp).height(IntrinsicSize.Max),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 PrimaryButton(

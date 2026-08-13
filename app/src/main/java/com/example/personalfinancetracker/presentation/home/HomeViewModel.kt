@@ -35,8 +35,6 @@ import com.example.personalfinancetracker.widget.FinanceWidget
 data class CategorySpending(val category: Category, val amountInCents: Long)
 
 data class HomeUiState(
-    val availableInCents: Long = 0,
-    val latestExpense: FinanceTransaction? = null,
     val periodIncomeInCents: Long = 0,
     val periodExpenseInCents: Long = 0,
     val recent: List<FinanceTransaction> = emptyList(),
@@ -69,8 +67,6 @@ class HomeViewModel @Inject constructor(
         val income = current.filter { it.type == TransactionType.INCOME }.sumOf { it.amountInCents }
         val expense = current.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amountInCents }
         HomeUiState(
-            availableInCents = all.sumOf { if (it.type == TransactionType.INCOME) it.amountInCents else -it.amountInCents },
-            latestExpense = all.firstOrNull { it.type == TransactionType.EXPENSE },
             periodIncomeInCents = income,
             periodExpenseInCents = expense,
             recent = all.take(5),

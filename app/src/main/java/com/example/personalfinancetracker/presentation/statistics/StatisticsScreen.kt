@@ -2,23 +2,38 @@ package com.example.personalfinancetracker.presentation.statistics
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -47,13 +62,18 @@ import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
 import com.example.personalfinancetracker.domain.model.belongsToActiveBudgetCycle
 import com.example.personalfinancetracker.presentation.components.FinanceCard
+import com.example.personalfinancetracker.presentation.components.PrimaryButton
+import com.example.personalfinancetracker.presentation.components.SecondaryButton
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var range by remember { mutableStateOf(StatisticsRange.CURRENT_BUDGET) }
     var categoryId by remember { mutableStateOf<Long?>(null) }
+    var showFilters by remember { mutableStateOf(false) }
+    var draftRange by remember { mutableStateOf(range) }
+    var draftCategoryId by remember { mutableStateOf(categoryId) }
     val expenseCategories = remember(state.categories) {
         state.categories.values
             .filter { it.type == TransactionType.EXPENSE }
@@ -102,39 +122,15 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(StatisticsRange.entries) { option ->
-                        FilterChip(
-                            selected = range == option,
-                            onClick = { range = option },
-                            label = { Text(option.displayLabel(state.budget)) },
-                            shape = MaterialTheme.shapes.small,
-                        )
-                    }
-                }
-            }
-            item {
-                Text("FILTRAR CATEGORÍA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-            }
-            item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item {
-                        FilterChip(
-                            selected = categoryId == null,
-                            onClick = { categoryId = null },
-                            label = { Text("Todas") },
-                            shape = MaterialTheme.shapes.small,
-                        )
-                    }
-                    items(expenseCategories, key = Category::id) { category ->
-                        FilterChip(
-                            selected = categoryId == category.id,
-                            onClick = { categoryId = category.id },
-                            label = { Text(category.name) },
-                            shape = MaterialTheme.shapes.small,
-                        )
-                    }
-                }
+                StatisticsFilterButton(
+                    period = range.displayLabel(state.budget),
+                    category = selectedCategory?.name ?: "Todas las categorías",
+                    onClick = {
+                        draftRange = range
+                        draftCategoryId = categoryId
+                        showFilters = true
+                    },
+                )
             }
             item { BalanceCard(report) }
             item { IncomeExpenseChart(report) }
@@ -174,6 +170,137 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                     statistic = statistic,
                     comparisonAmount = comparisonAmount,
                 )
+            }
+        }
+    }
+
+    if (showFilters) {
+        StatisticsFilterSheet(
+            ranges = StatisticsRange.entries,
+            selectedRange = draftRange,
+            onRangeChange = { draftRange = it },
+            categories = expenseCategories,
+            selectedCategoryId = draftCategoryId,
+            onCategoryChange = { draftCategoryId = it },
+            rangeLabel = { it.displayLabel(state.budget) },
+            onClear = {
+                draftRange = StatisticsRange.CURRENT_BUDGET
+                draftCategoryId = null
+            },
+            onApply = {
+                range = draftRange
+                categoryId = draftCategoryId
+                showFilters = false
+            },
+            onDismiss = { showFilters = false },
+        )
+    }
+}
+
+@Composable
+private fun StatisticsFilterButton(
+    period: String,
+    category: String,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+        shape = MaterialTheme.shapes.small,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+    ) {
+        Icon(Icons.Outlined.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
+            Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Text("$period · $category", style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun StatisticsFilterSheet(
+    ranges: List<StatisticsRange>,
+    selectedRange: StatisticsRange,
+    onRangeChange: (StatisticsRange) -> Unit,
+    categories: List<Category>,
+    selectedCategoryId: Long?,
+    onCategoryChange: (Long?) -> Unit,
+    rangeLabel: (StatisticsRange) -> String,
+    onClear: () -> Unit,
+    onApply: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.large,
+        dragHandle = null,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 680.dp)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(start = 18.dp, top = 16.dp, end = 18.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("FILTROS", style = MaterialTheme.typography.headlineMedium)
+                    Text(
+                        "Elige qué quieres analizar",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros")
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text("PERIODO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                ranges.forEach { option ->
+                    FilterChip(
+                        selected = selectedRange == option,
+                        onClick = { onRangeChange(option) },
+                        label = { Text(rangeLabel(option)) },
+                        shape = MaterialTheme.shapes.small,
+                    )
+                }
+            }
+            Text("CATEGORÍA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                FilterChip(
+                    selected = selectedCategoryId == null,
+                    onClick = { onCategoryChange(null) },
+                    label = { Text("Todas") },
+                    shape = MaterialTheme.shapes.small,
+                )
+                categories.forEach { category ->
+                    FilterChip(
+                        selected = selectedCategoryId == category.id,
+                        onClick = { onCategoryChange(category.id) },
+                        label = { Text(category.name) },
+                        shape = MaterialTheme.shapes.small,
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SecondaryButton("Limpiar", onClear, Modifier.weight(1f))
+                PrimaryButton("Aplicar", onApply, Modifier.weight(1f))
             }
         }
     }

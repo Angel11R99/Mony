@@ -13,7 +13,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.domain.model.Category
@@ -29,6 +33,7 @@ fun TransactionDetailsDialog(
     onDismiss: () -> Unit,
 ) {
     val isExpense = transaction.type == TransactionType.EXPENSE
+    val movementColor = if (isExpense) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     val dateFormatter = remember {
         DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy", Locale.forLanguageTag("es-DO"))
     }
@@ -40,20 +45,47 @@ fun TransactionDetailsDialog(
             Icon(
                 Icons.AutoMirrored.Outlined.ReceiptLong,
                 contentDescription = null,
-                tint = if (isExpense) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                tint = movementColor,
             )
         },
-        title = { Text(if (isExpense) "Detalle del gasto" else "Detalle del ingreso") },
+        title = {
+            Text(
+                buildAnnotatedString {
+                    append("Detalle del ")
+                    withStyle(SpanStyle(color = movementColor, fontWeight = FontWeight.Bold)) {
+                        append(if (isExpense) "gasto" else "ingreso")
+                    }
+                },
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     (if (isExpense) "−" else "+") + MoneyFormatter.format(transaction.amountInCents),
                     style = MaterialTheme.typography.headlineMedium,
-                    color = if (isExpense) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    color = movementColor,
                 )
-                DetailField("Categoría", category?.name ?: "Sin categoría")
-                DetailField("Fecha", transaction.date.format(dateFormatter))
-                DetailField("Nota", transaction.description?.takeIf { it.isNotBlank() } ?: "Sin nota")
+                DetailField(
+                    label = "Categoría",
+                    value = category?.name ?: "Sin categoría",
+                    labelColor = MaterialTheme.colorScheme.secondary,
+                    valueColor = movementColor,
+                )
+                DetailField(
+                    label = "Fecha",
+                    value = transaction.date.format(dateFormatter),
+                    labelColor = MaterialTheme.colorScheme.secondary,
+                )
+                DetailField(
+                    label = "Nota",
+                    value = transaction.description?.takeIf { it.isNotBlank() } ?: "Sin nota",
+                    labelColor = MaterialTheme.colorScheme.secondary,
+                    valueColor = if (transaction.description.isNullOrBlank()) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                )
             }
         },
         confirmButton = { PrimaryButton("Cerrar", onDismiss) },
@@ -61,19 +93,25 @@ fun TransactionDetailsDialog(
 }
 
 @Composable
-private fun DetailField(label: String, value: String) {
+private fun DetailField(
+    label: String,
+    value: String,
+    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             label.uppercase(),
             modifier = Modifier.weight(0.35f),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = labelColor,
         )
         Text(
             value,
             modifier = Modifier.weight(0.65f),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
+            color = valueColor,
         )
     }
 }
