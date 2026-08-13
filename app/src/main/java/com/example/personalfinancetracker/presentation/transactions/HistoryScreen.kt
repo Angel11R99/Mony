@@ -3,6 +3,7 @@ package com.example.personalfinancetracker.presentation.transactions
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,10 +21,13 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -69,6 +73,15 @@ private enum class HistoryTypeFilter(val label: String, val type: TransactionTyp
     INCOME("Ingresos", TransactionType.INCOME),
 }
 
+internal enum class HistorySort(val label: String) {
+    NEWEST("Más recientes"),
+    OLDEST("Más antiguos"),
+    AMOUNT_DESC("Mayor monto"),
+    AMOUNT_ASC("Menor monto"),
+    CATEGORY_ASC("Categoría A–Z"),
+    CATEGORY_DESC("Categoría Z–A"),
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
@@ -81,6 +94,7 @@ fun HistoryScreen(
     var categoryId by remember { mutableStateOf<Long?>(null) }
     var startDate by remember { mutableStateOf<LocalDate?>(null) }
     var endDate by remember { mutableStateOf<LocalDate?>(null) }
+    var sort by remember { mutableStateOf(HistorySort.NEWEST) }
     var pendingDelete by remember { mutableStateOf<FinanceTransaction?>(null) }
     var selectedTransaction by remember { mutableStateOf<FinanceTransaction?>(null) }
 
@@ -94,6 +108,9 @@ fun HistoryScreen(
     }
     val filtered = remember(state.transactions, typeFilter, categoryId, startDate, endDate) {
         filterTransactions(state.transactions, typeFilter.type, categoryId, startDate, endDate)
+    }
+    val sorted = remember(filtered, state.categories, sort) {
+        sortTransactions(filtered, state.categories, sort)
     }
     val incomeTotal = filtered.filter { it.type == TransactionType.INCOME }.sumOf(FinanceTransaction::amountInCents)
     val expenseTotal = filtered.filter { it.type == TransactionType.EXPENSE }.sumOf(FinanceTransaction::amountInCents)
@@ -137,6 +154,8 @@ fun HistoryScreen(
                         endDate = selected
                         if (startDate != null && selected != null && startDate!!.isAfter(selected)) startDate = selected
                     },
+                    sort = sort,
+                    onSortChange = { sort = it },
                     onClear = {
                         typeFilter = HistoryTypeFilter.ALL
                         categoryId = null
@@ -152,7 +171,7 @@ fun HistoryScreen(
                     expense = expenseTotal,
                 )
             }
-            if (filtered.isEmpty()) {
+            if (sorted.isEmpty()) {
                 item {
                     Text(
                         "No hay movimientos para este filtro.",
@@ -160,7 +179,7 @@ fun HistoryScreen(
                     )
                 }
             }
-            items(filtered, key = FinanceTransaction::id) { transaction ->
+            items(sorted, key = FinanceTransaction::id) { transaction ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TransactionRow(
                         transaction,
@@ -237,6 +256,8 @@ private fun HistoryFilters(
     onStartDateChange: (LocalDate?) -> Unit,
     endDate: LocalDate?,
     onEndDateChange: (LocalDate?) -> Unit,
+    sort: HistorySort,
+    onSortChange: (HistorySort) -> Unit,
     onClear: () -> Unit,
 ) {
     var categoryExpanded by remember { mutableStateOf(false) }
@@ -336,15 +357,46 @@ private fun HistoryFilters(
             HistoryDateField("Desde", startDate, onStartDateChange, Modifier.weight(1f))
             HistoryDateField("Hasta", endDate, onEndDateChange, Modifier.weight(1f))
         }
-        TextButton(
-            onClick = {
-                categorySearch = ""
-                categoryExpanded = false
-                onClear()
-            },
-            modifier = Modifier.align(Alignment.End),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Limpiar filtros")
+            HistorySortMenu(sort = sort, onSortChange = onSortChange)
+            TextButton(
+                onClick = {
+                    categorySearch = ""
+                    categoryExpanded = false
+                    onClear()
+                },
+            ) {
+                Text("Limpiar filtros")
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistorySortMenu(sort: HistorySort, onSortChange: (HistorySort) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { expanded = true }) {
+            Icon(Icons.Outlined.SwapVert, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(sort.label, modifier = Modifier.padding(start = 6.dp))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            HistorySort.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    leadingIcon = if (sort == option) {
+                        { Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                    } else null,
+                    onClick = {
+                        onSortChange(option)
+                        expanded = false
+                    },
+                )
+            }
         }
     }
 }
@@ -447,5 +499,35 @@ internal fun searchCategories(categories: List<Category>, query: String): List<C
     categories.filter { category ->
         query.isBlank() || category.name.contains(query.trim(), ignoreCase = true)
     }
+
+internal fun sortTransactions(
+    transactions: List<FinanceTransaction>,
+    categories: Map<Long, Category>,
+    sort: HistorySort,
+): List<FinanceTransaction> {
+    val newestFirst = compareByDescending<FinanceTransaction> { it.date }
+        .thenByDescending { it.createdAt }
+    val oldestFirst = compareBy<FinanceTransaction> { it.date }
+        .thenBy { it.createdAt }
+    val categoryName: (FinanceTransaction) -> String = {
+        categories[it.categoryId]?.name.orEmpty().lowercase()
+    }
+    return when (sort) {
+        HistorySort.NEWEST -> transactions.sortedWith(newestFirst)
+        HistorySort.OLDEST -> transactions.sortedWith(oldestFirst)
+        HistorySort.AMOUNT_DESC -> transactions.sortedWith(
+            compareByDescending<FinanceTransaction> { it.amountInCents }.then(newestFirst)
+        )
+        HistorySort.AMOUNT_ASC -> transactions.sortedWith(
+            compareBy<FinanceTransaction> { it.amountInCents }.then(newestFirst)
+        )
+        HistorySort.CATEGORY_ASC -> transactions.sortedWith(
+            compareBy(categoryName).then(newestFirst)
+        )
+        HistorySort.CATEGORY_DESC -> transactions.sortedWith(
+            compareByDescending(categoryName).then(newestFirst)
+        )
+    }
+}
 
 private const val MILLIS_PER_DAY = 86_400_000L

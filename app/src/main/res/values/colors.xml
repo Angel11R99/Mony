@@ -8,4 +8,9 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="widget_primary_text">#FF1C1722</color>
+    <color name="widget_secondary_text">#FF6D6574</color>
+    <color name="widget_button">#FF6D28D9</color>
+    <color name="widget_button_text">#FFFFFFFF</color>
+    <color name="widget_expense">#FFC5283D</color>
 </resources>

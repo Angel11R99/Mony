@@ -3,7 +3,6 @@ package com.example.personalfinancetracker.widget
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.Button
@@ -59,11 +58,11 @@ class FinanceWidget : GlanceAppWidget() {
 
 @Composable
 private fun WidgetContent(context: Context, available: Long, latestExpense: Long?) {
-    val primaryText = ColorProvider(Color(0xFFF7F4EF))
-    val secondaryText = ColorProvider(Color(0xFFA7A7AD))
+    val primaryText = ColorProvider(R.color.widget_primary_text)
+    val secondaryText = ColorProvider(R.color.widget_secondary_text)
     val buttonColors = ButtonDefaults.buttonColors(
-        backgroundColor = ColorProvider(Color(0xFF53689F)),
-        contentColor = primaryText,
+        backgroundColor = ColorProvider(R.color.widget_button),
+        contentColor = ColorProvider(R.color.widget_button_text),
     )
 
     Column(
@@ -101,7 +100,7 @@ private fun WidgetContent(context: Context, available: Long, latestExpense: Long
                 Text(
                     text = latestExpense?.let { "−${MoneyFormatter.format(it)}" } ?: "—",
                     style = TextStyle(
-                        color = if (latestExpense == null) secondaryText else ColorProvider(Color(0xFFFF5D73)),
+                        color = if (latestExpense == null) secondaryText else ColorProvider(R.color.widget_expense),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                     ),

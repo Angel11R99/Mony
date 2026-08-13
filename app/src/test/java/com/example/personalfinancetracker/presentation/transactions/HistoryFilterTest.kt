@@ -53,6 +53,33 @@ class HistoryFilterTest {
         assertEquals(listOf("Transporte"), searchCategories(categories, "transPOR" ).map(Category::name))
     }
 
+    @Test fun `sorts amount in both directions`() {
+        assertEquals(
+            listOf(3L, 2L, 1L),
+            sortTransactions(transactions, emptyMap(), HistorySort.AMOUNT_DESC).map(FinanceTransaction::id),
+        )
+        assertEquals(
+            listOf(1L, 2L, 3L),
+            sortTransactions(transactions, emptyMap(), HistorySort.AMOUNT_ASC).map(FinanceTransaction::id),
+        )
+    }
+
+    @Test fun `sorts categories alphabetically in both directions`() {
+        val categories = mapOf(
+            10L to Category(10, "Transporte", TransactionType.EXPENSE, "car", true),
+            20L to Category(20, "Ahorro", TransactionType.EXPENSE, "savings", true),
+        )
+
+        assertEquals(
+            listOf(2L, 3L, 1L),
+            sortTransactions(transactions, categories, HistorySort.CATEGORY_ASC).map(FinanceTransaction::id),
+        )
+        assertEquals(
+            listOf(3L, 1L, 2L),
+            sortTransactions(transactions, categories, HistorySort.CATEGORY_DESC).map(FinanceTransaction::id),
+        )
+    }
+
     private fun transaction(
         id: Long,
         type: TransactionType,

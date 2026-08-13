@@ -2,10 +2,11 @@
 <resources>
 
     <style name="Theme.PersonalFinanceTracker" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#0B0B0F</item>
-        <item name="android:colorAccent">#7C3AED</item>
-        <item name="android:navigationBarColor">#0B0B0F</item>
-        <item name="android:statusBarColor">#0B0B0F</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">#F8F6FB</item>
+        <item name="android:colorAccent">#6D28D9</item>
+        <item name="android:navigationBarColor">#F8F6FB</item>
+        <item name="android:statusBarColor">#F8F6FB</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>
