@@ -2,6 +2,7 @@ package com.example.personalfinancetracker.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -15,6 +16,7 @@ val Typography = Typography(
         fontSize = 40.sp,
         lineHeight = 44.sp,
         letterSpacing = (-1.4).sp,
+        lineBreak = LineBreak.Heading,
     ),
     headlineMedium = TextStyle(
         fontFamily = DisplayFamily,
@@ -22,6 +24,7 @@ val Typography = Typography(
         fontSize = 26.sp,
         lineHeight = 30.sp,
         letterSpacing = (-0.5).sp,
+        lineBreak = LineBreak.Heading,
     ),
     titleLarge = TextStyle(
         fontFamily = DisplayFamily,
@@ -29,6 +32,7 @@ val Typography = Typography(
         fontSize = 20.sp,
         lineHeight = 25.sp,
         letterSpacing = (-0.2).sp,
+        lineBreak = LineBreak.Heading,
     ),
     titleMedium = TextStyle(
         fontFamily = DisplayFamily,
@@ -36,11 +40,32 @@ val Typography = Typography(
         fontSize = 17.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.sp,
+        lineBreak = LineBreak.Heading,
     ),
-    titleSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 18.sp),
-    bodyLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 22.sp),
-    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
-    bodySmall = TextStyle(fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp),
+    titleSmall = TextStyle(
+        fontWeight = FontWeight.Bold,
+        fontSize = 15.sp,
+        lineHeight = 18.sp,
+        lineBreak = LineBreak.Heading,
+    ),
+    bodyLarge = TextStyle(
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
+        lineBreak = LineBreak.Paragraph,
+    ),
+    bodyMedium = TextStyle(
+        fontWeight = FontWeight.Normal,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        lineBreak = LineBreak.Paragraph,
+    ),
+    bodySmall = TextStyle(
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        lineBreak = LineBreak.Paragraph,
+    ),
     labelLarge = TextStyle(
         fontWeight = FontWeight.SemiBold,
         fontSize = 13.sp,

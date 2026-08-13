@@ -7,6 +7,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.personalfinancetracker.data.local.dao.CategoryDao
 import com.example.personalfinancetracker.data.local.dao.BudgetConfigDao
+import com.example.personalfinancetracker.data.local.dao.BudgetCycleDao
 import com.example.personalfinancetracker.data.local.dao.TransactionDao
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
 import com.example.personalfinancetracker.data.repository.RoomCategoryRepository
@@ -34,11 +35,30 @@ object DatabaseModule {
         }
     }
 
+    private val migration2To3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE budget_config ADD COLUMN cycleStartEpochDay INTEGER")
+            db.execSQL("ALTER TABLE budget_config ADD COLUMN cycleStartedAtEpochMillis INTEGER")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS budget_cycle_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    period TEXT NOT NULL,
+                    budgetAmountInCents INTEGER NOT NULL,
+                    incomeInCents INTEGER NOT NULL,
+                    expenseInCents INTEGER NOT NULL,
+                    startDateEpochDay INTEGER NOT NULL,
+                    endDateEpochDay INTEGER NOT NULL,
+                    closedAtEpochMillis INTEGER NOT NULL
+                )""".trimIndent()
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): FinanceDatabase =
         Room.databaseBuilder(context, FinanceDatabase::class.java, "personal_finance.db")
-            .addMigrations(migration1To2)
+            .addMigrations(migration1To2, migration2To3)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -46,7 +66,7 @@ object DatabaseModule {
                     initialCategories.forEach { (name, type, icon) ->
                         db.execSQL(
                             "INSERT INTO categories (name, type, icon, isActive, createdAtEpochMillis) VALUES (?, ?, ?, 1, ?)",
-                            arrayOf(name, type, icon, now),
+                            arrayOf<Any>(name, type, icon, now),
                         )
                     }
                 }
@@ -56,6 +76,7 @@ object DatabaseModule {
     @Provides fun categoryDao(db: FinanceDatabase): CategoryDao = db.categoryDao()
     @Provides fun transactionDao(db: FinanceDatabase): TransactionDao = db.transactionDao()
     @Provides fun budgetConfigDao(db: FinanceDatabase): BudgetConfigDao = db.budgetConfigDao()
+    @Provides fun budgetCycleDao(db: FinanceDatabase): BudgetCycleDao = db.budgetCycleDao()
 
     private val initialCategories = listOf(
         Triple("Salario", "INCOME", "payments"),

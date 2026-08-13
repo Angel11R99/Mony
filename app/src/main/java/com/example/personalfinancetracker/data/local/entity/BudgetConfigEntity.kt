@@ -8,4 +8,6 @@ data class BudgetConfigEntity(
     @PrimaryKey val id: Int = 1,
     val amountInCents: Long,
     val period: String,
+    val cycleStartEpochDay: Long? = null,
+    val cycleStartedAtEpochMillis: Long? = null,
 )

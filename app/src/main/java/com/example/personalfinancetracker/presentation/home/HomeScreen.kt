@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -38,6 +39,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.domain.model.BudgetPeriod
+import com.example.personalfinancetracker.domain.model.BudgetCycle
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
@@ -55,7 +57,10 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val closingCycle by viewModel.closingCycle.collectAsStateWithLifecycle()
     var editingBudget by remember { mutableStateOf(false) }
+    var confirmingClose by remember { mutableStateOf(false) }
+    var showingHistory by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
@@ -118,6 +123,19 @@ fun HomeScreen(
                             Metric("GASTOS", state.periodExpenseInCents, Modifier.weight(1f), true)
                             Metric("RESTANTE", state.budget!!.amountInCents - state.periodExpenseInCents, Modifier.weight(1f))
                         }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            SecondaryButton(
+                                text = "Historial",
+                                onClick = { showingHistory = true },
+                                modifier = Modifier.weight(1f),
+                            )
+                            PrimaryButton(
+                                text = "Cerrar ciclo",
+                                onClick = { confirmingClose = true },
+                                modifier = Modifier.weight(1f),
+                                enabled = !closingCycle,
+                            )
+                        }
                     }
                 }
             }
@@ -158,6 +176,39 @@ fun HomeScreen(
             onSave = { amount, period -> viewModel.saveBudget(amount, period) { editingBudget = false } },
         )
     }
+
+    if (confirmingClose) {
+        AlertDialog(
+            onDismissRequest = { if (!closingCycle) confirmingClose = false },
+            shape = MaterialTheme.shapes.medium,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            title = { Text("Cerrar ciclo actual") },
+            text = {
+                Text(
+                    "Se guardará este periodo en el historial y los ingresos y gastos del presupuesto comenzarán nuevamente en cero. Tus movimientos y tu saldo general no se borrarán."
+                )
+            },
+            confirmButton = {
+                PrimaryButton(
+                    text = if (closingCycle) "Cerrando…" else "Cerrar ciclo",
+                    onClick = {
+                        viewModel.closeCurrentCycle { confirmingClose = false }
+                    },
+                    enabled = !closingCycle,
+                )
+            },
+            dismissButton = {
+                SecondaryButton("Cancelar", { confirmingClose = false })
+            },
+        )
+    }
+
+    if (showingHistory) {
+        BudgetHistoryDialog(
+            cycles = state.cycleHistory,
+            onDismiss = { showingHistory = false },
+        )
+    }
 }
 
 @Composable
@@ -180,6 +231,69 @@ private fun Metric(label: String, amount: Long, modifier: Modifier = Modifier, e
             style = MaterialTheme.typography.titleSmall,
             color = if (expense) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Start,
+        )
+    }
+}
+
+@Composable
+private fun BudgetHistoryDialog(cycles: List<BudgetCycle>, onDismiss: () -> Unit) {
+    val dateFormatter = remember {
+        DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.forLanguageTag("es-DO"))
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.medium,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        title = { Text("Historial de ciclos") },
+        text = {
+            if (cycles.isEmpty()) {
+                Text(
+                    "Todavía no has cerrado ningún ciclo.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(cycles, key = BudgetCycle::id) { cycle ->
+                        FinanceCard(Modifier.fillMaxWidth()) {
+                            Column(
+                                Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    if (cycle.period == BudgetPeriod.MONTHLY) "CICLO MENSUAL" else "CICLO QUINCENAL",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
+                                Text(
+                                    "${cycle.startDate.format(dateFormatter)} — ${cycle.endDate.format(dateFormatter)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                HistoryAmount("Presupuesto", cycle.budgetAmountInCents)
+                                HistoryAmount("Ingresos", cycle.incomeInCents)
+                                HistoryAmount("Gastos", cycle.expenseInCents, isExpense = true)
+                                HistoryAmount("Restante", cycle.remainingInCents)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { PrimaryButton("Listo", onDismiss) },
+    )
+}
+
+@Composable
+private fun HistoryAmount(label: String, amount: Long, isExpense: Boolean = false) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            MoneyFormatter.format(amount),
+            style = MaterialTheme.typography.titleSmall,
+            color = if (isExpense) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
