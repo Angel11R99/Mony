@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
-import com.example.personalfinancetracker.core.showTopToast
+import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.BudgetCycle
 import com.example.personalfinancetracker.domain.model.TransactionType
@@ -353,7 +353,7 @@ private fun BudgetDialog(
                 text = "Guardar",
                 onClick = {
                     if (valid) onSave(amount, period)
-                    else context.showTopToast("Introduce un monto válido")
+                    else context.showToast("Introduce un monto válido")
                 },
             )
         },

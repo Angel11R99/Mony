@@ -52,7 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.domain.model.TransactionType
-import com.example.personalfinancetracker.core.showTopToast
+import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
@@ -93,7 +93,7 @@ fun AddTransactionScreen(
     }
     LaunchedEffect(error) {
         error?.let { message ->
-            context.showTopToast(message)
+            context.showToast(message)
             viewModel.consumeError()
         }
     }
