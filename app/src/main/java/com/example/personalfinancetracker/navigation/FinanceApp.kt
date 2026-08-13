@@ -24,9 +24,19 @@ import com.example.personalfinancetracker.presentation.statistics.StatisticsScre
 import com.example.personalfinancetracker.presentation.fixed.FixedEntriesScreen
 import com.example.personalfinancetracker.presentation.transactions.AddTransactionScreen
 import com.example.personalfinancetracker.presentation.transactions.HistoryScreen
+import com.example.personalfinancetracker.presentation.settings.SettingsScreen
+import com.example.personalfinancetracker.ui.theme.AppAppearance
+import com.example.personalfinancetracker.ui.theme.AppThemeMode
 
 @Composable
-fun FinanceApp(initialType: TransactionType? = null) {
+fun FinanceApp(
+    initialType: TransactionType? = null,
+    appearance: AppAppearance,
+    onThemeChange: (AppThemeMode) -> Unit,
+    onPrimaryChange: (Int) -> Unit,
+    onAccentChange: (Int) -> Unit,
+    onResetAppearance: () -> Unit,
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -54,15 +64,17 @@ fun FinanceApp(initialType: TransactionType? = null) {
                 HomeScreen(
                     onAdd = { navigateToModule("add/${it.name}") },
                     onHistory = { navigateToModule("history") },
+                    onSettings = { navController.navigate("settings") },
                 )
             }
             composable(
                 route = "add/{type}",
                 arguments = listOf(navArgument("type") { type = NavType.StringType }),
             ) {
-                AddTransactionScreen(onBack = {
-                    if (!navController.popBackStack()) navigateToModule("home")
-                })
+                AddTransactionScreen(
+                    onBack = { if (!navController.popBackStack()) navigateToModule("home") },
+                    onSettings = { navController.navigate("settings") },
+                )
             }
             composable(
                 route = "edit/{type}/{transactionId}",
@@ -71,9 +83,10 @@ fun FinanceApp(initialType: TransactionType? = null) {
                     navArgument("transactionId") { type = NavType.LongType },
                 ),
             ) {
-                AddTransactionScreen(onBack = {
-                    if (!navController.popBackStack()) navigateToModule("history")
-                })
+                AddTransactionScreen(
+                    onBack = { if (!navController.popBackStack()) navigateToModule("history") },
+                    onSettings = { navController.navigate("settings") },
+                )
             }
             composable("history") {
                 HistoryScreen(
@@ -83,23 +96,36 @@ fun FinanceApp(initialType: TransactionType? = null) {
                     onEdit = { id, type ->
                         navController.navigate("edit/${type.name}/$id")
                     },
+                    onSettings = { navController.navigate("settings") },
                 )
             }
             composable("statistics") {
-                StatisticsScreen()
+                StatisticsScreen(onSettings = { navController.navigate("settings") })
             }
             composable("fixed") {
-                FixedEntriesScreen()
+                FixedEntriesScreen(onSettings = { navController.navigate("settings") })
+            }
+            composable("settings") {
+                SettingsScreen(
+                    appearance = appearance,
+                    onBack = { navController.popBackStack() },
+                    onThemeChange = onThemeChange,
+                    onPrimaryChange = onPrimaryChange,
+                    onAccentChange = onAccentChange,
+                    onReset = onResetAppearance,
+                )
             }
         }
 
-        FloatingModuleBar(
-            selectedRoute = currentRoute,
-            onNavigate = ::navigateToModule,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 14.dp)
-                .padding(bottom = systemBottomPadding + 8.dp),
-        )
+        if (currentRoute != "settings") {
+            FloatingModuleBar(
+                selectedRoute = currentRoute,
+                onNavigate = ::navigateToModule,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 14.dp)
+                    .padding(bottom = systemBottomPadding + 8.dp),
+            )
+        }
     }
 }

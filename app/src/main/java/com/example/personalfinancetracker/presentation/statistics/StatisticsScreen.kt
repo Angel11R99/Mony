@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -67,7 +68,10 @@ import com.example.personalfinancetracker.presentation.components.SecondaryButto
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
+fun StatisticsScreen(
+    onSettings: () -> Unit,
+    viewModel: StatisticsViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var range by remember { mutableStateOf(StatisticsRange.CURRENT_BUDGET) }
     var categoryId by remember { mutableStateOf<Long?>(null) }
@@ -109,6 +113,9 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
         topBar = {
             TopAppBar(
                 title = { Text("ESTADÍSTICAS", style = MaterialTheme.typography.titleLarge) },
+                actions = {
+                    IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, "Ajustes de la app") }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.SwapVert
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.AlertDialog
@@ -87,6 +88,7 @@ internal enum class HistorySort(val label: String) {
 fun HistoryScreen(
     onBack: () -> Unit,
     onEdit: (Long, TransactionType) -> Unit,
+    onSettings: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -123,6 +125,9 @@ fun HistoryScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver")
                     }
+                },
+                actions = {
+                    IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, "Ajustes de la app") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,

@@ -86,7 +86,10 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FixedEntriesScreen(viewModel: FixedEntriesViewModel = hiltViewModel()) {
+fun FixedEntriesScreen(
+    onSettings: () -> Unit,
+    viewModel: FixedEntriesViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -112,6 +115,9 @@ fun FixedEntriesScreen(viewModel: FixedEntriesViewModel = hiltViewModel()) {
             TopAppBar(
                 title = { Text("FIJOS", style = MaterialTheme.typography.titleLarge) },
                 actions = {
+                    IconButton(onClick = onSettings) {
+                        Icon(Icons.Outlined.Settings, "Ajustes de la app")
+                    }
                     IconButton(onClick = {
                         editorEntry = null
                         showEditor = true

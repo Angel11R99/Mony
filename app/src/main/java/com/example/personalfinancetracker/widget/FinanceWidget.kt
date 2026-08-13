@@ -2,7 +2,10 @@ package com.example.personalfinancetracker.widget
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.Button
@@ -36,6 +39,8 @@ import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.availableForBudget
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
+import com.example.personalfinancetracker.ui.theme.AppearancePreferences
+import com.example.personalfinancetracker.ui.theme.AppThemeMode
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -58,17 +63,27 @@ class FinanceWidget : GlanceAppWidget() {
 
 @Composable
 private fun WidgetContent(context: Context, available: Long, latestExpense: Long?) {
-    val primaryText = ColorProvider(R.color.widget_primary_text)
-    val secondaryText = ColorProvider(R.color.widget_secondary_text)
+    val appearance = AppearancePreferences.load(context)
+    val systemDark = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+        Configuration.UI_MODE_NIGHT_YES
+    val dark = when (appearance.themeMode) {
+        AppThemeMode.SYSTEM -> systemDark
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.DARK -> true
+    }
+    val primaryColor = Color(appearance.primaryArgb)
+    val accentColor = Color(appearance.accentArgb)
+    val primaryText = ColorProvider(if (dark) Color(0xFFF7F4EF) else Color(0xFF1C1722))
+    val secondaryText = ColorProvider(if (dark) Color(0xFFA7A7AD) else Color(0xFF6D6574))
     val buttonColors = ButtonDefaults.buttonColors(
-        backgroundColor = ColorProvider(R.color.widget_button),
-        contentColor = ColorProvider(R.color.widget_button_text),
+        backgroundColor = ColorProvider(primaryColor),
+        contentColor = ColorProvider(if (primaryColor.luminance() > 0.48f) Color(0xFF121016) else Color.White),
     )
 
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(ImageProvider(R.drawable.widget_background))
+            .background(ImageProvider(if (dark) R.drawable.widget_background_dark else R.drawable.widget_background_light))
             .clickable(actionStartActivity(openAppIntent(context)))
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.Vertical.CenterVertically,
@@ -100,7 +115,7 @@ private fun WidgetContent(context: Context, available: Long, latestExpense: Long
                 Text(
                     text = latestExpense?.let { "−${MoneyFormatter.format(it)}" } ?: "—",
                     style = TextStyle(
-                        color = if (latestExpense == null) secondaryText else ColorProvider(R.color.widget_expense),
+                        color = if (latestExpense == null) secondaryText else ColorProvider(accentColor),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                     ),

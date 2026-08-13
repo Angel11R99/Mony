@@ -8,18 +8,20 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 
-private val FinanceDarkColors = darkColorScheme(
-    primary = BrandPurple,
-    onPrimary = WarmWhite,
-    primaryContainer = Color(0xFF32175E),
-    onPrimaryContainer = Color(0xFFE8DDFF),
-    secondary = BrandPurpleLight,
+private fun financeDarkColors(primarySeed: Color, accentSeed: Color) = darkColorScheme(
+    primary = primarySeed,
+    onPrimary = contentColorFor(primarySeed),
+    primaryContainer = shiftTone(primarySeed, saturationFactor = 0.82f, value = 0.35f),
+    onPrimaryContainer = shiftTone(primarySeed, saturationFactor = 0.22f, value = 1f),
+    secondary = shiftTone(primarySeed, saturationFactor = 0.55f, value = 0.92f),
     onSecondary = BackgroundBlack,
     secondaryContainer = SurfaceRaised,
     onSecondaryContainer = WarmWhite,
-    tertiary = BrandPurpleLight,
+    tertiary = shiftTone(primarySeed, saturationFactor = 0.42f, value = 0.9f),
     onTertiary = BackgroundBlack,
     background = BackgroundBlack,
     onBackground = WarmWhite,
@@ -29,23 +31,23 @@ private val FinanceDarkColors = darkColorScheme(
     onSurfaceVariant = NeutralGray,
     outline = DarkBorder,
     outlineVariant = Color(0xFF27272F),
-    error = ExpenseRed,
-    onError = BackgroundBlack,
-    errorContainer = Color(0xFF481B20),
-    onErrorContainer = Color(0xFFFFDADD),
+    error = accentSeed,
+    onError = contentColorFor(accentSeed),
+    errorContainer = shiftTone(accentSeed, saturationFactor = 0.78f, value = 0.3f),
+    onErrorContainer = shiftTone(accentSeed, saturationFactor = 0.2f, value = 1f),
     scrim = Color.Black,
 )
 
-private val FinanceLightColors = lightColorScheme(
-    primary = LightPurple,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFE9DDFF),
-    onPrimaryContainer = Color(0xFF2B0758),
-    secondary = LightPurpleMuted,
+private fun financeLightColors(primarySeed: Color, accentSeed: Color) = lightColorScheme(
+    primary = primarySeed,
+    onPrimary = contentColorFor(primarySeed),
+    primaryContainer = shiftTone(primarySeed, saturationFactor = 0.18f, value = 0.98f),
+    onPrimaryContainer = shiftTone(primarySeed, saturationFactor = 0.9f, value = 0.3f),
+    secondary = shiftTone(primarySeed, saturationFactor = 0.72f, value = 0.66f),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFEDE2F8),
-    onSecondaryContainer = Color(0xFF29143B),
-    tertiary = Color(0xFF5D4B76),
+    secondaryContainer = shiftTone(primarySeed, saturationFactor = 0.12f, value = 0.97f),
+    onSecondaryContainer = shiftTone(primarySeed, saturationFactor = 0.72f, value = 0.28f),
+    tertiary = shiftTone(primarySeed, saturationFactor = 0.45f, value = 0.58f),
     onTertiary = Color.White,
     background = LightBackground,
     onBackground = LightText,
@@ -55,10 +57,10 @@ private val FinanceLightColors = lightColorScheme(
     onSurfaceVariant = LightTextMuted,
     outline = LightBorder,
     outlineVariant = Color(0xFFE1DAE6),
-    error = LightExpenseRed,
-    onError = Color.White,
-    errorContainer = Color(0xFFFFDADD),
-    onErrorContainer = Color(0xFF41000A),
+    error = accentSeed,
+    onError = contentColorFor(accentSeed),
+    errorContainer = shiftTone(accentSeed, saturationFactor = 0.16f, value = 1f),
+    onErrorContainer = shiftTone(accentSeed, saturationFactor = 0.88f, value = 0.28f),
     scrim = Color.Black,
 )
 
@@ -73,12 +75,26 @@ val FinanceShapes = Shapes(
 @Composable
 fun PersonalFinanceTrackerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    primarySeed: Color = BrandPurple,
+    accentSeed: Color = ExpenseRed,
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
-        colorScheme = if (darkTheme) FinanceDarkColors else FinanceLightColors,
+        colorScheme = if (darkTheme) financeDarkColors(primarySeed, accentSeed)
+        else financeLightColors(primarySeed, accentSeed),
         typography = Typography,
         shapes = FinanceShapes,
         content = content,
     )
 }
+
+internal fun shiftTone(seed: Color, saturationFactor: Float, value: Float): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(seed.toArgb(), hsv)
+    hsv[1] = (hsv[1] * saturationFactor).coerceIn(0f, 1f)
+    hsv[2] = value.coerceIn(0f, 1f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+private fun contentColorFor(background: Color): Color =
+    if (background.luminance() > 0.48f) Color(0xFF121016) else Color.White
