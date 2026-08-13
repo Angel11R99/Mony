@@ -8,21 +8,29 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -188,6 +196,16 @@ private fun TypeChip(
         label = { Text(if (type == TransactionType.EXPENSE) "Gastos" else "Ingresos") },
         modifier = modifier,
         shape = MaterialTheme.shapes.small,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selectedType == type,
+            borderColor = MaterialTheme.colorScheme.outline,
+            selectedBorderColor = MaterialTheme.colorScheme.primary,
+        ),
     )
 }
 
@@ -255,10 +273,22 @@ private fun FixedEntryDialog(
     var categoryId by remember(entry) { mutableStateOf(entry?.categoryId) }
     var comment by remember(entry) { mutableStateOf(entry?.comment.orEmpty()) }
     var active by remember(entry) { mutableStateOf(entry?.isActive ?: true) }
+    var categoryExpanded by remember { mutableStateOf(false) }
+    var categorySearch by remember(entry, categories) {
+        mutableStateOf(categories.firstOrNull { it.id == entry?.categoryId }?.name.orEmpty())
+    }
     val availableCategories = categories.filter { it.type == type && it.isActive }.sortedBy(Category::name)
+    val matchingCategories = remember(availableCategories, categorySearch, categoryId) {
+        if (categoryId != null) availableCategories
+        else availableCategories.filter { it.name.contains(categorySearch.trim(), ignoreCase = true) }
+    }
 
     LaunchedEffect(type) {
-        if (availableCategories.none { it.id == categoryId }) categoryId = availableCategories.firstOrNull()?.id
+        if (availableCategories.none { it.id == categoryId }) {
+            categoryId = null
+            categorySearch = ""
+        }
+        categoryExpanded = false
     }
 
     AlertDialog(
@@ -286,16 +316,70 @@ private fun FixedEntryDialog(
                         visualTransformation = AmountVisualTransformation,
                     )
                 }
-                item { Text("CATEGORÍA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary) }
                 item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(availableCategories, key = Category::id) { category ->
-                            FilterChip(
-                                selected = categoryId == category.id,
-                                onClick = { categoryId = category.id },
-                                label = { Text(category.name) },
-                                shape = MaterialTheme.shapes.small,
-                            )
+                    ExposedDropdownMenuBox(
+                        expanded = categoryExpanded,
+                        onExpandedChange = { categoryExpanded = it },
+                    ) {
+                        OutlinedTextField(
+                            value = categorySearch,
+                            onValueChange = { value ->
+                                categorySearch = value
+                                categoryId = null
+                                categoryExpanded = true
+                            },
+                            label = { Text("Buscar categoría") },
+                            placeholder = { Text("Escribe o selecciona") },
+                            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                            trailingIcon = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (categorySearch.isNotBlank() || categoryId != null) {
+                                        IconButton(
+                                            onClick = {
+                                                categorySearch = ""
+                                                categoryId = null
+                                                categoryExpanded = true
+                                            },
+                                            modifier = Modifier.size(32.dp),
+                                        ) {
+                                            Icon(
+                                                Icons.Outlined.Close,
+                                                contentDescription = "Limpiar categoría",
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        }
+                                    }
+                                    ExposedDropdownMenuDefaults.TrailingIcon(categoryExpanded)
+                                }
+                            },
+                            modifier = Modifier
+                                .menuAnchor(MenuAnchorType.PrimaryEditable)
+                                .fillMaxWidth(),
+                            shape = MaterialTheme.shapes.small,
+                            singleLine = true,
+                        )
+                        ExposedDropdownMenu(
+                            expanded = categoryExpanded,
+                            onDismissRequest = { categoryExpanded = false },
+                            modifier = Modifier.heightIn(max = 240.dp),
+                        ) {
+                            matchingCategories.forEach { category ->
+                                DropdownMenuItem(
+                                    text = { Text(category.name) },
+                                    onClick = {
+                                        categorySearch = category.name
+                                        categoryId = category.id
+                                        categoryExpanded = false
+                                    },
+                                )
+                            }
+                            if (matchingCategories.isEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("No se encontraron categorías") },
+                                    onClick = {},
+                                    enabled = false,
+                                )
+                            }
                         }
                     }
                 }
