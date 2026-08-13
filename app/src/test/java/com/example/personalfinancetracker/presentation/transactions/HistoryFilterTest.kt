@@ -1,6 +1,7 @@
 package com.example.personalfinancetracker.presentation.transactions
 
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
+import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.TransactionType
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -41,6 +42,15 @@ class HistoryFilterTest {
     @Test fun `remembers latest category separately for expense and income`() {
         assertEquals(10L, lastCategoryForType(transactions, TransactionType.EXPENSE))
         assertEquals(10L, lastCategoryForType(transactions, TransactionType.INCOME))
+    }
+
+    @Test fun `category search finds transport case insensitively`() {
+        val categories = listOf(
+            Category(1, "Transporte", TransactionType.EXPENSE, "car", true),
+            Category(2, "Ahorro", TransactionType.EXPENSE, "savings", true),
+        )
+
+        assertEquals(listOf("Transporte"), searchCategories(categories, "transPOR" ).map(Category::name))
     }
 
     private fun transaction(

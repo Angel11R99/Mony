@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -187,6 +188,14 @@ private fun HistoryFilters(
     onClear: () -> Unit,
 ) {
     var categoryExpanded by remember { mutableStateOf(false) }
+    var categorySearch by remember { mutableStateOf("") }
+    LaunchedEffect(typeFilter) {
+        categorySearch = ""
+        categoryExpanded = false
+    }
+    val matchingCategories = remember(categories, categorySearch) {
+        searchCategories(categories, categorySearch)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HistoryTypeFilter.entries.forEach { option ->
@@ -203,34 +212,50 @@ private fun HistoryFilters(
             expanded = categoryExpanded,
             onExpandedChange = { categoryExpanded = it },
         ) {
-            val selectedName = categories.firstOrNull { it.id == categoryId }?.name ?: "Todas las categorías"
             OutlinedTextField(
-                value = selectedName,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Categoría") },
+                value = categorySearch,
+                onValueChange = { value ->
+                    categorySearch = value
+                    onCategoryChange(null)
+                    categoryExpanded = true
+                },
+                label = { Text("Buscar categoría") },
+                placeholder = { Text("Todas las categorías") },
+                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(categoryExpanded) },
-                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth(),
                 shape = MaterialTheme.shapes.small,
+                singleLine = true,
             )
             ExposedDropdownMenu(
                 expanded = categoryExpanded,
                 onDismissRequest = { categoryExpanded = false },
             ) {
-                DropdownMenuItem(
-                    text = { Text("Todas las categorías") },
-                    onClick = {
-                        onCategoryChange(null)
-                        categoryExpanded = false
-                    },
-                )
-                categories.forEach { category ->
+                if (categorySearch.isBlank()) {
+                    DropdownMenuItem(
+                        text = { Text("Todas las categorías") },
+                        onClick = {
+                            categorySearch = ""
+                            onCategoryChange(null)
+                            categoryExpanded = false
+                        },
+                    )
+                }
+                matchingCategories.forEach { category ->
                     DropdownMenuItem(
                         text = { Text(category.name) },
                         onClick = {
+                            categorySearch = category.name
                             onCategoryChange(category.id)
                             categoryExpanded = false
                         },
+                    )
+                }
+                if (matchingCategories.isEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text("No se encontraron categorías") },
+                        onClick = {},
+                        enabled = false,
                     )
                 }
             }
@@ -239,7 +264,14 @@ private fun HistoryFilters(
             HistoryDateField("Desde", startDate, onStartDateChange, Modifier.weight(1f))
             HistoryDateField("Hasta", endDate, onEndDateChange, Modifier.weight(1f))
         }
-        TextButton(onClick = onClear, modifier = Modifier.align(Alignment.End)) {
+        TextButton(
+            onClick = {
+                categorySearch = ""
+                categoryExpanded = false
+                onClear()
+            },
+            modifier = Modifier.align(Alignment.End),
+        ) {
             Text("Limpiar filtros")
         }
     }
@@ -338,5 +370,10 @@ internal fun filterTransactions(
         (startDate == null || !transaction.date.isBefore(startDate)) &&
         (endDate == null || !transaction.date.isAfter(endDate))
 }
+
+internal fun searchCategories(categories: List<Category>, query: String): List<Category> =
+    categories.filter { category ->
+        query.isBlank() || category.name.contains(query.trim(), ignoreCase = true)
+    }
 
 private const val MILLIS_PER_DAY = 86_400_000L
