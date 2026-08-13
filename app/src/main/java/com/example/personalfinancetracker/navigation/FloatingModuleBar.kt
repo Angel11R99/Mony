@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.TrendingDown
-import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.Icon
@@ -39,15 +37,12 @@ internal data class ModuleDestination(
 
 internal val moduleDestinations = listOf(
     ModuleDestination("Inicio", "home", Icons.Outlined.AccountBalanceWallet),
-    ModuleDestination("Gasto", "add/EXPENSE", Icons.AutoMirrored.Outlined.TrendingDown),
-    ModuleDestination("Ingreso", "add/INCOME", Icons.AutoMirrored.Outlined.TrendingUp),
     ModuleDestination("Historial", "history", Icons.Outlined.History),
 )
 
 @Composable
 internal fun FloatingModuleBar(
     selectedRoute: String?,
-    selectedTransactionType: String?,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -56,7 +51,7 @@ internal fun FloatingModuleBar(
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         moduleDestinations.forEach { destination ->
-            val selected = isModuleSelected(destination.route, selectedRoute, selectedTransactionType)
+            val selected = isModuleSelected(destination.route, selectedRoute)
             ModuleItem(
                 destination = destination,
                 selected = selected,
@@ -67,22 +62,10 @@ internal fun FloatingModuleBar(
     }
 }
 
-private fun String?.isTransactionRoute(): Boolean =
-    this?.startsWith("add/") == true || this?.startsWith("edit/") == true
-
 internal fun isModuleSelected(
     moduleRoute: String,
     currentRoute: String?,
-    transactionType: String?,
-): Boolean = when {
-    moduleRoute == "home" -> currentRoute == "home"
-    moduleRoute == "history" -> currentRoute == "history"
-    moduleRoute.endsWith("EXPENSE") ->
-        currentRoute.isTransactionRoute() && transactionType == "EXPENSE"
-    moduleRoute.endsWith("INCOME") ->
-        currentRoute.isTransactionRoute() && transactionType == "INCOME"
-    else -> false
-}
+): Boolean = moduleRoute == currentRoute
 
 @Composable
 private fun ModuleItem(

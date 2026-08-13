@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Search
@@ -222,7 +224,27 @@ private fun HistoryFilters(
                 label = { Text("Buscar categoría") },
                 placeholder = { Text("Todas las categorías") },
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(categoryExpanded) },
+                trailingIcon = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (categorySearch.isNotBlank() || categoryId != null) {
+                            IconButton(
+                                onClick = {
+                                    categorySearch = ""
+                                    onCategoryChange(null)
+                                    categoryExpanded = false
+                                },
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Close,
+                                    contentDescription = "Limpiar categoría",
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                        ExposedDropdownMenuDefaults.TrailingIcon(categoryExpanded)
+                    }
+                },
                 modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth(),
                 shape = MaterialTheme.shapes.small,
                 singleLine = true,

@@ -28,7 +28,6 @@ fun FinanceApp(initialType: TransactionType? = null) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val transactionType = backStackEntry?.arguments?.getString("type")
     val systemBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     fun navigateToModule(route: String) {
@@ -88,7 +87,6 @@ fun FinanceApp(initialType: TransactionType? = null) {
 
         FloatingModuleBar(
             selectedRoute = currentRoute,
-            selectedTransactionType = transactionType,
             onNavigate = ::navigateToModule,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
