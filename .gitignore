@@ -1,0 +1,41 @@
+# Gradle and Kotlin caches
+.gradle/
+.kotlin/
+**/build/
+
+# Local Android SDK configuration
+local.properties
+
+# Android Studio and IntelliJ IDEA
+.idea/
+*.iml
+
+# Native build output
+.cxx/
+.externalNativeBuild/
+
+# Generated Android artifacts
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Signing credentials and private configuration
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+secrets.properties
+google-services.json
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*~
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
+desktop.ini
