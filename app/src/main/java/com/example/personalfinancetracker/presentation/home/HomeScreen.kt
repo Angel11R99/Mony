@@ -68,13 +68,10 @@ fun HomeScreen(
     ) {
         item {
             Column(
-                modifier = Modifier.padding(top = 22.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
+                modifier = Modifier.padding(top = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                SectionLabel("RESUMEN FINANCIERO")
-                Spacer(Modifier.height(4.dp))
-                Text("Mi dinero", style = MaterialTheme.typography.headlineMedium)
-                Text("Disponible ahora", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SectionLabel("DISPONIBLE")
                 Text(MoneyFormatter.format(state.availableInCents), style = MaterialTheme.typography.displaySmall)
             }
         }
