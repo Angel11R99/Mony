@@ -1,6 +1,7 @@
 package com.example.personalfinancetracker.presentation.statistics
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,6 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,7 +42,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.presentation.components.FinanceCard
-import java.time.LocalDate
 import java.time.YearMonth
 
 private enum class StatisticsRange(val label: String) {
@@ -87,6 +93,7 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                 }
             }
             item { BalanceCard(report) }
+            item { IncomeExpenseChart(report) }
             item { ActivityCard(report) }
             item {
                 Text("GASTOS POR CATEGORÍA", style = MaterialTheme.typography.titleLarge)
@@ -105,6 +112,99 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                     totalExpense = report.expenseInCents,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun IncomeExpenseChart(report: StatisticsReport) {
+    val total = report.incomeInCents + report.expenseInCents
+    val incomeFraction = if (total <= 0) 0f else report.incomeInCents.toFloat() / total
+    val animatedIncome by animateFloatAsState(incomeFraction.coerceIn(0f, 1f), label = "incomeArc")
+    val incomeColor = MaterialTheme.colorScheme.primary
+    val expenseColor = MaterialTheme.colorScheme.error
+    val trackColor = MaterialTheme.colorScheme.surface
+
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("INGRESOS VS. GASTOS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
+                    Canvas(Modifier.fillMaxSize()) {
+                        val strokeWidth = 18.dp.toPx()
+                        val inset = strokeWidth / 2
+                        val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+                        val style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
+                        drawArc(
+                            color = trackColor,
+                            startAngle = -90f,
+                            sweepAngle = 360f,
+                            useCenter = false,
+                            topLeft = Offset(inset, inset),
+                            size = arcSize,
+                            style = style,
+                        )
+                        if (total > 0) {
+                            val incomeSweep = 360f * animatedIncome
+                            drawArc(
+                                color = incomeColor,
+                                startAngle = -90f,
+                                sweepAngle = incomeSweep,
+                                useCenter = false,
+                                topLeft = Offset(inset, inset),
+                                size = arcSize,
+                                style = style,
+                            )
+                            drawArc(
+                                color = expenseColor,
+                                startAngle = -90f + incomeSweep,
+                                sweepAngle = 360f - incomeSweep,
+                                useCenter = false,
+                                topLeft = Offset(inset, inset),
+                                size = arcSize,
+                                style = style,
+                            )
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(report.transactionCount.toString(), style = MaterialTheme.typography.headlineMedium)
+                        Text("REGISTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    ChartLegend(
+                        label = "Ingresos",
+                        amount = report.incomeInCents,
+                        percent = if (total <= 0) 0 else (incomeFraction * 100).toInt(),
+                        color = incomeColor,
+                    )
+                    ChartLegend(
+                        label = "Gastos",
+                        amount = report.expenseInCents,
+                        percent = if (total <= 0) 0 else (100 - incomeFraction * 100).toInt(),
+                        color = expenseColor,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChartLegend(label: String, amount: Long, percent: Int, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        Box(Modifier.size(10.dp).background(color, MaterialTheme.shapes.extraSmall))
+        Column(Modifier.weight(1f)) {
+            Text("$label · $percent%", style = MaterialTheme.typography.labelLarge)
+            Text(
+                MoneyFormatter.format(amount),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -195,7 +295,10 @@ private fun CategoryBar(statistic: CategoryStatistic, totalExpense: Long) {
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(statistic.category.name.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-            Text(MoneyFormatter.format(statistic.amountInCents), style = MaterialTheme.typography.titleSmall)
+            Text(
+                "${(fraction * 100).toInt()}% · ${MoneyFormatter.format(statistic.amountInCents)}",
+                style = MaterialTheme.typography.titleSmall,
+            )
         }
         Box(
             Modifier.fillMaxWidth().height(7.dp).clip(MaterialTheme.shapes.extraSmall)
