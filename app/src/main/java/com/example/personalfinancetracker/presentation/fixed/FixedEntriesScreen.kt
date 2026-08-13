@@ -81,6 +81,7 @@ import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
+import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.ZoneId
 import java.time.LocalDate
@@ -117,7 +118,7 @@ fun FixedEntriesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("FIJOS", style = MaterialTheme.typography.titleLarge) },
+                title = { ModuleTitle("FIJOS") },
                 actions = {
                     GlobalOutlinedIconButton(
                         icon = Icons.Outlined.Add,
@@ -131,7 +132,10 @@ fun FixedEntriesScreen(
                     GlobalSettingsButton(onClick = onSettings)
                     Spacer(Modifier.width(14.dp))
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+                ),
             )
         },
     ) { padding ->

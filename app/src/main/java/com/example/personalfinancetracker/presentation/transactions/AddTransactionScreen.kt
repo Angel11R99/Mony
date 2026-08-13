@@ -57,6 +57,7 @@ import com.example.personalfinancetracker.presentation.components.AmountVisualTr
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
+import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.LocalDate
 
@@ -102,11 +103,10 @@ fun AddTransactionScreen(
     Scaffold(topBar = {
         TopAppBar(
             title = {
-                Text(
+                ModuleTitle(
                     if (editing == null) {
                         if (viewModel.type == TransactionType.EXPENSE) "Registrar gasto" else "Registrar ingreso"
                     } else "Editar movimiento",
-                    style = MaterialTheme.typography.titleLarge,
                 )
             },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver") } },
@@ -116,8 +116,9 @@ fun AddTransactionScreen(
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.background,
-                titleContentColor = MaterialTheme.colorScheme.onBackground,
+                titleContentColor = MaterialTheme.colorScheme.primary,
                 navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                actionIconContentColor = MaterialTheme.colorScheme.onBackground,
             ),
         )
     }, bottomBar = {
