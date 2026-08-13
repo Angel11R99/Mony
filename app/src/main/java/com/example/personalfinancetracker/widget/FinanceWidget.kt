@@ -15,6 +15,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
+import androidx.glance.action.clickable
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
@@ -69,6 +70,7 @@ private fun WidgetContent(context: Context, available: Long, latestExpense: Long
         modifier = GlanceModifier
             .fillMaxSize()
             .background(ImageProvider(R.drawable.widget_background))
+            .clickable(actionStartActivity(openAppIntent(context)))
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.Vertical.CenterVertically,
     ) {
@@ -133,6 +135,11 @@ private fun WidgetContent(context: Context, available: Long, latestExpense: Long
 private fun addIntent(context: Context, type: TransactionType) =
     Intent(context, MainActivity::class.java).apply {
         putExtra(MainActivity.EXTRA_TRANSACTION_TYPE, type.name)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    }
+
+private fun openAppIntent(context: Context) =
+    Intent(context, MainActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
 
