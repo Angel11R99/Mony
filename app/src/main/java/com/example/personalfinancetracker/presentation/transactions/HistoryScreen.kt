@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -79,6 +80,7 @@ fun HistoryScreen(
     var categoryId by remember { mutableStateOf<Long?>(null) }
     var startDate by remember { mutableStateOf<LocalDate?>(null) }
     var endDate by remember { mutableStateOf<LocalDate?>(null) }
+    var pendingDelete by remember { mutableStateOf<FinanceTransaction?>(null) }
 
     val availableCategories = remember(state.categories, typeFilter) {
         state.categories.values
@@ -166,12 +168,49 @@ fun HistoryScreen(
                     IconButton(onClick = { onEdit(transaction.id, transaction.type) }) {
                         Icon(Icons.Outlined.Edit, "Editar")
                     }
-                    IconButton(onClick = { viewModel.delete(transaction.id) }) {
+                    IconButton(onClick = { pendingDelete = transaction }) {
                         Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
         }
+    }
+
+    pendingDelete?.let { transaction ->
+        val categoryName = state.categories[transaction.categoryId]?.name ?: "Sin categoría"
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            icon = {
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            },
+            title = { Text("¿Eliminar movimiento?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("$categoryName · ${MoneyFormatter.format(transaction.amountInCents)}")
+                    Text(
+                        "Esta acción no se puede deshacer.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.delete(transaction.id)
+                    pendingDelete = null
+                }) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Cancelar") }
+            },
+            shape = MaterialTheme.shapes.medium,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
     }
 }
 
