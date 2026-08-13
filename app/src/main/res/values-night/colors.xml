@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="widget_primary_text">#FFF7F4EF</color>
-    <color name="widget_secondary_text">#FFA7A7AD</color>
+    <color name="widget_secondary_text">#FFD1CED3</color>
     <color name="widget_button">#FF53689F</color>
     <color name="widget_button_text">#FFF7F4EF</color>
     <color name="widget_expense">#FFFF5D73</color>

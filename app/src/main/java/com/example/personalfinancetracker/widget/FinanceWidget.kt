@@ -74,7 +74,7 @@ private fun WidgetContent(context: Context, available: Long, latestExpense: Long
     val primaryColor = Color(appearance.primaryArgb)
     val accentColor = Color(appearance.accentArgb)
     val primaryText = ColorProvider(if (dark) Color(0xFFF7F4EF) else Color(0xFF1C1722))
-    val secondaryText = ColorProvider(if (dark) Color(0xFFA7A7AD) else Color(0xFF6D6574))
+    val secondaryText = ColorProvider(if (dark) Color(0xFFD1CED3) else Color(0xFF6D6574))
     val buttonColors = ButtonDefaults.buttonColors(
         backgroundColor = ColorProvider(primaryColor),
         contentColor = ColorProvider(if (primaryColor.luminance() > 0.48f) Color(0xFF121016) else Color.White),
