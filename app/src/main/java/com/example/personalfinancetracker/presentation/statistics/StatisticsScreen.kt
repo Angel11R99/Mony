@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -286,6 +287,7 @@ private fun StatisticsFilterSheet(
                         onClick = { onRangeChange(option) },
                         label = { Text(rangeLabel(option)) },
                         shape = MaterialTheme.shapes.small,
+                        colors = financeFilterChipColors(),
                     )
                 }
             }
@@ -300,6 +302,7 @@ private fun StatisticsFilterSheet(
                     onClick = { onCategoryChange(null) },
                     label = { Text("Todas") },
                     shape = MaterialTheme.shapes.small,
+                    colors = financeFilterChipColors(),
                 )
                 categories.forEach { category ->
                     FilterChip(
@@ -307,6 +310,7 @@ private fun StatisticsFilterSheet(
                         onClick = { onCategoryChange(category.id) },
                         label = { Text(category.name) },
                         shape = MaterialTheme.shapes.small,
+                        colors = financeFilterChipColors(),
                     )
                 }
             }
@@ -317,6 +321,14 @@ private fun StatisticsFilterSheet(
         }
     }
 }
+
+@Composable
+private fun financeFilterChipColors() = FilterChipDefaults.filterChipColors(
+    selectedContainerColor = MaterialTheme.colorScheme.primary,
+    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+    selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimary,
+)
 
 @Composable
 private fun CategoryFocusCard(

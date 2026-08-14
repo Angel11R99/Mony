@@ -11,8 +11,7 @@ import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.domain.usecase.SaveTransaction
-import com.example.personalfinancetracker.widget.FinanceWidget
-import androidx.glance.appwidget.updateAll
+import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,7 +75,7 @@ class AddTransactionViewModel @Inject constructor(
                         createdAt = existing?.createdAt ?: Instant.now(),
                         updatedAt = Instant.now(),
                     ))
-                    FinanceWidget().updateAll(context)
+                    updateAllFinanceWidgets(context)
                 }.onSuccess { onSaved() }
                     .onFailure { error.value = it.message ?: "No se pudo guardar" }
                 saving.value = false

@@ -12,8 +12,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import android.content.Context
-import androidx.glance.appwidget.updateAll
-import com.example.personalfinancetracker.widget.FinanceWidget
+import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.launch
 
@@ -34,6 +33,6 @@ class HistoryViewModel @Inject constructor(
 
     fun delete(id: Long) = viewModelScope.launch {
         transactions.delete(id)
-        FinanceWidget().updateAll(context)
+        updateAllFinanceWidgets(context)
     }
 }

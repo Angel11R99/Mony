@@ -27,6 +27,7 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +45,8 @@ import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.BudgetCycle
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.domain.model.canManuallyCloseBudgetCycle
+import com.example.personalfinancetracker.domain.model.shouldAutomaticallyCloseBudgetCycle
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
@@ -54,9 +57,11 @@ import com.example.personalfinancetracker.presentation.components.TransactionRow
 import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.format.DateTimeFormatter
+import java.time.LocalDate
 
 @Composable
 fun HomeScreen(
+    automaticCycleClose: Boolean,
     onAdd: (TransactionType) -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
@@ -64,10 +69,18 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val closingCycle by viewModel.closingCycle.collectAsStateWithLifecycle()
+    val today = LocalDate.now()
+    val manualCloseAvailable = canManuallyCloseBudgetCycle(state.budget, today)
     var editingBudget by remember { mutableStateOf(false) }
     var confirmingClose by remember { mutableStateOf(false) }
     var showingHistory by remember { mutableStateOf(false) }
     var selectedTransaction by remember { mutableStateOf<com.example.personalfinancetracker.domain.model.FinanceTransaction?>(null) }
+
+    LaunchedEffect(automaticCycleClose, state.budget?.cycleStart, state.budget?.period) {
+        if (automaticCycleClose && shouldAutomaticallyCloseBudgetCycle(state.budget, today)) {
+            viewModel.closeCurrentCycle {}
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -135,7 +148,24 @@ fun HomeScreen(
                                 text = "Cerrar ciclo",
                                 onClick = { confirmingClose = true },
                                 modifier = Modifier.weight(1f),
-                                enabled = !closingCycle,
+                                enabled = !closingCycle && !automaticCycleClose && manualCloseAvailable,
+                            )
+                        }
+                        if (automaticCycleClose) {
+                            Text(
+                                "El cierre automático está activo.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else if (!manualCloseAvailable) {
+                            Text(
+                                if (state.budget?.period == BudgetPeriod.FORTNIGHTLY) {
+                                    "El cierre manual está disponible los días 1, 16 y 31."
+                                } else {
+                                    "El cierre manual está disponible al inicio o final del mes."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }

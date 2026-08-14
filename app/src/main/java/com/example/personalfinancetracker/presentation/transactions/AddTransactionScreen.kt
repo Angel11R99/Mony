@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -55,7 +54,7 @@ import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
-import com.example.personalfinancetracker.presentation.components.PrimaryButton
+import com.example.personalfinancetracker.presentation.components.GlobalSaveButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
@@ -111,6 +110,13 @@ fun AddTransactionScreen(
             },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver") } },
             actions = {
+                GlobalSaveButton(
+                    onClick = {
+                        viewModel.save(amount, categoryId, note, date, onBack)
+                    },
+                    enabled = !saving,
+                )
+                Spacer(Modifier.width(8.dp))
                 GlobalSettingsButton(onClick = onSettings)
                 Spacer(Modifier.width(14.dp))
             },
@@ -121,22 +127,6 @@ fun AddTransactionScreen(
                 actionIconContentColor = MaterialTheme.colorScheme.onBackground,
             ),
         )
-    }, bottomBar = {
-        Surface(color = MaterialTheme.colorScheme.background) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-            ) {
-                PrimaryButton(
-                    text = if (saving) "Guardando…" else if (editing == null) "Guardar movimiento" else "Guardar cambios",
-                    onClick = { viewModel.save(amount, categoryId, note, date, onBack) },
-                    enabled = !saving,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
     }) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),

@@ -1,7 +1,6 @@
 package com.example.personalfinancetracker.presentation.home
 
 import android.content.Context
-import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.personalfinancetracker.domain.model.Category
@@ -13,6 +12,7 @@ import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
 import com.example.personalfinancetracker.domain.model.belongsToActiveBudgetCycle
+import com.example.personalfinancetracker.domain.model.budgetCyclePeriodToClose
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
@@ -30,7 +30,7 @@ import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import java.time.Instant
 import java.time.LocalDate
-import com.example.personalfinancetracker.widget.FinanceWidget
+import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 
 data class CategorySpending(val category: Category, val amountInCents: Long)
 
@@ -98,7 +98,7 @@ class HomeViewModel @Inject constructor(
                         now = Instant.now(),
                     )
                     budgetRepository.save(budget.copy(incomeTransactionId = transactionId))
-                    FinanceWidget().updateAll(context)
+                    updateAllFinanceWidgets(context)
                 }
             }
         }
@@ -129,27 +129,34 @@ class HomeViewModel @Inject constructor(
                         incomeTransactionId = incomeTransactionId,
                     )
                 )
-                FinanceWidget().updateAll(context)
+                updateAllFinanceWidgets(context)
             }
             onSaved()
         }
     }
 
     fun closeCurrentCycle(onClosed: () -> Unit) {
-        val current = state.value
-        val budget = current.budget ?: return
+        val budget = state.value.budget ?: return
         if (closingCycle.value) return
         viewModelScope.launch {
             closingCycle.value = true
             val now = Instant.now()
             val today = LocalDate.now()
+            val periodToClose = budgetCyclePeriodToClose(budget.period, today)
+            val cycleTransactions = transactions.observeAll().first().filter {
+                it.belongsToActiveBudgetCycle(budget, periodToClose)
+            }
             val closedCycle = BudgetCycle(
                 period = budget.period,
                 budgetAmountInCents = budget.amountInCents,
-                incomeInCents = current.periodIncomeInCents,
-                expenseInCents = current.periodExpenseInCents,
-                startDate = current.period.start,
-                endDate = today.coerceAtLeast(current.period.start),
+                incomeInCents = cycleTransactions
+                    .filter { it.type == TransactionType.INCOME }
+                    .sumOf(FinanceTransaction::amountInCents),
+                expenseInCents = cycleTransactions
+                    .filter { it.type == TransactionType.EXPENSE }
+                    .sumOf(FinanceTransaction::amountInCents),
+                startDate = periodToClose.start,
+                endDate = periodToClose.endInclusive,
                 closedAt = now,
             )
             runCatching {
@@ -169,7 +176,7 @@ class HomeViewModel @Inject constructor(
                         incomeTransactionId = nextIncomeId,
                     )
                     budgetRepository.closeCycle(closedCycle, nextConfig)
-                    FinanceWidget().updateAll(context)
+                    updateAllFinanceWidgets(context)
                 }
             }
                 .onSuccess { onClosed() }

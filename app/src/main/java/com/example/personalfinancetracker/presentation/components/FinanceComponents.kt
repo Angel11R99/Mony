@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -97,14 +98,31 @@ fun GlobalSettingsButton(
 }
 
 @Composable
+fun GlobalSaveButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    GlobalOutlinedIconButton(
+        icon = Icons.Outlined.Save,
+        contentDescription = "Guardar",
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+    )
+}
+
+@Composable
 fun GlobalOutlinedIconButton(
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     OutlinedIconButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.size(54.dp),
         shape = MaterialTheme.shapes.small,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),

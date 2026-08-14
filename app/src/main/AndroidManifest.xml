@@ -33,6 +33,39 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/finance_widget_info" />
         </receiver>
+        <receiver
+            android:name=".widget.IncomeExpenseWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_income_expense_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/income_expense_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.BudgetProgressWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_budget_progress_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/budget_progress_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.StatisticsWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_statistics_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/statistics_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

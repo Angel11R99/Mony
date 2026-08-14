@@ -1,7 +1,6 @@
 package com.example.personalfinancetracker.presentation.fixed
 
 import android.content.Context
-import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.personalfinancetracker.core.MoneyFormatter
@@ -13,7 +12,7 @@ import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.calculateNextRun
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
-import com.example.personalfinancetracker.widget.FinanceWidget
+import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -143,7 +142,7 @@ class FixedEntriesViewModel @Inject constructor(
                     ),
                     transaction = entry.toTransaction(date = postingDate, now = now),
                 )
-                FinanceWidget().updateAll(context)
+                updateAllFinanceWidgets(context)
             }.onSuccess {
                 val kind = if (entry.type == TransactionType.EXPENSE) "Gasto" else "Ingreso"
                 message.value = "$kind agregado correctamente"

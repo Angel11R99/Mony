@@ -1,7 +1,6 @@
 package com.example.personalfinancetracker.presentation.fixed
 
 import android.content.Context
-import androidx.glance.appwidget.updateAll
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -10,7 +9,7 @@ import androidx.work.WorkerParameters
 import com.example.personalfinancetracker.domain.model.FixedScheduleMode
 import com.example.personalfinancetracker.domain.model.calculateNextRun
 import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
-import com.example.personalfinancetracker.widget.FinanceWidget
+import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -54,7 +53,7 @@ class FixedEntryWorker(
                 transaction = entry.toTransaction(postingDate, now),
             )
         }
-        if (dueEntries.isNotEmpty()) FinanceWidget().updateAll(applicationContext)
+        if (dueEntries.isNotEmpty()) updateAllFinanceWidgets(applicationContext)
     }.fold(
         onSuccess = { Result.success() },
         onFailure = { Result.retry() },

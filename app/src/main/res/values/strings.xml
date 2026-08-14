@@ -5,4 +5,21 @@
     <string name="widget_latest_expense">ÚLTIMO GASTO</string>
     <string name="widget_add_expense">+ Gasto</string>
     <string name="widget_add_income">+ Ingreso</string>
+    <string name="widget_income_expense_name">Ingresos vs gastos</string>
+    <string name="widget_income_expense_description">Comparación pequeña de ingresos y gastos del periodo</string>
+    <string name="widget_income_expense_title">INGRESOS VS GASTOS</string>
+    <string name="widget_budget_progress_name">Uso del presupuesto</string>
+    <string name="widget_budget_progress_description">Barra porcentual del presupuesto utilizado</string>
+    <string name="widget_statistics_name">Resumen estadístico</string>
+    <string name="widget_statistics_description">Gráfica y balance del periodo actual</string>
+    <string name="widget_statistics_title">RESUMEN DEL PERIODO</string>
+    <string name="widget_income">INGRESOS</string>
+    <string name="widget_expense">GASTOS</string>
+    <string name="widget_balance">BALANCE</string>
+    <string name="widget_percentage_used">%1$d%% usado</string>
+    <string name="widget_no_budget">Sin presupuesto</string>
+    <plurals name="widget_movements">
+        <item quantity="one">%1$d movimiento</item>
+        <item quantity="other">%1$d movimientos</item>
+    </plurals>
 </resources>

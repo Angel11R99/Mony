@@ -33,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -67,11 +68,13 @@ import com.example.personalfinancetracker.ui.theme.AppThemeMode
 @Composable
 fun SettingsScreen(
     appearance: AppAppearance,
+    automaticCycleClose: Boolean,
     onBack: () -> Unit,
     onThemeChange: (AppThemeMode) -> Unit,
     onPrimaryChange: (Int) -> Unit,
     onAccentChange: (Int) -> Unit,
     onReset: () -> Unit,
+    onAutomaticCycleCloseChange: (Boolean) -> Unit,
 ) {
     var editingColor by remember { mutableStateOf<ColorRole?>(null) }
 
@@ -118,6 +121,29 @@ fun SettingsScreen(
                                 selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
                             ),
                             shape = MaterialTheme.shapes.small,
+                        )
+                    }
+                }
+            }
+            item { SectionTitle("CICLOS", "Controla cuándo se cierra el periodo del presupuesto.") }
+            item {
+                FinanceCard(Modifier.fillMaxWidth()) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Cierre automático", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Cierra la quincena los días 1 y 16 cuando abras la app.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = automaticCycleClose,
+                            onCheckedChange = onAutomaticCycleCloseChange,
                         )
                     }
                 }

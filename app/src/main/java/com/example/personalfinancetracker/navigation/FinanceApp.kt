@@ -32,10 +32,12 @@ import com.example.personalfinancetracker.ui.theme.AppThemeMode
 fun FinanceApp(
     initialType: TransactionType? = null,
     appearance: AppAppearance,
+    automaticCycleClose: Boolean,
     onThemeChange: (AppThemeMode) -> Unit,
     onPrimaryChange: (Int) -> Unit,
     onAccentChange: (Int) -> Unit,
     onResetAppearance: () -> Unit,
+    onAutomaticCycleCloseChange: (Boolean) -> Unit,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -62,6 +64,7 @@ fun FinanceApp(
         ) {
             composable("home") {
                 HomeScreen(
+                    automaticCycleClose = automaticCycleClose,
                     onAdd = { navigateToModule("add/${it.name}") },
                     onHistory = { navigateToModule("history") },
                     onSettings = { navController.navigate("settings") },
@@ -108,11 +111,13 @@ fun FinanceApp(
             composable("settings") {
                 SettingsScreen(
                     appearance = appearance,
+                    automaticCycleClose = automaticCycleClose,
                     onBack = { navController.popBackStack() },
                     onThemeChange = onThemeChange,
                     onPrimaryChange = onPrimaryChange,
                     onAccentChange = onAccentChange,
                     onReset = onResetAppearance,
+                    onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
                 )
             }
         }

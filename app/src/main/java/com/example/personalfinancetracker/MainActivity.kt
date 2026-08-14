@@ -16,12 +16,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.getValue
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.core.CyclePreferences
 import com.example.personalfinancetracker.navigation.FinanceApp
 import com.example.personalfinancetracker.ui.theme.PersonalFinanceTrackerTheme
 import com.example.personalfinancetracker.ui.theme.AppearancePreferences
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
-import com.example.personalfinancetracker.widget.FinanceWidget
-import androidx.glance.appwidget.updateAll
+import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -32,7 +32,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val appearancePreferences = remember { AppearancePreferences(applicationContext) }
+            val cyclePreferences = remember { CyclePreferences(applicationContext) }
             val appearance by appearancePreferences.settings.collectAsStateWithLifecycle()
+            val automaticCycleClose by cyclePreferences.automaticClose.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
             val useDarkTheme = when (appearance.themeMode) {
                 AppThemeMode.SYSTEM -> systemDark
@@ -56,26 +58,33 @@ class MainActivity : ComponentActivity() {
                     FinanceApp(
                         initialType = initialType,
                         appearance = appearance,
+                        automaticCycleClose = automaticCycleClose,
                         onThemeChange = {
                             appearancePreferences.setThemeMode(it)
-                            lifecycleScope.launch { FinanceWidget().updateAll(applicationContext) }
+                            lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
                         },
                         onPrimaryChange = {
                             appearancePreferences.setPrimaryColor(it)
-                            lifecycleScope.launch { FinanceWidget().updateAll(applicationContext) }
+                            lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
                         },
                         onAccentChange = {
                             appearancePreferences.setAccentColor(it)
-                            lifecycleScope.launch { FinanceWidget().updateAll(applicationContext) }
+                            lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
                         },
                         onResetAppearance = {
                             appearancePreferences.reset()
-                            lifecycleScope.launch { FinanceWidget().updateAll(applicationContext) }
+                            lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
                         },
+                        onAutomaticCycleCloseChange = cyclePreferences::setAutomaticClose,
                     )
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
     }
 
     companion object {
