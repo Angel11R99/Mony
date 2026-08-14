@@ -44,6 +44,11 @@ class HistoryFilterTest {
         assertEquals(10L, lastCategoryForType(transactions, TransactionType.INCOME))
     }
 
+    @Test fun `remembers latest date separately for expense and income`() {
+        assertEquals(LocalDate.of(2026, 8, 10), lastDateForType(transactions, TransactionType.EXPENSE))
+        assertEquals(LocalDate.of(2026, 8, 12), lastDateForType(transactions, TransactionType.INCOME))
+    }
+
     @Test fun `category search finds transport case insensitively`() {
         val categories = listOf(
             Category(1, "Transporte", TransactionType.EXPENSE, "car", true),

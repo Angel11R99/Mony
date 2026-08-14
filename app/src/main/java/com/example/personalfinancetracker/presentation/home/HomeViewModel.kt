@@ -17,6 +17,7 @@ import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.core.MoneyFormatter
+import com.example.personalfinancetracker.core.showToast
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
@@ -134,9 +135,10 @@ class HomeViewModel @Inject constructor(
                         closingDays = existing?.closingDays ?: listOf(15),
                     )
                 )
-                updateAllFinanceWidgets(context)
             }
+            context.showToast("Presupuesto guardado correctamente")
             onSaved()
+            viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
         }
     }
 
@@ -181,10 +183,13 @@ class HomeViewModel @Inject constructor(
                         incomeTransactionId = nextIncomeId,
                     )
                     budgetRepository.closeCycle(closedCycle, nextConfig)
-                    updateAllFinanceWidgets(context)
                 }
             }
-                .onSuccess { onClosed() }
+                .onSuccess {
+                    context.showToast("Ciclo cerrado correctamente")
+                    onClosed()
+                    viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
+                }
             closingCycle.value = false
         }
     }

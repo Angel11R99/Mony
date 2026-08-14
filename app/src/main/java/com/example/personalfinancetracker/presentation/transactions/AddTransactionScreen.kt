@@ -59,6 +59,8 @@ import com.example.personalfinancetracker.presentation.components.GlobalSettings
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,10 +74,16 @@ fun AddTransactionScreen(
     val saving by viewModel.saving.collectAsStateWithLifecycle()
     val editing by viewModel.editingTransaction.collectAsStateWithLifecycle()
     val suggestedCategoryId by viewModel.suggestedCategoryId.collectAsStateWithLifecycle()
+    val suggestedDate by viewModel.suggestedDate.collectAsStateWithLifecycle()
+    val activePeriod by viewModel.activePeriod.collectAsStateWithLifecycle()
+    val periodDateFormatter = remember {
+        DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-DO"))
+    }
     val context = LocalContext.current
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
+    var dateSuggestionApplied by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var categoryId by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(editing?.id) {
@@ -91,6 +99,12 @@ fun AddTransactionScreen(
             categoryId = suggestedCategoryId?.takeIf { suggested ->
                 categories.any { it.id == suggested }
             }
+        }
+    }
+    LaunchedEffect(suggestedDate) {
+        if (!viewModel.isEditing && !dateSuggestionApplied && suggestedDate != null) {
+            date = suggestedDate.toString()
+            dateSuggestionApplied = true
         }
     }
     LaunchedEffect(error) {
@@ -191,6 +205,18 @@ fun AddTransactionScreen(
                                 role = Role.Button,
                                 onClickLabel = "Seleccionar fecha",
                             ) { showDatePicker = true },
+                    )
+                }
+            }
+            val parsedDate = runCatching { LocalDate.parse(date) }.getOrNull()
+            val outsidePeriod = !viewModel.isEditing && parsedDate != null &&
+                (parsedDate.isBefore(activePeriod.start) || parsedDate.isAfter(activePeriod.endInclusive))
+            if (outsidePeriod) {
+                item {
+                    Text(
+                        "Esta fecha está fuera del periodo actual (${activePeriod.start.format(periodDateFormatter)} / ${activePeriod.endInclusive.format(periodDateFormatter)}). El movimiento se registrará en el periodo correspondiente.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }
