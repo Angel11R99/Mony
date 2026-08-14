@@ -2,6 +2,8 @@ package com.example.personalfinancetracker.domain.model
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 
 enum class PendingType {
     PAYMENT,
@@ -31,6 +33,7 @@ data class PendingEntry(
     val amountInCents: Long,
     val categoryId: Long,
     val date: LocalDate,
+    val reminderTime: LocalTime? = null,
     val comment: String? = null,
     val isDone: Boolean = false,
     val doneAt: Instant? = null,
@@ -38,3 +41,9 @@ data class PendingEntry(
     val createdAt: Instant,
     val updatedAt: Instant,
 )
+
+fun pendingReminderInstant(
+    date: LocalDate,
+    time: LocalTime,
+    zoneId: ZoneId = ZoneId.systemDefault(),
+): Instant = date.atTime(time).atZone(zoneId).toInstant()

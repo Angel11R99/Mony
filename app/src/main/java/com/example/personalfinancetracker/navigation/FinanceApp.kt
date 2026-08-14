@@ -33,6 +33,7 @@ import java.time.LocalTime
 @Composable
 fun FinanceApp(
     initialType: TransactionType? = null,
+    initialDestination: String? = null,
     appearance: AppAppearance,
     automaticCycleClose: Boolean,
     automaticCloseTime: LocalTime,
@@ -58,6 +59,12 @@ fun FinanceApp(
 
     LaunchedEffect(initialType) {
         initialType?.let { navigateToModule("add/${it.name}") }
+    }
+
+    LaunchedEffect(initialDestination) {
+        if (initialDestination in setOf("home", "history", "statistics", "fixed", "pending")) {
+            navigateToModule(initialDestination!!)
+        }
     }
 
     Box(Modifier.fillMaxSize()) {

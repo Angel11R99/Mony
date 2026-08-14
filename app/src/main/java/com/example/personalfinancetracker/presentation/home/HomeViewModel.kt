@@ -28,14 +28,19 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import java.time.Instant
 import java.time.LocalDate
+import java.time.Duration
+import java.time.ZonedDateTime
 import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 
 data class CategorySpending(val category: Category, val amountInCents: Long)
@@ -66,10 +71,19 @@ class HomeViewModel @Inject constructor(
     private val budgetIncomeMutex = Mutex()
     private val cyclePreferences = CyclePreferences(context)
     private val selectedPeriodView = MutableStateFlow(cyclePreferences.pinnedBudgetView.value)
+    private val currentDate = flow {
+        while (true) {
+            val now = ZonedDateTime.now()
+            emit(now.toLocalDate())
+            val nextDay = now.toLocalDate().plusDays(1).atStartOfDay(now.zone)
+            delay(Duration.between(now, nextDay).toMillis().coerceAtLeast(1_000))
+        }
+    }.distinctUntilChanged()
     private val periodViewState = combine(
         cyclePreferences.pinnedBudgetView,
         selectedPeriodView,
-    ) { pinned, selected -> pinned to selected }
+        currentDate,
+    ) { pinned, selected, today -> Triple(pinned, selected, today) }
 
     val state = combine(
         transactions.observeAll(),
@@ -77,9 +91,9 @@ class HomeViewModel @Inject constructor(
         budgetRepository.observe(),
         budgetRepository.observeHistory(),
         periodViewState,
-    ) { all, categoryList, budget, history, (pinnedView, selectedView) ->
-        val currentPeriod = budgetPeriodForView(budget, BudgetPeriodView.CURRENT)
-        val nextPeriod = budgetPeriodForView(budget, BudgetPeriodView.NEXT)
+    ) { all, categoryList, budget, history, (pinnedView, selectedView, today) ->
+        val currentPeriod = budgetPeriodForView(budget, BudgetPeriodView.CURRENT, today)
+        val nextPeriod = budgetPeriodForView(budget, BudgetPeriodView.NEXT, today)
         val period = if (selectedView == BudgetPeriodView.CURRENT) currentPeriod else nextPeriod
         val periodTransactions = all.filter { it.belongsToActiveBudgetCycle(budget, period) }
         val byId = categoryList.associateBy(Category::id)

@@ -27,6 +27,7 @@ data class PendingEntryEntity(
     val amountInCents: Long,
     val categoryId: Long,
     val dateEpochDay: Long,
+    val reminderMinutesOfDay: Int?,
     val comment: String?,
     val isDone: Boolean,
     val doneAtEpochMillis: Long?,

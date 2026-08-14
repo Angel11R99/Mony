@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
                         ?.let { runCatching { TransactionType.valueOf(it) }.getOrNull() }
                     FinanceApp(
                         initialType = initialType,
+                        initialDestination = intent.getStringExtra(EXTRA_DESTINATION),
                         appearance = appearance,
                         automaticCycleClose = automaticCycleClose,
                         automaticCloseTime = automaticCloseTime,
@@ -92,5 +93,6 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_TRANSACTION_TYPE = "transaction_type"
+        const val EXTRA_DESTINATION = "destination"
     }
 }

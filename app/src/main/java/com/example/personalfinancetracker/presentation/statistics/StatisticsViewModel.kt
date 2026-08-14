@@ -35,7 +35,6 @@ data class CategoryStatistic(
 internal enum class StatisticsRange(val label: String) {
     CURRENT_BUDGET("Ciclo actual"),
     CURRENT_MONTH("Este mes"),
-    LAST_30_DAYS("30 días"),
     CURRENT_YEAR("Este año"),
     ALL_TIME("Todo"),
 }
@@ -55,11 +54,7 @@ internal fun statisticsPeriod(
     }
     StatisticsRange.CURRENT_MONTH -> StatisticsPeriod(
         startDate = YearMonth.from(today).atDay(1),
-        endDate = today,
-    )
-    StatisticsRange.LAST_30_DAYS -> StatisticsPeriod(
-        startDate = today.minusDays(29),
-        endDate = today,
+        endDate = YearMonth.from(today).atEndOfMonth(),
     )
     StatisticsRange.CURRENT_YEAR -> StatisticsPeriod(
         startDate = today.withDayOfYear(1),

@@ -14,6 +14,7 @@ import com.example.personalfinancetracker.domain.model.PendingEntry
 import com.example.personalfinancetracker.domain.model.PendingType
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 fun CategoryEntity.toDomain() = Category(id, name, TransactionType.valueOf(type), icon, isActive)
 
@@ -84,6 +85,7 @@ fun PendingEntryEntity.toDomain() = PendingEntry(
     amountInCents = amountInCents,
     categoryId = categoryId,
     date = LocalDate.ofEpochDay(dateEpochDay),
+    reminderTime = reminderMinutesOfDay?.let { LocalTime.of(it / 60, it % 60) },
     comment = comment,
     isDone = isDone,
     doneAt = doneAtEpochMillis?.let(Instant::ofEpochMilli),
@@ -99,6 +101,7 @@ fun PendingEntry.toEntity() = PendingEntryEntity(
     amountInCents = amountInCents,
     categoryId = categoryId,
     dateEpochDay = date.toEpochDay(),
+    reminderMinutesOfDay = reminderTime?.let { it.hour * 60 + it.minute },
     comment = comment,
     isDone = isDone,
     doneAtEpochMillis = doneAt?.toEpochMilli(),

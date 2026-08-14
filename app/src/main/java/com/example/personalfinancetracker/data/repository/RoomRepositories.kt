@@ -97,6 +97,7 @@ class RoomPendingEntryRepository @Inject constructor(
     private val database: FinanceDatabase,
 ) : PendingEntryRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
+    override suspend fun get(id: Long) = dao.get(id)?.toDomain()
     override suspend fun save(entry: PendingEntry) = dao.upsert(entry.toEntity())
     override suspend fun complete(entry: PendingEntry, transaction: FinanceTransaction) {
         database.withTransaction {

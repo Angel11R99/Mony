@@ -102,6 +102,19 @@ class BudgetCycleTest {
         )
     }
 
+    @Test fun `next fortnight becomes current and creates a new next period`() {
+        val config = BudgetConfig(100_000, BudgetPeriod.FORTNIGHTLY)
+
+        assertEquals(
+            budgetPeriodForView(config, BudgetPeriodView.NEXT, LocalDate.of(2026, 8, 15)),
+            budgetPeriodForView(config, BudgetPeriodView.CURRENT, LocalDate.of(2026, 8, 16)),
+        )
+        assertEquals(
+            DateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 15)),
+            budgetPeriodForView(config, BudgetPeriodView.NEXT, LocalDate.of(2026, 8, 16)),
+        )
+    }
+
     @Test fun `explicit view calculates available using only its movements`() {
         val config = BudgetConfig(2_500_000, BudgetPeriod.FORTNIGHTLY)
         val currentExpense = transaction(

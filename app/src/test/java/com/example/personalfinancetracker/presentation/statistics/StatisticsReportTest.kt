@@ -67,12 +67,8 @@ class StatisticsReportTest {
         val today = LocalDate.of(2026, 8, 13)
 
         assertEquals(
-            StatisticsPeriod(LocalDate.of(2026, 8, 1), today),
+            StatisticsPeriod(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31)),
             statisticsPeriod(StatisticsRange.CURRENT_MONTH, today),
-        )
-        assertEquals(
-            StatisticsPeriod(LocalDate.of(2026, 7, 15), today),
-            statisticsPeriod(StatisticsRange.LAST_30_DAYS, today),
         )
         assertEquals(
             StatisticsPeriod(LocalDate.of(2026, 1, 1), today),

@@ -1,5 +1,10 @@
 package com.example.personalfinancetracker.presentation.pending
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +29,8 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Undo
@@ -45,9 +52,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,6 +71,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.content.ContextCompat
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.Category
@@ -80,6 +90,7 @@ import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -91,7 +102,21 @@ fun PendingEntriesScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var notificationsGranted by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        notificationsGranted = granted
+        if (!granted) context.showToast("Activa las notificaciones para usar alertas")
+    }
     var selectedType by remember { mutableStateOf(PendingType.PAYMENT) }
     var periodFilter by remember { mutableStateOf(PendingPeriodFilter.FORTNIGHT) }
     var editorEntry by remember { mutableStateOf<PendingEntry?>(null) }
@@ -216,9 +241,23 @@ fun PendingEntriesScreen(
             entry = editorEntry,
             initialType = editorEntry?.type ?: selectedType,
             categories = state.categories.values.toList(),
+            isSaving = isSaving,
+            notificationsGranted = notificationsGranted,
+            onRequestNotificationPermission = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            },
             onDismiss = { showEditor = false },
-            onSave = { type, description, amount, categoryId, comment, date ->
-                viewModel.save(editorEntry, type, description, amount, categoryId, comment, date) {
+            onSave = { type, description, amount, categoryId, comment, date, reminderTime ->
+                if (reminderTime != null && !notificationsGranted) {
+                    context.showToast("Concede permiso de notificaciones o quita la alerta")
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    return@PendingEntryDialog
+                }
+                viewModel.save(editorEntry, type, description, amount, categoryId, comment, date, reminderTime) {
                     selectedType = type
                     showEditor = false
                 }
@@ -377,6 +416,9 @@ private fun PendingEntryCard(
                 Spacer(Modifier.width(4.dp))
                 Text(
                     entry.date.format(formatter) +
+                        (entry.reminderTime?.takeUnless { entry.isDone }?.let {
+                            " · Alerta ${it.format(reminderTimeFormatter)}"
+                        } ?: "") +
                         (entry.doneAt?.let { " · HECHO ${it.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter)}" } ?: ""),
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (entry.isDone) MaterialTheme.colorScheme.onSurfaceVariant
@@ -436,8 +478,11 @@ private fun PendingEntryDialog(
     entry: PendingEntry?,
     initialType: PendingType,
     categories: List<Category>,
+    isSaving: Boolean,
+    notificationsGranted: Boolean,
+    onRequestNotificationPermission: () -> Unit,
     onDismiss: () -> Unit,
-    onSave: (PendingType, String, String, Long?, String, LocalDate) -> Unit,
+    onSave: (PendingType, String, String, Long?, String, LocalDate, LocalTime?) -> Unit,
 ) {
     var type by remember(entry) { mutableStateOf(entry?.type ?: initialType) }
     var description by remember(entry) { mutableStateOf(entry?.description.orEmpty()) }
@@ -447,6 +492,7 @@ private fun PendingEntryDialog(
     var categoryId by remember(entry) { mutableStateOf(entry?.categoryId) }
     var comment by remember(entry) { mutableStateOf(entry?.comment.orEmpty()) }
     var date by remember(entry) { mutableStateOf(entry?.date ?: LocalDate.now()) }
+    var reminderTime by remember(entry) { mutableStateOf(entry?.reminderTime) }
     var categoryExpanded by remember { mutableStateOf(false) }
     var categorySearch by remember(entry, categories) {
         mutableStateOf(categories.firstOrNull { it.id == entry?.categoryId }?.name.orEmpty())
@@ -566,16 +612,94 @@ private fun PendingEntryDialog(
                         onValueChange = { date = it },
                     )
                 }
+                item {
+                    PendingReminderField(
+                        value = reminderTime,
+                        notificationsGranted = notificationsGranted,
+                        onRequestNotificationPermission = onRequestNotificationPermission,
+                        onValueChange = { reminderTime = it },
+                    )
+                }
                 item { FinanceTextField(comment, { comment = it }, "Comentario", placeholder = "Opcional") }
             }
         },
         confirmButton = {
-            PrimaryButton("Guardar", { onSave(type, description, amount, categoryId, comment, date) })
+            PrimaryButton(
+                if (isSaving) "Guardando…" else "Guardar",
+                { onSave(type, description, amount, categoryId, comment, date, reminderTime) },
+                enabled = !isSaving,
+            )
         },
         dismissButton = { SecondaryButton("Cancelar", onDismiss) },
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.medium,
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PendingReminderField(
+    value: LocalTime?,
+    notificationsGranted: Boolean,
+    onRequestNotificationPermission: () -> Unit,
+    onValueChange: (LocalTime?) -> Unit,
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    Surface(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+            .clickable(role = Role.Button) {
+                if (!notificationsGranted) onRequestNotificationPermission()
+                showPicker = true
+            },
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Alerta", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                Text(value?.format(reminderTimeFormatter) ?: "Sin alerta")
+                if (value != null && !notificationsGranted) {
+                    Text(
+                        "Se necesita permiso de notificaciones",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+            if (value != null) {
+                IconButton(onClick = { onValueChange(null) }) {
+                    Icon(Icons.Outlined.NotificationsOff, "Quitar alerta")
+                }
+            } else {
+                Icon(Icons.Outlined.NotificationsActive, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+    if (showPicker) {
+        val pickerState = rememberTimePickerState(
+            initialHour = value?.hour ?: 8,
+            initialMinute = value?.minute ?: 0,
+            is24Hour = false,
+        )
+        AlertDialog(
+            onDismissRequest = { showPicker = false },
+            title = { Text("Hora de la alerta") },
+            text = { TimePicker(pickerState) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onValueChange(LocalTime.of(pickerState.hour, pickerState.minute))
+                    showPicker = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = { TextButton(onClick = { showPicker = false }) { Text("Cancelar") } },
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.medium,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -617,3 +741,6 @@ private fun PendingDateField(label: String, value: LocalDate, onValueChange: (Lo
 }
 
 private const val MILLIS_PER_DAY = 86_400_000L
+
+private val reminderTimeFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("h:mm a", Locale.forLanguageTag("es-DO"))
