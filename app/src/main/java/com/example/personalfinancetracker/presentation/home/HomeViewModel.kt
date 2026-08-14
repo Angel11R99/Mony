@@ -107,7 +107,6 @@ class HomeViewModel @Inject constructor(
     fun saveBudget(
         amount: String,
         period: BudgetPeriod,
-        closingDays: List<Int>,
         onSaved: () -> Unit,
     ) {
         val amountInCents = MoneyFormatter.parseToCents(amount)
@@ -132,7 +131,7 @@ class HomeViewModel @Inject constructor(
                         cycleStart = existing?.cycleStart,
                         cycleStartedAt = existing?.cycleStartedAt,
                         incomeTransactionId = incomeTransactionId,
-                        closingDays = closingDays,
+                        closingDays = existing?.closingDays ?: listOf(15),
                     )
                 )
                 updateAllFinanceWidgets(context)

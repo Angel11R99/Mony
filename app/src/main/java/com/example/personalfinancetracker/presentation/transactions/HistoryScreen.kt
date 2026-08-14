@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
@@ -90,7 +89,6 @@ internal enum class HistorySort(val label: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
-    onBack: () -> Unit,
     onEdit: (Long, TransactionType) -> Unit,
     onSettings: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel(),
@@ -125,11 +123,6 @@ fun HistoryScreen(
         topBar = {
             TopAppBar(
                 title = { ModuleTitle("MOVIMIENTOS") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver")
-                    }
-                },
                 actions = {
                     GlobalSettingsButton(onClick = onSettings)
                     Spacer(Modifier.width(14.dp))

@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
             val cyclePreferences = remember { CyclePreferences(applicationContext) }
             val appearance by appearancePreferences.settings.collectAsStateWithLifecycle()
             val automaticCycleClose by cyclePreferences.automaticClose.collectAsStateWithLifecycle()
+            val automaticCloseTime by cyclePreferences.automaticCloseTime.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
             val useDarkTheme = when (appearance.themeMode) {
                 AppThemeMode.SYSTEM -> systemDark
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
                         initialType = initialType,
                         appearance = appearance,
                         automaticCycleClose = automaticCycleClose,
+                        automaticCloseTime = automaticCloseTime,
                         onThemeChange = {
                             appearancePreferences.setThemeMode(it)
                             lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
@@ -76,6 +78,7 @@ class MainActivity : ComponentActivity() {
                             lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
                         },
                         onAutomaticCycleCloseChange = cyclePreferences::setAutomaticClose,
+                        onAutomaticCloseTimeChange = cyclePreferences::setAutomaticCloseTime,
                     )
                 }
             }

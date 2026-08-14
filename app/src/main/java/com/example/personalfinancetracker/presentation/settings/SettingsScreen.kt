@@ -21,9 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -31,18 +28,24 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,30 +56,51 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntSize
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Schedule
 import com.example.personalfinancetracker.presentation.components.FinanceCard
+import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.ui.theme.AppAppearance
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     appearance: AppAppearance,
     automaticCycleClose: Boolean,
+    automaticCloseTime: LocalTime,
     onBack: () -> Unit,
     onThemeChange: (AppThemeMode) -> Unit,
     onPrimaryChange: (Int) -> Unit,
     onAccentChange: (Int) -> Unit,
     onReset: () -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
+    onAutomaticCloseTimeChange: (LocalTime) -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     var editingColor by remember { mutableStateOf<ColorRole?>(null) }
+    var showingTimePicker by remember { mutableStateOf(false) }
+    var selectedTab by rememberSaveable { mutableStateOf(SettingsTab.APPEARANCE) }
+    val budget by viewModel.budget.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -95,103 +119,41 @@ fun SettingsScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-            contentPadding = PaddingValues(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            item { SectionTitle("TEMA", "Elige cuándo usar la versión clara u oscura.") }
-            item {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    AppThemeMode.entries.forEach { mode ->
-                        FilterChip(
-                            selected = appearance.themeMode == mode,
-                            onClick = { onThemeChange(mode) },
-                            label = { Text(mode.label) },
-                            leadingIcon = if (appearance.themeMode == mode) {
-                                { Icon(Icons.Outlined.Check, null, Modifier.size(17.dp)) }
-                            } else null,
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
-                            shape = MaterialTheme.shapes.small,
-                        )
-                    }
+            TabRow(
+                selectedTabIndex = selectedTab.ordinal,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.primary,
+                divider = {},
+            ) {
+                SettingsTab.entries.forEach { tab ->
+                    Tab(
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab },
+                        text = { Text(tab.label, fontWeight = FontWeight.Bold) },
+                        icon = { Icon(tab.icon, null, Modifier.size(20.dp)) },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
-            item { SectionTitle("CICLOS", "Controla cuándo se cierra el periodo del presupuesto.") }
-            item {
-                FinanceCard(Modifier.fillMaxWidth()) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Cierre automático", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "Cierra el ciclo automáticamente cuando la fecha coincida con uno de tus días de cierre.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = automaticCycleClose,
-                            onCheckedChange = onAutomaticCycleCloseChange,
-                        )
-                    }
-                }
-            }
-            item { SectionTitle("COLORES", "Cada selección genera automáticamente sus tonos cercanos.") }
-            item {
-                ColorRoleCard(
-                    title = "Color principal",
-                    description = "Botones, selección, ingresos y elementos destacados.",
-                    color = Color(appearance.primaryArgb),
-                    family = listOf(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.secondaryContainer,
-                        MaterialTheme.colorScheme.secondary,
-                        MaterialTheme.colorScheme.primary,
-                    ),
-                    onClick = { editingColor = ColorRole.PRIMARY },
+            when (selectedTab) {
+                SettingsTab.APPEARANCE -> AppearanceTab(
+                    appearance = appearance,
+                    onThemeChange = onThemeChange,
+                    onEditPrimary = { editingColor = ColorRole.PRIMARY },
+                    onEditAccent = { editingColor = ColorRole.ACCENT },
+                    onReset = onReset,
                 )
-            }
-            item {
-                ColorRoleCard(
-                    title = "Color secundario",
-                    description = "Gastos, alertas y acciones que requieren atención.",
-                    color = Color(appearance.accentArgb),
-                    family = listOf(
-                        MaterialTheme.colorScheme.errorContainer,
-                        MaterialTheme.colorScheme.error,
-                    ),
-                    onClick = { editingColor = ColorRole.ACCENT },
-                )
-            }
-            item {
-                FinanceCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("VISTA PREVIA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                        Text("RD$25,000.00", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Ingreso", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                            Text("−RD$2,000.00", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-            item {
-                SecondaryButton(
-                    text = "Restaurar apariencia original",
-                    onClick = onReset,
-                    modifier = Modifier.fillMaxWidth(),
+                SettingsTab.CYCLES -> CyclesTab(
+                    automaticCycleClose = automaticCycleClose,
+                    automaticCloseTime = automaticCloseTime,
+                    onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
+                    onPickCloseTime = { showingTimePicker = true },
+                    currentDays = budget?.closingDays ?: listOf(15),
+                    onClosingDaysSave = viewModel::updateClosingDays,
                 )
             }
         }
@@ -209,6 +171,208 @@ fun SettingsScreen(
             },
         )
     }
+
+    if (showingTimePicker) {
+        val pickerState = rememberTimePickerState(
+            initialHour = automaticCloseTime.hour,
+            initialMinute = automaticCloseTime.minute,
+            is24Hour = false,
+        )
+        AlertDialog(
+            onDismissRequest = { showingTimePicker = false },
+            icon = { Icon(Icons.Outlined.Schedule, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Hora del cierre automático") },
+            text = {
+                Column(
+                    Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    TimePicker(state = pickerState)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onAutomaticCloseTimeChange(
+                            LocalTime.of(pickerState.hour, pickerState.minute)
+                        )
+                        showingTimePicker = false
+                    },
+                ) { Text("Aceptar") }
+            },
+            dismissButton = { TextButton(onClick = { showingTimePicker = false }) { Text("Cancelar") } },
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.medium,
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AppearanceTab(
+    appearance: AppAppearance,
+    onThemeChange: (AppThemeMode) -> Unit,
+    onEditPrimary: () -> Unit,
+    onEditAccent: () -> Unit,
+    onReset: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item { SectionTitle("TEMA", "Elige cuándo usar la versión clara u oscura.") }
+        item {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AppThemeMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = appearance.themeMode == mode,
+                        onClick = { onThemeChange(mode) },
+                        label = { Text(mode.label) },
+                        leadingIcon = if (appearance.themeMode == mode) {
+                            { Icon(Icons.Outlined.Check, null, Modifier.size(17.dp)) }
+                        } else null,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                        shape = MaterialTheme.shapes.small,
+                    )
+                }
+            }
+        }
+        item { SectionTitle("COLORES", "Cada selección genera automáticamente sus tonos cercanos.") }
+        item {
+            ColorRoleCard(
+                title = "Color principal",
+                description = "Botones, selección, ingresos y elementos destacados.",
+                color = Color(appearance.primaryArgb),
+                family = listOf(
+                    MaterialTheme.colorScheme.primaryContainer,
+                    MaterialTheme.colorScheme.secondaryContainer,
+                    MaterialTheme.colorScheme.secondary,
+                    MaterialTheme.colorScheme.primary,
+                ),
+                onClick = onEditPrimary,
+            )
+        }
+        item {
+            ColorRoleCard(
+                title = "Color secundario",
+                description = "Gastos, alertas y acciones que requieren atención.",
+                color = Color(appearance.accentArgb),
+                family = listOf(
+                    MaterialTheme.colorScheme.errorContainer,
+                    MaterialTheme.colorScheme.error,
+                ),
+                onClick = onEditAccent,
+            )
+        }
+        item {
+            FinanceCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("VISTA PREVIA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                    Text("RD$25,000.00", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Ingreso", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Text("−RD$2,000.00", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        item {
+            SecondaryButton(
+                text = "Restaurar apariencia original",
+                onClick = onReset,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CyclesTab(
+    automaticCycleClose: Boolean,
+    automaticCloseTime: LocalTime,
+    onAutomaticCycleCloseChange: (Boolean) -> Unit,
+    onPickCloseTime: () -> Unit,
+    currentDays: List<Int>,
+    onClosingDaysSave: (List<Int>) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item { SectionTitle("CICLOS", "Controla cuándo y a qué hora se cierra el periodo del presupuesto.") }
+        item {
+            FinanceCard(Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Cierre automático", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Cierra el ciclo automáticamente cuando la fecha coincida con uno de tus días de cierre.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = automaticCycleClose,
+                            onCheckedChange = onAutomaticCycleCloseChange,
+                        )
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().clickable(onClick = onPickCloseTime),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("Hora del cierre automático", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "El ciclo se cerrará al llegar a esta hora en un día de cierre.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            automaticCloseTime.format(timeFormatter),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+        }
+        item {
+            ClosingDaysCard(
+                currentDays = currentDays,
+                onSave = onClosingDaysSave,
+            )
+        }
+    }
+}
+
+private enum class SettingsTab(val label: String, val icon: ImageVector) {
+    APPEARANCE("Apariencia", Icons.Outlined.Palette),
+    CYCLES("Ciclos", Icons.Outlined.Schedule),
 }
 
 @Composable
@@ -218,6 +382,74 @@ private fun SectionTitle(title: String, description: String) {
         Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+
+@Composable
+private fun ClosingDaysCard(
+    currentDays: List<Int>,
+    onSave: (List<Int>) -> Unit,
+) {
+    var closingDays by remember(currentDays) {
+        mutableStateOf(
+            currentDays.filter { it in 1..31 }.distinct().sorted().ifEmpty { listOf(15) }.map(Int::toString)
+        )
+    }
+    val parsedDays = closingDays.mapNotNull(String::toIntOrNull).filter { it in 1..31 }.distinct()
+    val valid = parsedDays.isNotEmpty() && parsedDays.size == closingDays.size
+
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("DÍAS DE CIERRE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Text(
+                "El ciclo se cierra cuando la fecha coincida con uno de estos días.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            closingDays.forEachIndexed { index, day ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = day,
+                        onValueChange = { newValue ->
+                            closingDays = closingDays.toMutableList()
+                                .also { it[index] = newValue.filter(Char::isDigit).take(2) }
+                        },
+                        label = { Text("Día ${index + 1}") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (closingDays.size > 1) {
+                        IconButton(
+                            onClick = {
+                                closingDays = closingDays.toMutableList().also { it.removeAt(index) }
+                            },
+                        ) { Icon(Icons.Outlined.Close, "Quitar día ${index + 1}") }
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(
+                    onClick = { closingDays = closingDays + "" },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Outlined.Add, null)
+                    Text("Agregar día")
+                }
+                PrimaryButton(
+                    text = "Guardar",
+                    onClick = { onSave(parsedDays.sorted()) },
+                    enabled = valid,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+private val timeFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("h:mm a", Locale.forLanguageTag("es-DO"))
 
 @Composable
 private fun ColorRoleCard(

@@ -10,15 +10,18 @@ import com.example.personalfinancetracker.data.local.dao.BudgetConfigDao
 import com.example.personalfinancetracker.data.local.dao.BudgetCycleDao
 import com.example.personalfinancetracker.data.local.dao.TransactionDao
 import com.example.personalfinancetracker.data.local.dao.FixedEntryDao
+import com.example.personalfinancetracker.data.local.dao.PendingEntryDao
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
 import com.example.personalfinancetracker.data.repository.RoomCategoryRepository
 import com.example.personalfinancetracker.data.repository.RoomBudgetRepository
 import com.example.personalfinancetracker.data.repository.RoomTransactionRepository
 import com.example.personalfinancetracker.data.repository.RoomFixedEntryRepository
+import com.example.personalfinancetracker.data.repository.RoomPendingEntryRepository
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
+import com.example.personalfinancetracker.domain.repository.PendingEntryRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -108,11 +111,37 @@ object DatabaseModule {
         }
     }
 
+    private val migration8To9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS pending_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    type TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    amountInCents INTEGER NOT NULL,
+                    categoryId INTEGER NOT NULL,
+                    dateEpochDay INTEGER NOT NULL,
+                    comment TEXT,
+                    isDone INTEGER NOT NULL,
+                    doneAtEpochMillis INTEGER,
+                    transactionId INTEGER,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    updatedAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(categoryId) REFERENCES categories(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )""".trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_entries_categoryId ON pending_entries(categoryId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_entries_type ON pending_entries(type)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_entries_dateEpochDay ON pending_entries(dateEpochDay)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_entries_isDone ON pending_entries(isDone)")
+        }
+    }
+
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): FinanceDatabase =
         Room.databaseBuilder(context, FinanceDatabase::class.java, "personal_finance.db")
-            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8)
+            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -132,6 +161,7 @@ object DatabaseModule {
     @Provides fun budgetConfigDao(db: FinanceDatabase): BudgetConfigDao = db.budgetConfigDao()
     @Provides fun budgetCycleDao(db: FinanceDatabase): BudgetCycleDao = db.budgetCycleDao()
     @Provides fun fixedEntryDao(db: FinanceDatabase): FixedEntryDao = db.fixedEntryDao()
+    @Provides fun pendingEntryDao(db: FinanceDatabase): PendingEntryDao = db.pendingEntryDao()
 
     private val initialCategories = listOf(
         Triple("Salario", "INCOME", "payments"),
@@ -165,4 +195,5 @@ abstract class RepositoryModule {
     @Binds abstract fun categories(implementation: RoomCategoryRepository): CategoryRepository
     @Binds abstract fun budget(implementation: RoomBudgetRepository): BudgetRepository
     @Binds abstract fun fixedEntries(implementation: RoomFixedEntryRepository): FixedEntryRepository
+    @Binds abstract fun pendingEntries(implementation: RoomPendingEntryRepository): PendingEntryRepository
 }

@@ -18,14 +18,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
@@ -63,10 +60,13 @@ import com.example.personalfinancetracker.presentation.components.TransactionDet
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 @Composable
 fun HomeScreen(
     automaticCycleClose: Boolean,
+    automaticCloseTime: LocalTime,
     onAdd: (TransactionType) -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
@@ -81,8 +81,8 @@ fun HomeScreen(
     var showingHistory by remember { mutableStateOf(false) }
     var selectedTransaction by remember { mutableStateOf<com.example.personalfinancetracker.domain.model.FinanceTransaction?>(null) }
 
-    LaunchedEffect(automaticCycleClose, state.budget?.cycleStart, state.budget?.period) {
-        if (automaticCycleClose && shouldAutomaticallyCloseBudgetCycle(state.budget, today)) {
+    LaunchedEffect(automaticCycleClose, automaticCloseTime, state.budget?.cycleStart, state.budget?.period) {
+        if (automaticCycleClose && shouldAutomaticallyCloseBudgetCycle(state.budget, LocalDateTime.now(), automaticCloseTime)) {
             viewModel.closeCurrentCycle {}
         }
     }
@@ -211,10 +211,9 @@ fun HomeScreen(
         BudgetDialog(
             currentAmount = state.budget?.amountInCents,
             currentPeriod = state.budget?.period ?: BudgetPeriod.FORTNIGHTLY,
-            currentClosingDays = state.budget?.closingDays ?: listOf(15),
             onDismiss = { editingBudget = false },
-            onSave = { amount, period, closingDays ->
-                viewModel.saveBudget(amount, period, closingDays) { editingBudget = false }
+            onSave = { amount, period ->
+                viewModel.saveBudget(amount, period) { editingBudget = false }
             },
         )
     }
@@ -352,23 +351,15 @@ private fun HistoryAmount(label: String, amount: Long, isExpense: Boolean = fals
 private fun BudgetDialog(
     currentAmount: Long?,
     currentPeriod: BudgetPeriod,
-    currentClosingDays: List<Int>,
     onDismiss: () -> Unit,
-    onSave: (String, BudgetPeriod, List<Int>) -> Unit,
+    onSave: (String, BudgetPeriod) -> Unit,
 ) {
     val context = LocalContext.current
     var amount by remember(currentAmount) {
         mutableStateOf(currentAmount?.let { java.math.BigDecimal.valueOf(it, 2).stripTrailingZeros().toPlainString() }.orEmpty())
     }
     var period by remember(currentPeriod) { mutableStateOf(currentPeriod) }
-    var closingDays by remember(currentClosingDays) {
-        mutableStateOf(
-            currentClosingDays.filter { it in 1..31 }.distinct().sorted().ifEmpty { listOf(15) }.map(Int::toString)
-        )
-    }
-    val parsedDays = closingDays.mapNotNull(String::toIntOrNull).filter { it in 1..31 }.distinct()
-    val valid = MoneyFormatter.parseToCents(amount)?.let { it > 0 } == true &&
-        parsedDays.isNotEmpty() && parsedDays.size == closingDays.size
+    val valid = MoneyFormatter.parseToCents(amount)?.let { it > 0 } == true
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -383,7 +374,7 @@ private fun BudgetDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    "Indica cuánto ganas, el periodo que quieres controlar y en qué días se cierra el ciclo.",
+                    "Indica cuánto ganas y el periodo que quieres controlar. Los días y la hora de cierre se configuran en Ajustes.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 FinanceTextField(
@@ -407,54 +398,14 @@ private fun BudgetDialog(
                         Text(if (option == BudgetPeriod.MONTHLY) "Mensual" else "Quincenal", style = MaterialTheme.typography.labelLarge)
                     }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("DÍAS DE CIERRE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                    Text(
-                        "El ciclo se cierra manual o automáticamente (si activas la opción) cuando la fecha coincida con uno de estos días.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    closingDays.forEachIndexed { index, day ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            OutlinedTextField(
-                                value = day,
-                                onValueChange = { newValue ->
-                                    closingDays = closingDays.toMutableList()
-                                        .also { it[index] = newValue.filter(Char::isDigit).take(2) }
-                                },
-                                label = { Text("Día ${index + 1}") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f),
-                            )
-                            if (closingDays.size > 1) {
-                                IconButton(
-                                    onClick = {
-                                        closingDays = closingDays.toMutableList().also { it.removeAt(index) }
-                                    },
-                                ) { Icon(Icons.Outlined.Close, "Quitar día ${index + 1}") }
-                            }
-                        }
-                    }
-                    TextButton(
-                        onClick = { closingDays = closingDays + "" },
-                        modifier = Modifier.align(Alignment.Start),
-                    ) {
-                        Icon(Icons.Outlined.Add, null)
-                        Text("Agregar día")
-                    }
-                }
             }
         },
         confirmButton = {
             PrimaryButton(
                 text = "Guardar",
                 onClick = {
-                    if (valid) onSave(amount, period, parsedDays.sorted())
-                    else context.showToast("Introduce un monto válido y al menos un día de cierre válido")
+                    if (valid) onSave(amount, period)
+                    else context.showToast("Introduce un monto válido")
                 },
             )
         },

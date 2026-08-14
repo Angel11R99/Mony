@@ -1,7 +1,11 @@
 package com.example.personalfinancetracker.domain.model
 
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.YearMonth
+
+val DEFAULT_AUTOMATIC_CLOSE_TIME: LocalTime = LocalTime.of(21, 0)
 
 fun activeBudgetPeriod(
     budget: BudgetConfig?,
@@ -50,10 +54,11 @@ fun canManuallyCloseBudgetCycle(
 
 fun shouldAutomaticallyCloseBudgetCycle(
     budget: BudgetConfig?,
-    today: LocalDate = LocalDate.now(),
+    now: LocalDateTime = LocalDateTime.now(),
+    closeTime: LocalTime = DEFAULT_AUTOMATIC_CLOSE_TIME,
 ): Boolean {
-    if (budget == null || budget.cycleStart == today) return false
-    return today.dayOfMonth in budget.closingDays
+    if (budget == null || budget.cycleStart == now.toLocalDate()) return false
+    return now.toLocalDate().dayOfMonth in budget.closingDays && !now.toLocalTime().isBefore(closeTime)
 }
 
 fun budgetCyclePeriodToClose(

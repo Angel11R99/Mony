@@ -1,0 +1,619 @@
+package com.example.personalfinancetracker.presentation.pending
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Undo
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.personalfinancetracker.core.MoneyFormatter
+import com.example.personalfinancetracker.core.showToast
+import com.example.personalfinancetracker.domain.model.Category
+import com.example.personalfinancetracker.domain.model.DateRange
+import com.example.personalfinancetracker.domain.model.PendingEntry
+import com.example.personalfinancetracker.domain.model.PendingPeriodFilter
+import com.example.personalfinancetracker.domain.model.PendingType
+import com.example.personalfinancetracker.domain.model.toTransactionType
+import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
+import com.example.personalfinancetracker.presentation.components.FinanceCard
+import com.example.personalfinancetracker.presentation.components.FinanceTextField
+import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
+import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
+import com.example.personalfinancetracker.presentation.components.ModuleTitle
+import com.example.personalfinancetracker.presentation.components.PrimaryButton
+import com.example.personalfinancetracker.presentation.components.SecondaryButton
+import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PendingEntriesScreen(
+    onSettings: () -> Unit,
+    viewModel: PendingEntriesViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val message by viewModel.message.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var selectedType by remember { mutableStateOf(PendingType.PAYMENT) }
+    var periodFilter by remember { mutableStateOf(PendingPeriodFilter.FORTNIGHT) }
+    var editorEntry by remember { mutableStateOf<PendingEntry?>(null) }
+    var showEditor by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<PendingEntry?>(null) }
+
+    val formatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-DO")) }
+
+    val periodRange = remember(periodFilter) {
+        when (periodFilter) {
+            PendingPeriodFilter.FORTNIGHT -> DateRange.currentFortnight()
+            PendingPeriodFilter.MONTH -> DateRange.currentMonth()
+            PendingPeriodFilter.ALL -> null
+        }
+    }
+
+    val visibleEntries = remember(state.entries, selectedType, periodRange) {
+        state.entries
+            .filter { it.type == selectedType }
+            .filter { periodRange == null || it.date in periodRange.start..periodRange.endInclusive }
+            .sortedWith(compareBy<PendingEntry> { it.isDone }.thenBy(PendingEntry::date))
+    }
+    val pendingTotal = remember(visibleEntries) {
+        visibleEntries.filterNot(PendingEntry::isDone).sumOf(PendingEntry::amountInCents)
+    }
+
+    LaunchedEffect(message) {
+        message?.let {
+            context.showToast(it)
+            viewModel.consumeMessage()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { ModuleTitle("PENDIENTES") },
+                actions = {
+                    GlobalOutlinedIconButton(
+                        icon = Icons.Outlined.Add,
+                        contentDescription = "Nuevo pendiente",
+                        onClick = {
+                            editorEntry = null
+                            showEditor = true
+                        },
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    GlobalSettingsButton(onClick = onSettings)
+                    Spacer(Modifier.width(14.dp))
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+                ),
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PendingTypeChip(PendingType.PAYMENT, selectedType, { selectedType = it }, Modifier.weight(1f))
+                    PendingTypeChip(PendingType.COLLECTION, selectedType, { selectedType = it }, Modifier.weight(1f))
+                }
+            }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PendingPeriodChip("Quincena", periodFilter == PendingPeriodFilter.FORTNIGHT, { periodFilter = PendingPeriodFilter.FORTNIGHT }, Modifier.weight(1f))
+                    PendingPeriodChip("Mes", periodFilter == PendingPeriodFilter.MONTH, { periodFilter = PendingPeriodFilter.MONTH }, Modifier.weight(1f))
+                    PendingPeriodChip("Todas", periodFilter == PendingPeriodFilter.ALL, { periodFilter = PendingPeriodFilter.ALL }, Modifier.weight(1f))
+                }
+            }
+            item {
+                PendingSummaryCard(
+                    type = selectedType,
+                    filter = periodFilter,
+                    range = periodRange,
+                    total = pendingTotal,
+                    count = visibleEntries.count { !it.isDone },
+                    formatter = formatter,
+                )
+            }
+            if (visibleEntries.isEmpty()) {
+                item {
+                    FinanceCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(Icons.AutoMirrored.Outlined.PlaylistAdd, null, tint = MaterialTheme.colorScheme.primary)
+                            Text("Todavía no hay pendientes", style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                "Guarda aquí las cosas que piensas pagar o cobrar y ponles la fecha. Aparecerán en la quincena o el mes que elijas.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            PrimaryButton("Crear el primero", {
+                                editorEntry = null
+                                showEditor = true
+                            }, Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            }
+            items(visibleEntries, key = PendingEntry::id) { entry ->
+                PendingEntryCard(
+                    entry = entry,
+                    category = state.categories[entry.categoryId],
+                    formatter = formatter,
+                    onToggleDone = { viewModel.toggleDone(entry) },
+                    onEdit = {
+                        editorEntry = entry
+                        showEditor = true
+                    },
+                    onDelete = { pendingDelete = entry },
+                )
+            }
+        }
+    }
+
+    if (showEditor) {
+        PendingEntryDialog(
+            entry = editorEntry,
+            initialType = editorEntry?.type ?: selectedType,
+            categories = state.categories.values.toList(),
+            onDismiss = { showEditor = false },
+            onSave = { type, description, amount, categoryId, comment, date ->
+                viewModel.save(editorEntry, type, description, amount, categoryId, comment, date) {
+                    selectedType = type
+                    showEditor = false
+                }
+            },
+        )
+    }
+
+    pendingDelete?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("¿Eliminar pendiente?") },
+            text = { Text("${entry.description} dejará de aparecer en Pendientes. Los movimientos ya registrados no se borrarán.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.delete(entry)
+                    pendingDelete = null
+                }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancelar") } },
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.medium,
+        )
+    }
+}
+
+@Composable
+private fun PendingTypeChip(
+    type: PendingType,
+    selectedType: PendingType,
+    onSelect: (PendingType) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FilterChip(
+        selected = selectedType == type,
+        onClick = { onSelect(type) },
+        label = { Text(if (type == PendingType.PAYMENT) "Pagos" else "Cobros") },
+        modifier = modifier,
+        shape = MaterialTheme.shapes.small,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selectedType == type,
+            borderColor = MaterialTheme.colorScheme.outline,
+            selectedBorderColor = MaterialTheme.colorScheme.primary,
+        ),
+    )
+}
+
+@Composable
+private fun PendingPeriodChip(
+    label: String,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onSelect,
+        label = { Text(label) },
+        modifier = modifier,
+        shape = MaterialTheme.shapes.small,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.secondary,
+            selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
+            borderColor = MaterialTheme.colorScheme.outline,
+            selectedBorderColor = MaterialTheme.colorScheme.secondary,
+        ),
+    )
+}
+
+@Composable
+private fun PendingSummaryCard(
+    type: PendingType,
+    filter: PendingPeriodFilter,
+    range: DateRange?,
+    total: Long,
+    count: Int,
+    formatter: DateTimeFormatter,
+) {
+    val periodTitle = when (filter) {
+        PendingPeriodFilter.FORTNIGHT -> "QUINCENA ACTUAL"
+        PendingPeriodFilter.MONTH -> "MES ACTUAL"
+        PendingPeriodFilter.ALL -> "TODOS LOS PENDIENTES"
+    }
+    val periodSubtitle = range?.let {
+        "${it.start.format(formatter)} – ${it.endInclusive.format(formatter)}"
+    } ?: "Sin filtro de fecha"
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                periodTitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            Text(
+                if (type == PendingType.PAYMENT) "PAGOS PENDIENTES" else "COBROS PENDIENTES",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                MoneyFormatter.format(total),
+                style = MaterialTheme.typography.headlineMedium,
+                color = if (type == PendingType.PAYMENT) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                "$count pendiente${if (count == 1) "" else "s"} · $periodSubtitle",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PendingEntryCard(
+    entry: PendingEntry,
+    category: Category?,
+    formatter: DateTimeFormatter,
+    onToggleDone: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(entry.description, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        category?.name ?: "Sin categoría",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+                PendingStatusBadge(entry)
+            }
+            Text(
+                MoneyFormatter.format(entry.amountInCents),
+                style = MaterialTheme.typography.headlineMedium,
+                color = if (entry.type == PendingType.PAYMENT) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Outlined.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    entry.date.format(formatter) +
+                        (entry.doneAt?.let { " · HECHO ${it.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter)}" } ?: ""),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (entry.isDone) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            entry.comment?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                PrimaryButton(
+                    text = if (entry.isDone) "Reabrir" else "Marcar hecho",
+                    onClick = onToggleDone,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Editar") }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingStatusBadge(entry: PendingEntry) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = if (entry.isDone) MaterialTheme.colorScheme.secondaryContainer
+        else MaterialTheme.colorScheme.primaryContainer,
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                if (entry.isDone) Icons.Outlined.CheckCircle else Icons.Outlined.Undo,
+                contentDescription = null,
+                tint = if (entry.isDone) MaterialTheme.colorScheme.onSecondaryContainer
+                else MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                if (entry.isDone) "HECHO" else "PENDIENTE",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (entry.isDone) MaterialTheme.colorScheme.onSecondaryContainer
+                else MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PendingEntryDialog(
+    entry: PendingEntry?,
+    initialType: PendingType,
+    categories: List<Category>,
+    onDismiss: () -> Unit,
+    onSave: (PendingType, String, String, Long?, String, LocalDate) -> Unit,
+) {
+    var type by remember(entry) { mutableStateOf(entry?.type ?: initialType) }
+    var description by remember(entry) { mutableStateOf(entry?.description.orEmpty()) }
+    var amount by remember(entry) {
+        mutableStateOf(entry?.amountInCents?.let { java.math.BigDecimal.valueOf(it, 2).stripTrailingZeros().toPlainString() }.orEmpty())
+    }
+    var categoryId by remember(entry) { mutableStateOf(entry?.categoryId) }
+    var comment by remember(entry) { mutableStateOf(entry?.comment.orEmpty()) }
+    var date by remember(entry) { mutableStateOf(entry?.date ?: LocalDate.now()) }
+    var categoryExpanded by remember { mutableStateOf(false) }
+    var categorySearch by remember(entry, categories) {
+        mutableStateOf(categories.firstOrNull { it.id == entry?.categoryId }?.name.orEmpty())
+    }
+    val availableCategories = remember(categories, type) {
+        categories.filter { it.type == type.toTransactionType() && it.isActive }.sortedBy(Category::name)
+    }
+    val matchingCategories = remember(availableCategories, categorySearch, categoryId) {
+        if (categoryId != null) availableCategories
+        else availableCategories.filter { it.name.contains(categorySearch.trim(), ignoreCase = true) }
+    }
+
+    LaunchedEffect(type) {
+        if (availableCategories.none { it.id == categoryId }) {
+            categoryId = null
+            categorySearch = ""
+        }
+        categoryExpanded = false
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (entry == null) "Nuevo pendiente" else "Editar pendiente") },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PendingTypeChip(PendingType.PAYMENT, type, { type = it }, Modifier.weight(1f))
+                        PendingTypeChip(PendingType.COLLECTION, type, { type = it }, Modifier.weight(1f))
+                    }
+                }
+                item { FinanceTextField(description, { description = it }, "Descripción", singleLine = true) }
+                item {
+                    FinanceTextField(
+                        amount,
+                        { amount = sanitizeAmountInput(it) },
+                        "Monto (RD$)",
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        visualTransformation = AmountVisualTransformation,
+                    )
+                }
+                item {
+                    ExposedDropdownMenuBox(
+                        expanded = categoryExpanded,
+                        onExpandedChange = { categoryExpanded = it },
+                    ) {
+                        OutlinedTextField(
+                            value = categorySearch,
+                            onValueChange = { value ->
+                                categorySearch = value
+                                categoryId = null
+                                categoryExpanded = true
+                            },
+                            label = { Text("Buscar categoría") },
+                            placeholder = { Text("Escribe o selecciona") },
+                            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                            trailingIcon = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (categorySearch.isNotBlank() || categoryId != null) {
+                                        IconButton(
+                                            onClick = {
+                                                categorySearch = ""
+                                                categoryId = null
+                                                categoryExpanded = true
+                                            },
+                                            modifier = Modifier.size(32.dp),
+                                        ) {
+                                            Icon(
+                                                Icons.Outlined.Close,
+                                                contentDescription = "Limpiar categoría",
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        }
+                                    }
+                                    ExposedDropdownMenuDefaults.TrailingIcon(categoryExpanded)
+                                }
+                            },
+                            modifier = Modifier
+                                .menuAnchor(MenuAnchorType.PrimaryEditable)
+                                .fillMaxWidth(),
+                            shape = MaterialTheme.shapes.small,
+                            singleLine = true,
+                        )
+                        ExposedDropdownMenu(
+                            expanded = categoryExpanded,
+                            onDismissRequest = { categoryExpanded = false },
+                            modifier = Modifier.heightIn(max = 240.dp),
+                        ) {
+                            matchingCategories.forEach { category ->
+                                DropdownMenuItem(
+                                    text = { Text(category.name) },
+                                    onClick = {
+                                        categorySearch = category.name
+                                        categoryId = category.id
+                                        categoryExpanded = false
+                                    },
+                                )
+                            }
+                            if (matchingCategories.isEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("No se encontraron categorías") },
+                                    onClick = {},
+                                    enabled = false,
+                                )
+                            }
+                        }
+                    }
+                }
+                item {
+                    PendingDateField(
+                        label = "Fecha del pago o cobro",
+                        value = date,
+                        onValueChange = { date = it },
+                    )
+                }
+                item { FinanceTextField(comment, { comment = it }, "Comentario", placeholder = "Opcional") }
+            }
+        },
+        confirmButton = {
+            PrimaryButton("Guardar", { onSave(type, description, amount, categoryId, comment, date) })
+        },
+        dismissButton = { SecondaryButton("Cancelar", onDismiss) },
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PendingDateField(label: String, value: LocalDate, onValueChange: (LocalDate) -> Unit) {
+    var showPicker by remember { mutableStateOf(false) }
+    val formatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    Surface(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+            .clickable(role = Role.Button) { showPicker = true },
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                Text(value.format(formatter))
+            }
+            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+    if (showPicker) {
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = value.toEpochDay() * MILLIS_PER_DAY)
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { onValueChange(LocalDate.ofEpochDay(it / MILLIS_PER_DAY)) }
+                    showPicker = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = { TextButton(onClick = { showPicker = false }) { Text("Cancelar") } },
+        ) { DatePicker(pickerState) }
+    }
+}
+
+private const val MILLIS_PER_DAY = 86_400_000L

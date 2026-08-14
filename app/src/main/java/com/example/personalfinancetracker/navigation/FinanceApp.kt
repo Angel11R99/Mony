@@ -22,22 +22,26 @@ import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.presentation.home.HomeScreen
 import com.example.personalfinancetracker.presentation.statistics.StatisticsScreen
 import com.example.personalfinancetracker.presentation.fixed.FixedEntriesScreen
+import com.example.personalfinancetracker.presentation.pending.PendingEntriesScreen
 import com.example.personalfinancetracker.presentation.transactions.AddTransactionScreen
 import com.example.personalfinancetracker.presentation.transactions.HistoryScreen
 import com.example.personalfinancetracker.presentation.settings.SettingsScreen
 import com.example.personalfinancetracker.ui.theme.AppAppearance
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
+import java.time.LocalTime
 
 @Composable
 fun FinanceApp(
     initialType: TransactionType? = null,
     appearance: AppAppearance,
     automaticCycleClose: Boolean,
+    automaticCloseTime: LocalTime,
     onThemeChange: (AppThemeMode) -> Unit,
     onPrimaryChange: (Int) -> Unit,
     onAccentChange: (Int) -> Unit,
     onResetAppearance: () -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
+    onAutomaticCloseTimeChange: (LocalTime) -> Unit,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -65,6 +69,7 @@ fun FinanceApp(
             composable("home") {
                 HomeScreen(
                     automaticCycleClose = automaticCycleClose,
+                    automaticCloseTime = automaticCloseTime,
                     onAdd = { navigateToModule("add/${it.name}") },
                     onHistory = { navigateToModule("history") },
                     onSettings = { navController.navigate("settings") },
@@ -93,9 +98,6 @@ fun FinanceApp(
             }
             composable("history") {
                 HistoryScreen(
-                    onBack = {
-                        if (!navController.popBackStack()) navigateToModule("home")
-                    },
                     onEdit = { id, type ->
                         navController.navigate("edit/${type.name}/$id")
                     },
@@ -108,16 +110,21 @@ fun FinanceApp(
             composable("fixed") {
                 FixedEntriesScreen(onSettings = { navController.navigate("settings") })
             }
+            composable("pending") {
+                PendingEntriesScreen(onSettings = { navController.navigate("settings") })
+            }
             composable("settings") {
                 SettingsScreen(
                     appearance = appearance,
                     automaticCycleClose = automaticCycleClose,
+                    automaticCloseTime = automaticCloseTime,
                     onBack = { navController.popBackStack() },
                     onThemeChange = onThemeChange,
                     onPrimaryChange = onPrimaryChange,
                     onAccentChange = onAccentChange,
                     onReset = onResetAppearance,
                     onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
+                    onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
                 )
             }
         }

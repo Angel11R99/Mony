@@ -16,6 +16,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 class BudgetCycleTest {
     private val today = LocalDate.of(2026, 8, 13)
@@ -80,7 +82,7 @@ class BudgetCycleTest {
         val config = BudgetConfig(100_000, BudgetPeriod.FORTNIGHTLY)
 
         assertTrue(canManuallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 15)))
-        assertTrue(shouldAutomaticallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 15)))
+        assertTrue(shouldAutomaticallyCloseBudgetCycle(config, LocalDateTime.of(2026, 8, 15, 21, 0)))
         assertFalse(canManuallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 16)))
     }
 
@@ -91,9 +93,57 @@ class BudgetCycleTest {
             closingDays = listOf(1, 16),
         )
 
-        assertTrue(shouldAutomaticallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 1)))
-        assertTrue(shouldAutomaticallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 16)))
-        assertFalse(shouldAutomaticallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 31)))
+        assertTrue(shouldAutomaticallyCloseBudgetCycle(config, LocalDateTime.of(2026, 8, 1, 21, 0)))
+        assertTrue(shouldAutomaticallyCloseBudgetCycle(config, LocalDateTime.of(2026, 8, 16, 21, 0)))
+        assertFalse(shouldAutomaticallyCloseBudgetCycle(config, LocalDateTime.of(2026, 8, 31, 21, 0)))
+    }
+
+    @Test fun `automatic close waits until the configured time`() {
+        val config = BudgetConfig(
+            100_000,
+            BudgetPeriod.FORTNIGHTLY,
+            closingDays = listOf(1, 16),
+        )
+
+        assertFalse(shouldAutomaticallyCloseBudgetCycle(
+            config,
+            LocalDateTime.of(2026, 8, 16, 8, 0),
+            LocalTime.of(21, 0),
+        ))
+        assertTrue(shouldAutomaticallyCloseBudgetCycle(
+            config,
+            LocalDateTime.of(2026, 8, 16, 21, 0),
+            LocalTime.of(21, 0),
+        ))
+        assertTrue(shouldAutomaticallyCloseBudgetCycle(
+            config,
+            LocalDateTime.of(2026, 8, 16, 23, 59),
+            LocalTime.of(21, 0),
+        ))
+        assertFalse(shouldAutomaticallyCloseBudgetCycle(
+            config,
+            LocalDateTime.of(2026, 8, 16, 8, 59),
+            LocalTime.of(9, 0),
+        ))
+    }
+
+    @Test fun `automatic close respects a custom close time`() {
+        val config = BudgetConfig(
+            100_000,
+            BudgetPeriod.FORTNIGHTLY,
+            closingDays = listOf(15),
+        )
+
+        assertFalse(shouldAutomaticallyCloseBudgetCycle(
+            config,
+            LocalDateTime.of(2026, 8, 15, 14, 59),
+            LocalTime.of(15, 0),
+        ))
+        assertTrue(shouldAutomaticallyCloseBudgetCycle(
+            config,
+            LocalDateTime.of(2026, 8, 15, 15, 0),
+            LocalTime.of(15, 0),
+        ))
     }
 
     @Test fun `closing on sixteenth archives period since previous closing day`() {

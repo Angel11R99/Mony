@@ -5,6 +5,7 @@ import com.example.personalfinancetracker.data.local.dao.BudgetConfigDao
 import com.example.personalfinancetracker.data.local.dao.BudgetCycleDao
 import com.example.personalfinancetracker.data.local.dao.TransactionDao
 import com.example.personalfinancetracker.data.local.dao.FixedEntryDao
+import com.example.personalfinancetracker.data.local.dao.PendingEntryDao
 import com.example.personalfinancetracker.data.local.entity.BudgetConfigEntity
 import com.example.personalfinancetracker.data.local.entity.BudgetCycleEntity
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
@@ -17,10 +18,12 @@ import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.DateRange
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.domain.model.PendingEntry
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
+import com.example.personalfinancetracker.domain.repository.PendingEntryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import androidx.room.withTransaction
@@ -82,6 +85,30 @@ class RoomFixedEntryRepository @Inject constructor(
         transactionDao.insert(transaction.toEntity())
         dao.upsert(entry.toEntity())
         Unit
+    }
+    override suspend fun delete(id: Long) = dao.delete(id)
+}
+
+class RoomPendingEntryRepository @Inject constructor(
+    private val dao: PendingEntryDao,
+    private val transactionDao: TransactionDao,
+    private val database: FinanceDatabase,
+) : PendingEntryRepository {
+    override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
+    override suspend fun save(entry: PendingEntry) = dao.upsert(entry.toEntity())
+    override suspend fun complete(entry: PendingEntry, transaction: FinanceTransaction) {
+        database.withTransaction {
+            val transactionId = transactionDao.insert(transaction.toEntity())
+            dao.upsert(
+                entry.copy(isDone = true, doneAt = transaction.createdAt, transactionId = transactionId).toEntity()
+            )
+        }
+    }
+    override suspend fun reopen(entry: PendingEntry) {
+        database.withTransaction {
+            entry.transactionId?.let { transactionDao.delete(it) }
+            dao.upsert(entry.copy(isDone = false, doneAt = null, transactionId = null).toEntity())
+        }
     }
     override suspend fun delete(id: Long) = dao.delete(id)
 }

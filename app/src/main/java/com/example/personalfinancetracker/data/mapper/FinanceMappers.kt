@@ -3,12 +3,15 @@ package com.example.personalfinancetracker.data.mapper
 import com.example.personalfinancetracker.data.local.entity.CategoryEntity
 import com.example.personalfinancetracker.data.local.entity.TransactionEntity
 import com.example.personalfinancetracker.data.local.entity.FixedEntryEntity
+import com.example.personalfinancetracker.data.local.entity.PendingEntryEntity
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.FixedEntry
 import com.example.personalfinancetracker.domain.model.FixedDateMode
 import com.example.personalfinancetracker.domain.model.FixedScheduleMode
+import com.example.personalfinancetracker.domain.model.PendingEntry
+import com.example.personalfinancetracker.domain.model.PendingType
 import java.time.Instant
 import java.time.LocalDate
 
@@ -72,4 +75,34 @@ fun FixedEntry.toEntity() = FixedEntryEntity(
     nextRunAtEpochMillis = nextRunAt?.toEpochMilli(),
     lastAddedAtEpochMillis = lastAddedAt?.toEpochMilli(),
     lastAddedDateEpochDay = lastAddedDate?.toEpochDay(),
+)
+
+fun PendingEntryEntity.toDomain() = PendingEntry(
+    id = id,
+    type = PendingType.valueOf(type),
+    description = description,
+    amountInCents = amountInCents,
+    categoryId = categoryId,
+    date = LocalDate.ofEpochDay(dateEpochDay),
+    comment = comment,
+    isDone = isDone,
+    doneAt = doneAtEpochMillis?.let(Instant::ofEpochMilli),
+    transactionId = transactionId,
+    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+)
+
+fun PendingEntry.toEntity() = PendingEntryEntity(
+    id = id,
+    type = type.name,
+    description = description,
+    amountInCents = amountInCents,
+    categoryId = categoryId,
+    dateEpochDay = date.toEpochDay(),
+    comment = comment,
+    isDone = isDone,
+    doneAtEpochMillis = doneAt?.toEpochMilli(),
+    transactionId = transactionId,
+    createdAtEpochMillis = createdAt.toEpochMilli(),
+    updatedAtEpochMillis = updatedAt.toEpochMilli(),
 )
