@@ -47,3 +47,15 @@ fun pendingReminderInstant(
     time: LocalTime,
     zoneId: ZoneId = ZoneId.systemDefault(),
 ): Instant = date.atTime(time).atZone(zoneId).toInstant()
+
+fun isPendingReminderInFuture(
+    date: LocalDate,
+    time: LocalTime,
+    now: Instant = Instant.now(),
+    zoneId: ZoneId = ZoneId.systemDefault(),
+): Boolean = pendingReminderInstant(date, time, zoneId).isAfter(now)
+
+fun isPendingDateValid(
+    date: LocalDate,
+    today: LocalDate = LocalDate.now(),
+): Boolean = !date.isBefore(today)

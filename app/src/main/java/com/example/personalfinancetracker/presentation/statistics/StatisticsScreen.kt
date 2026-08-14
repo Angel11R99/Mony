@@ -131,7 +131,7 @@ fun StatisticsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { ModuleTitle("ESTADÍSTICAS") },
+                title = { ModuleTitle("Estadísticas") },
                 actions = {
                     GlobalSettingsButton(onClick = onSettings)
                     Spacer(Modifier.width(14.dp))

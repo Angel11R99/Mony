@@ -1,13 +1,19 @@
 package com.example.personalfinancetracker.presentation.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
@@ -22,16 +28,16 @@ import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun PrimaryButton(
@@ -137,22 +143,33 @@ fun GlobalOutlinedIconButton(
 
 @Composable
 fun ModuleTitle(text: String) {
-    Surface(
+    Row(
         modifier = Modifier.height(54.dp),
-        color = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.primary,
-        shape = MaterialTheme.shapes.small,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            contentAlignment = Alignment.Center,
+        Spacer(
+            modifier = Modifier
+                .width(5.dp)
+                .fillMaxHeight()
+                .clip(MaterialTheme.shapes.extraSmall)
+                .background(MaterialTheme.colorScheme.primary),
+        )
+        Column(
+            modifier = Modifier.fillMaxHeight().padding(start = 10.dp, end = 8.dp),
+            verticalArrangement = Arrangement.Center,
         ) {
             Text(
+                text = "MÓDULO",
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.4.sp),
+                color = MaterialTheme.colorScheme.secondary,
+                maxLines = 1,
+            )
+            Text(
                 text = text,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

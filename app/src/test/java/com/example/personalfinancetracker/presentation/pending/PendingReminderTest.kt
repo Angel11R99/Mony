@@ -1,7 +1,11 @@
 package com.example.personalfinancetracker.presentation.pending
 
 import com.example.personalfinancetracker.domain.model.pendingReminderInstant
+import com.example.personalfinancetracker.domain.model.isPendingReminderInFuture
+import com.example.personalfinancetracker.domain.model.isPendingDateValid
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
@@ -18,5 +22,22 @@ class PendingReminderTest {
                 zoneId = ZoneId.of("America/Santo_Domingo"),
             ),
         )
+    }
+
+    @Test fun `rejects past dates and times but accepts a future time today`() {
+        val zone = ZoneId.of("America/Santo_Domingo")
+        val now = Instant.parse("2026-08-29T12:00:00Z")
+
+        assertFalse(isPendingReminderInFuture(LocalDate.of(2026, 8, 28), LocalTime.of(8, 0), now, zone))
+        assertFalse(isPendingReminderInFuture(LocalDate.of(2026, 8, 29), LocalTime.of(7, 59), now, zone))
+        assertTrue(isPendingReminderInFuture(LocalDate.of(2026, 8, 29), LocalTime.of(8, 1), now, zone))
+    }
+
+    @Test fun `pending date accepts today and future but rejects past days`() {
+        val today = LocalDate.of(2026, 8, 29)
+
+        assertFalse(isPendingDateValid(today.minusDays(1), today))
+        assertTrue(isPendingDateValid(today, today))
+        assertTrue(isPendingDateValid(today.plusDays(1), today))
     }
 }

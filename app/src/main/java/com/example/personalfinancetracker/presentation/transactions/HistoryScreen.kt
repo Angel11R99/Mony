@@ -122,7 +122,7 @@ fun HistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { ModuleTitle("MOVIMIENTOS") },
+                title = { ModuleTitle("Movimientos") },
                 actions = {
                     GlobalSettingsButton(onClick = onSettings)
                     Spacer(Modifier.width(14.dp))

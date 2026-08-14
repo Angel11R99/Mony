@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -33,7 +34,6 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -49,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -79,6 +80,8 @@ import com.example.personalfinancetracker.domain.model.DateRange
 import com.example.personalfinancetracker.domain.model.PendingEntry
 import com.example.personalfinancetracker.domain.model.PendingPeriodFilter
 import com.example.personalfinancetracker.domain.model.PendingType
+import com.example.personalfinancetracker.domain.model.isPendingReminderInFuture
+import com.example.personalfinancetracker.domain.model.isPendingDateValid
 import com.example.personalfinancetracker.domain.model.toTransactionType
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceCard
@@ -153,7 +156,7 @@ fun PendingEntriesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { ModuleTitle("PENDIENTES") },
+                title = { ModuleTitle("Pendientes") },
                 actions = {
                     GlobalOutlinedIconButton(
                         icon = Icons.Outlined.Add,
@@ -455,7 +458,7 @@ private fun PendingStatusBadge(entry: PendingEntry) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                if (entry.isDone) Icons.Outlined.CheckCircle else Icons.Outlined.Undo,
+                if (entry.isDone) Icons.Outlined.CheckCircle else Icons.AutoMirrored.Outlined.Undo,
                 contentDescription = null,
                 tint = if (entry.isDone) MaterialTheme.colorScheme.onSecondaryContainer
                 else MaterialTheme.colorScheme.onPrimaryContainer,
@@ -609,11 +612,13 @@ private fun PendingEntryDialog(
                     PendingDateField(
                         label = "Fecha del pago o cobro",
                         value = date,
+                        minimumDate = LocalDate.now(),
                         onValueChange = { date = it },
                     )
                 }
                 item {
                     PendingReminderField(
+                        date = date,
                         value = reminderTime,
                         notificationsGranted = notificationsGranted,
                         onRequestNotificationPermission = onRequestNotificationPermission,
@@ -639,15 +644,21 @@ private fun PendingEntryDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PendingReminderField(
+    date: LocalDate,
     value: LocalTime?,
     notificationsGranted: Boolean,
     onRequestNotificationPermission: () -> Unit,
     onValueChange: (LocalTime?) -> Unit,
 ) {
     var showPicker by remember { mutableStateOf(false) }
+    var errorMessage by remember(date, value) { mutableStateOf<String?>(null) }
     Surface(
         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
             .clickable(role = Role.Button) {
+                if (!isPendingDateValid(date)) {
+                    errorMessage = "Selecciona hoy o una fecha futura para activar la alerta"
+                    return@clickable
+                }
                 if (!notificationsGranted) onRequestNotificationPermission()
                 showPicker = true
             },
@@ -668,6 +679,9 @@ private fun PendingReminderField(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
+                }
+                errorMessage?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
             if (value != null) {
@@ -691,8 +705,15 @@ private fun PendingReminderField(
             text = { TimePicker(pickerState) },
             confirmButton = {
                 TextButton(onClick = {
-                    onValueChange(LocalTime.of(pickerState.hour, pickerState.minute))
-                    showPicker = false
+                    val selectedTime = LocalTime.of(pickerState.hour, pickerState.minute)
+                    if (isPendingReminderInFuture(date, selectedTime)) {
+                        errorMessage = null
+                        onValueChange(selectedTime)
+                        showPicker = false
+                    } else {
+                        errorMessage = "Elige una hora que todavía no haya pasado"
+                        showPicker = false
+                    }
                 }) { Text("Aceptar") }
             },
             dismissButton = { TextButton(onClick = { showPicker = false }) { Text("Cancelar") } },
@@ -704,7 +725,12 @@ private fun PendingReminderField(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PendingDateField(label: String, value: LocalDate, onValueChange: (LocalDate) -> Unit) {
+private fun PendingDateField(
+    label: String,
+    value: LocalDate,
+    minimumDate: LocalDate? = null,
+    onValueChange: (LocalDate) -> Unit,
+) {
     var showPicker by remember { mutableStateOf(false) }
     val formatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     Surface(
@@ -726,7 +752,17 @@ private fun PendingDateField(label: String, value: LocalDate, onValueChange: (Lo
         }
     }
     if (showPicker) {
-        val pickerState = rememberDatePickerState(initialSelectedDateMillis = value.toEpochDay() * MILLIS_PER_DAY)
+        val selectableDates = remember(minimumDate) {
+            object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                    minimumDate == null ||
+                        LocalDate.ofEpochDay(utcTimeMillis / MILLIS_PER_DAY) >= minimumDate
+            }
+        }
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = value.toEpochDay() * MILLIS_PER_DAY,
+            selectableDates = selectableDates,
+        )
         DatePickerDialog(
             onDismissRequest = { showPicker = false },
             confirmButton = {

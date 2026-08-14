@@ -9,7 +9,8 @@ import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.PendingEntry
 import com.example.personalfinancetracker.domain.model.PendingType
 import com.example.personalfinancetracker.domain.model.label
-import com.example.personalfinancetracker.domain.model.pendingReminderInstant
+import com.example.personalfinancetracker.domain.model.isPendingReminderInFuture
+import com.example.personalfinancetracker.domain.model.isPendingDateValid
 import com.example.personalfinancetracker.domain.model.toTransactionType
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.PendingEntryRepository
@@ -65,7 +66,8 @@ class PendingEntriesViewModel @Inject constructor(
             description.isBlank() -> message.value = "Escribe una descripción"
             cents == null || cents <= 0 -> message.value = "Introduce un monto válido"
             categoryId == null -> message.value = "Selecciona una categoría"
-            reminderTime != null && !pendingReminderInstant(date, reminderTime).isAfter(now) ->
+            !isPendingDateValid(date) -> message.value = "La fecha del pendiente no puede haber pasado"
+            reminderTime != null && !isPendingReminderInFuture(date, reminderTime, now) ->
                 message.value = "La fecha y hora de la alerta deben estar en el futuro"
             else -> viewModelScope.launch {
                 isSaving.value = true

@@ -118,7 +118,7 @@ fun FixedEntriesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { ModuleTitle("FIJOS") },
+                title = { ModuleTitle("Fijos") },
                 actions = {
                     GlobalOutlinedIconButton(
                         icon = Icons.Outlined.Add,

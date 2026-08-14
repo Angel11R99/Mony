@@ -121,7 +121,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { ModuleTitle("AJUSTES") },
+                title = { ModuleTitle("Ajustes") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver")
