@@ -63,8 +63,12 @@ class BudgetCycleTest {
         assertEquals("Ingreso mensual", budgetIncomeDescription(BudgetPeriod.MONTHLY))
     }
 
-    @Test fun `fortnight cycle only closes manually on configured days`() {
-        val config = BudgetConfig(100_000, BudgetPeriod.FORTNIGHTLY)
+    @Test fun `cycle only closes manually on configured days`() {
+        val config = BudgetConfig(
+            100_000,
+            BudgetPeriod.FORTNIGHTLY,
+            closingDays = listOf(1, 16, 31),
+        )
 
         assertTrue(canManuallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 1)))
         assertTrue(canManuallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 16)))
@@ -72,31 +76,79 @@ class BudgetCycleTest {
         assertFalse(canManuallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 13)))
     }
 
-    @Test fun `automatic fortnight close only runs at period boundaries`() {
+    @Test fun `new budget defaults to closing on the fifteenth`() {
         val config = BudgetConfig(100_000, BudgetPeriod.FORTNIGHTLY)
+
+        assertTrue(canManuallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 15)))
+        assertTrue(shouldAutomaticallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 15)))
+        assertFalse(canManuallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 16)))
+    }
+
+    @Test fun `automatic close only runs on configured days`() {
+        val config = BudgetConfig(
+            100_000,
+            BudgetPeriod.FORTNIGHTLY,
+            closingDays = listOf(1, 16),
+        )
 
         assertTrue(shouldAutomaticallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 1)))
         assertTrue(shouldAutomaticallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 16)))
         assertFalse(shouldAutomaticallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 31)))
     }
 
-    @Test fun `closing on sixteenth archives first fortnight`() {
+    @Test fun `closing on sixteenth archives period since previous closing day`() {
         assertEquals(
             com.example.personalfinancetracker.domain.model.DateRange(
                 LocalDate.of(2026, 8, 1),
                 LocalDate.of(2026, 8, 15),
             ),
-            budgetCyclePeriodToClose(BudgetPeriod.FORTNIGHTLY, LocalDate.of(2026, 8, 16)),
+            budgetCyclePeriodToClose(
+                BudgetPeriod.FORTNIGHTLY,
+                listOf(1, 16),
+                LocalDate.of(2026, 8, 16),
+            ),
         )
     }
 
-    @Test fun `closing on first archives previous fortnight`() {
+    @Test fun `closing on first archives previous period`() {
         assertEquals(
             com.example.personalfinancetracker.domain.model.DateRange(
                 LocalDate.of(2026, 7, 16),
                 LocalDate.of(2026, 7, 31),
             ),
-            budgetCyclePeriodToClose(BudgetPeriod.FORTNIGHTLY, LocalDate.of(2026, 8, 1)),
+            budgetCyclePeriodToClose(
+                BudgetPeriod.FORTNIGHTLY,
+                listOf(1, 16),
+                LocalDate.of(2026, 8, 1),
+            ),
+        )
+    }
+
+    @Test fun `closing on custom day archives since previous custom day`() {
+        assertEquals(
+            com.example.personalfinancetracker.domain.model.DateRange(
+                LocalDate.of(2026, 8, 5),
+                LocalDate.of(2026, 8, 19),
+            ),
+            budgetCyclePeriodToClose(
+                BudgetPeriod.FORTNIGHTLY,
+                listOf(5, 20),
+                LocalDate.of(2026, 8, 20),
+            ),
+        )
+    }
+
+    @Test fun `closing on default fifteenth archives since previous fifteenth`() {
+        assertEquals(
+            com.example.personalfinancetracker.domain.model.DateRange(
+                LocalDate.of(2026, 7, 15),
+                LocalDate.of(2026, 8, 14),
+            ),
+            budgetCyclePeriodToClose(
+                BudgetPeriod.FORTNIGHTLY,
+                listOf(15),
+                LocalDate.of(2026, 8, 15),
+            ),
         )
     }
 

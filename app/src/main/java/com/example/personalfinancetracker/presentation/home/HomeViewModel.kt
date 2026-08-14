@@ -104,7 +104,12 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun saveBudget(amount: String, period: BudgetPeriod, onSaved: () -> Unit) {
+    fun saveBudget(
+        amount: String,
+        period: BudgetPeriod,
+        closingDays: List<Int>,
+        onSaved: () -> Unit,
+    ) {
         val amountInCents = MoneyFormatter.parseToCents(amount)
         if (amountInCents == null || amountInCents <= 0) return
         viewModelScope.launch {
@@ -127,6 +132,7 @@ class HomeViewModel @Inject constructor(
                         cycleStart = existing?.cycleStart,
                         cycleStartedAt = existing?.cycleStartedAt,
                         incomeTransactionId = incomeTransactionId,
+                        closingDays = closingDays,
                     )
                 )
                 updateAllFinanceWidgets(context)
@@ -142,7 +148,7 @@ class HomeViewModel @Inject constructor(
             closingCycle.value = true
             val now = Instant.now()
             val today = LocalDate.now()
-            val periodToClose = budgetCyclePeriodToClose(budget.period, today)
+            val periodToClose = budgetCyclePeriodToClose(budget.period, budget.closingDays, today)
             val cycleTransactions = transactions.observeAll().first().filter {
                 it.belongsToActiveBudgetCycle(budget, periodToClose)
             }

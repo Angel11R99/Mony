@@ -9,6 +9,7 @@ data class BudgetConfig(
     val cycleStart: LocalDate? = null,
     val cycleStartedAt: Instant? = null,
     val incomeTransactionId: Long? = null,
+    val closingDays: List<Int> = listOf(15),
 )
 
 enum class BudgetPeriod {

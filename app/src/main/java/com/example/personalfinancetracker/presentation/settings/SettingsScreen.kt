@@ -136,7 +136,7 @@ fun SettingsScreen(
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("Cierre automático", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "Cierra la quincena los días 1 y 16 cuando abras la app.",
+                                "Cierra el ciclo automáticamente cuando la fecha coincida con uno de tus días de cierre.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

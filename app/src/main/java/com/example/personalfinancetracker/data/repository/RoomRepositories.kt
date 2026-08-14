@@ -99,6 +99,7 @@ class RoomBudgetRepository @Inject constructor(
                 cycleStart = it.cycleStartEpochDay?.let(LocalDate::ofEpochDay),
                 cycleStartedAt = it.cycleStartedAtEpochMillis?.let(Instant::ofEpochMilli),
                 incomeTransactionId = it.incomeTransactionId,
+                closingDays = parseClosingDays(it.closingDays),
             )
         }
     }
@@ -136,7 +137,18 @@ private fun BudgetConfig.toEntity() = BudgetConfigEntity(
     cycleStartEpochDay = cycleStart?.toEpochDay(),
     cycleStartedAtEpochMillis = cycleStartedAt?.toEpochMilli(),
     incomeTransactionId = incomeTransactionId,
+    closingDays = closingDays.toSerializedClosingDays(),
 )
+
+private fun parseClosingDays(raw: String): List<Int> =
+    raw.split(',').mapNotNull(String::toIntOrNull)
+        .filter { it in 1..31 }
+        .distinct()
+        .sorted()
+        .ifEmpty { listOf(15) }
+
+private fun List<Int>.toSerializedClosingDays(): String =
+    filter { it in 1..31 }.distinct().sorted().ifEmpty { listOf(15) }.joinToString(",")
 
 private fun BudgetCycle.toEntity() = BudgetCycleEntity(
     id = id,
