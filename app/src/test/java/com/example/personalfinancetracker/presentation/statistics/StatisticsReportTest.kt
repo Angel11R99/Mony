@@ -2,6 +2,7 @@ package com.example.personalfinancetracker.presentation.statistics
 
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.BudgetConfig
+import com.example.personalfinancetracker.domain.model.BudgetCycleSchedule
 import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
@@ -95,6 +96,16 @@ class StatisticsReportTest {
             statisticsPeriod(StatisticsRange.CURRENT_BUDGET, today, budget),
         )
         assertEquals("Esta quincena", StatisticsRange.CURRENT_BUDGET.displayLabel(budget))
+    }
+
+    @Test fun `custom cycle filter uses its current month occurrence and label`() {
+        val cycle = BudgetCycleSchedule(30, 14)
+
+        assertEquals(
+            StatisticsPeriod(LocalDate.of(2026, 8, 30), LocalDate.of(2026, 9, 14)),
+            statisticsPeriod(cycle, LocalDate.of(2026, 8, 13)),
+        )
+        assertEquals("Ciclo 2 · días 30-14", cycle.displayLabel(1))
     }
 
     private fun transaction(

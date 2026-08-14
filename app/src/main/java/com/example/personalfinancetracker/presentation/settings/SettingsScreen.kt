@@ -79,6 +79,9 @@ import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.core.showToast
+import com.example.personalfinancetracker.domain.model.BudgetCycleSchedule
+import com.example.personalfinancetracker.domain.model.BudgetPeriod
+import com.example.personalfinancetracker.domain.model.defaultCycleSchedules
 import com.example.personalfinancetracker.ui.theme.AppAppearance
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
 import java.time.LocalTime
@@ -105,6 +108,7 @@ fun SettingsScreen(
     var selectedTab by rememberSaveable { mutableStateOf(SettingsTab.APPEARANCE) }
     val budget by viewModel.budget.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val isSavingCycles by viewModel.isSavingCycles.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(message) {
@@ -167,8 +171,10 @@ fun SettingsScreen(
                     automaticCloseTime = automaticCloseTime,
                     onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
                     onPickCloseTime = { showingTimePicker = true },
-                    currentDays = budget?.closingDays ?: listOf(15),
-                    onClosingDaysSave = viewModel::updateClosingDays,
+                    currentSchedules = budget?.cycleSchedules
+                        ?: defaultCycleSchedules(budget?.period ?: BudgetPeriod.FORTNIGHTLY),
+                    isSaving = isSavingCycles,
+                    onSchedulesSave = viewModel::updateCycleSchedules,
                 )
             }
         }
@@ -352,8 +358,9 @@ private fun CyclesTab(
     automaticCloseTime: LocalTime,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onPickCloseTime: () -> Unit,
-    currentDays: List<Int>,
-    onClosingDaysSave: (List<Int>) -> Unit,
+    currentSchedules: List<BudgetCycleSchedule>,
+    isSaving: Boolean,
+    onSchedulesSave: (List<BudgetCycleSchedule>) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -413,9 +420,10 @@ private fun CyclesTab(
             }
         }
         item {
-            ClosingDaysCard(
-                currentDays = currentDays,
-                onSave = onClosingDaysSave,
+            CycleSchedulesCard(
+                currentSchedules = currentSchedules,
+                isSaving = isSaving,
+                onSave = onSchedulesSave,
             )
         }
     }
@@ -435,69 +443,105 @@ private fun SectionTitle(title: String, description: String) {
 }
 
 @Composable
-private fun ClosingDaysCard(
-    currentDays: List<Int>,
-    onSave: (List<Int>) -> Unit,
+private fun CycleSchedulesCard(
+    currentSchedules: List<BudgetCycleSchedule>,
+    isSaving: Boolean,
+    onSave: (List<BudgetCycleSchedule>) -> Unit,
 ) {
-    var closingDays by remember(currentDays) {
-        mutableStateOf(
-            currentDays.filter { it in 1..31 }.distinct().sorted().ifEmpty { listOf(15) }.map(Int::toString)
-        )
+    var schedules by remember(currentSchedules) {
+        mutableStateOf(currentSchedules.map {
+            EditableCycleSchedule(it.openingDay.toString(), it.closingDay.toString())
+        })
     }
-    val parsedDays = closingDays.mapNotNull(String::toIntOrNull).filter { it in 1..31 }.distinct()
-    val valid = parsedDays.isNotEmpty() && parsedDays.size == closingDays.size
+    val parsedSchedules = schedules.mapNotNull { schedule ->
+        val openingDay = schedule.openingDay.toIntOrNull()
+        val closingDay = schedule.closingDay.toIntOrNull()
+        if (openingDay == null || openingDay !in 1..31 || closingDay == null || closingDay !in 1..31) null
+        else BudgetCycleSchedule(openingDay, closingDay)
+    }
+    val valid = parsedSchedules.isNotEmpty() &&
+        parsedSchedules.size == schedules.size &&
+        parsedSchedules.map(BudgetCycleSchedule::openingDay).distinct().size == parsedSchedules.size
+    val changed = valid && parsedSchedules != currentSchedules
 
     FinanceCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("DÍAS DE CIERRE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Text("PERÍODOS DEL CICLO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             Text(
-                "El ciclo se cierra cuando la fecha coincida con uno de estos días.",
+                "Define los días inclusivos de apertura y cierre. Si la apertura es mayor que el cierre, el período termina el mes siguiente.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            closingDays.forEachIndexed { index, day ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedTextField(
-                        value = day,
-                        onValueChange = { newValue ->
-                            closingDays = closingDays.toMutableList()
-                                .also { it[index] = newValue.filter(Char::isDigit).take(2) }
-                        },
-                        label = { Text("Día ${index + 1}") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (closingDays.size > 1) {
+            schedules.forEachIndexed { index, schedule ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Ciclo ${index + 1}", style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = schedule.openingDay,
+                            onValueChange = { newValue ->
+                                schedules = schedules.toMutableList().also {
+                                    it[index] = schedule.copy(openingDay = newValue.filter(Char::isDigit).take(2))
+                                }
+                            },
+                            label = { Text("Apertura") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = schedule.closingDay,
+                            onValueChange = { newValue ->
+                                schedules = schedules.toMutableList().also {
+                                    it[index] = schedule.copy(closingDay = newValue.filter(Char::isDigit).take(2))
+                                }
+                            },
+                            label = { Text("Cierre") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                        )
                         IconButton(
                             onClick = {
-                                closingDays = closingDays.toMutableList().also { it.removeAt(index) }
+                                schedules = schedules.toMutableList().also { it.removeAt(index) }
                             },
-                        ) { Icon(Icons.Outlined.Close, "Quitar día ${index + 1}") }
+                            enabled = schedules.size > 1,
+                        ) { Icon(Icons.Outlined.Close, "Quitar ciclo ${index + 1}") }
                     }
                 }
             }
+            if (!valid) {
+                Text(
+                    "Completa cada apertura y cierre con un día del 1 al 31. No repitas días de apertura.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(
-                    onClick = { closingDays = closingDays + "" },
+                    onClick = { schedules = schedules + EditableCycleSchedule() },
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(Icons.Outlined.Add, null)
-                    Text("Agregar día")
+                    Text("Agregar ciclo")
                 }
                 PrimaryButton(
-                    text = "Guardar",
-                    onClick = { onSave(parsedDays.sorted()) },
-                    enabled = valid,
+                    text = if (isSaving) "Guardando…" else "Guardar",
+                    onClick = { onSave(parsedSchedules) },
+                    enabled = valid && changed && !isSaving,
                     modifier = Modifier.weight(1f),
                 )
             }
         }
     }
 }
+
+private data class EditableCycleSchedule(
+    val openingDay: String = "",
+    val closingDay: String = "",
+)
 
 private val timeFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("h:mm a", Locale.forLanguageTag("es-DO"))

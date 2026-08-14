@@ -1,5 +1,7 @@
 package com.example.personalfinancetracker.presentation.home
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,20 +14,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,13 +45,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.BudgetPeriod
+import com.example.personalfinancetracker.domain.model.BudgetPeriodView
 import com.example.personalfinancetracker.domain.model.BudgetCycle
+import com.example.personalfinancetracker.domain.model.DateRange
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.canManuallyCloseBudgetCycle
 import com.example.personalfinancetracker.domain.model.shouldAutomaticallyCloseBudgetCycle
@@ -81,7 +90,13 @@ fun HomeScreen(
     var showingHistory by remember { mutableStateOf(false) }
     var selectedTransaction by remember { mutableStateOf<com.example.personalfinancetracker.domain.model.FinanceTransaction?>(null) }
 
-    LaunchedEffect(automaticCycleClose, automaticCloseTime, state.budget?.cycleStart, state.budget?.period) {
+    LaunchedEffect(
+        automaticCycleClose,
+        automaticCloseTime,
+        state.budget?.cycleStart,
+        state.budget?.period,
+        state.budget?.cycleSchedules,
+    ) {
         if (automaticCycleClose && shouldAutomaticallyCloseBudgetCycle(state.budget, LocalDateTime.now(), automaticCloseTime)) {
             viewModel.closeCurrentCycle {}
         }
@@ -119,15 +134,25 @@ fun HomeScreen(
             FinanceCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            SectionLabel(if (state.budget?.period == BudgetPeriod.MONTHLY) "MES ACTUAL" else "QUINCENA ACTUAL")
-                            Text(
-                                "${state.period.start.format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO")))} / ${state.period.endInclusive.format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO")))}".uppercase(),
-                                style = MaterialTheme.typography.titleMedium,
-                            )
-                        }
+                        SectionLabel(
+                            when {
+                                state.budget?.period == BudgetPeriod.MONTHLY && state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMO MES"
+                                state.budget?.period == BudgetPeriod.MONTHLY -> "MES ACTUAL"
+                                state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMA QUINCENA"
+                                else -> "QUINCENA ACTUAL"
+                            },
+                        )
+                        Spacer(Modifier.weight(1f))
                         IconButton(onClick = { editingBudget = true }) { Icon(Icons.Outlined.Edit, "Editar presupuesto") }
                     }
+                    PeriodViewSelector(
+                        currentPeriod = state.currentPeriod,
+                        nextPeriod = state.nextPeriod,
+                        selected = state.selectedPeriodView,
+                        pinned = state.pinnedPeriodView,
+                        onSelect = viewModel::selectPeriodView,
+                        onPin = viewModel::pinPeriodView,
+                    )
                     if (state.budget == null) {
                         Text(
                             "Define cuánto quieres administrar durante este periodo.",
@@ -164,7 +189,7 @@ fun HomeScreen(
                             )
                         } else if (!manualCloseAvailable) {
                             Text(
-                                "El cierre está disponible los días ${state.budget?.closingDays?.sorted()?.joinToString(", ")}.",
+                                "El cierre estará disponible el ${state.currentPeriod.endInclusive.format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO")))}.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -192,7 +217,7 @@ fun HomeScreen(
         }
         if (state.recent.isEmpty()) item {
             Text(
-                "Aún no hay movimientos. Registra el primero para verlo aquí.",
+                "No hay movimientos en el período seleccionado.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -219,28 +244,12 @@ fun HomeScreen(
     }
 
     if (confirmingClose) {
-        AlertDialog(
-            onDismissRequest = { if (!closingCycle) confirmingClose = false },
-            shape = MaterialTheme.shapes.medium,
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            title = { Text("Cerrar ciclo actual") },
-            text = {
-                Text(
-                    "Se guardará este periodo en el historial y los ingresos y gastos del presupuesto comenzarán nuevamente en cero. Tus movimientos y tu saldo general no se borrarán."
-                )
-            },
-            confirmButton = {
-                PrimaryButton(
-                    text = if (closingCycle) "Cerrando…" else "Cerrar ciclo",
-                    onClick = {
-                        viewModel.closeCurrentCycle { confirmingClose = false }
-                    },
-                    enabled = !closingCycle,
-                )
-            },
-            dismissButton = {
-                SecondaryButton("Cancelar", { confirmingClose = false })
-            },
+        CloseCycleDialog(
+            currentPeriod = state.currentPeriod,
+            nextPeriod = state.nextPeriod,
+            closingCycle = closingCycle,
+            onDismiss = { if (!closingCycle) confirmingClose = false },
+            onConfirm = { viewModel.closeCurrentCycle { confirmingClose = false } },
         )
     }
 
@@ -258,6 +267,139 @@ fun HomeScreen(
             onDismiss = { selectedTransaction = null },
         )
     }
+}
+@Composable
+private fun PeriodViewSelector(
+    currentPeriod: DateRange,
+    nextPeriod: DateRange,
+    selected: BudgetPeriodView,
+    pinned: BudgetPeriodView,
+    onSelect: (BudgetPeriodView) -> Unit,
+    onPin: (BudgetPeriodView) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        PeriodViewOption(
+            title = "Actual",
+            period = currentPeriod,
+            selected = selected == BudgetPeriodView.CURRENT,
+            pinned = pinned == BudgetPeriodView.CURRENT,
+            onSelect = { onSelect(BudgetPeriodView.CURRENT) },
+            onPin = { onPin(BudgetPeriodView.CURRENT) },
+            modifier = Modifier.weight(1f),
+        )
+        PeriodViewOption(
+            title = "Próxima",
+            period = nextPeriod,
+            selected = selected == BudgetPeriodView.NEXT,
+            pinned = pinned == BudgetPeriodView.NEXT,
+            onSelect = { onSelect(BudgetPeriodView.NEXT) },
+            onPin = { onPin(BudgetPeriodView.NEXT) },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun PeriodViewOption(
+    title: String,
+    period: DateRange,
+    selected: Boolean,
+    pinned: Boolean,
+    onSelect: () -> Unit,
+    onPin: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val formatter = remember {
+        DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO"))
+    }
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.small,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(
+            1.dp,
+            if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        ),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onSelect)
+                    .padding(start = 10.dp, top = 8.dp, bottom = 8.dp),
+            ) {
+                Text(
+                    text = title.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "${period.start.format(formatter)} / ${period.endInclusive.format(formatter)}".uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            IconButton(
+                onClick = onPin,
+                modifier = Modifier.size(40.dp),
+            ) {
+                Icon(
+                    imageVector = if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                    contentDescription = if (pinned) "Vista fijada" else "Fijar vista $title",
+                    tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CloseCycleDialog(
+    currentPeriod: DateRange,
+    nextPeriod: DateRange,
+    closingCycle: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val dateFormatter = remember {
+        DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO"))
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!closingCycle) onDismiss() },
+        shape = MaterialTheme.shapes.medium,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        title = { Text("Cerrar ciclo actual") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Se guardará el período del ${currentPeriod.start.format(dateFormatter)} al ${currentPeriod.endInclusive.format(dateFormatter)} en el historial. Tus movimientos y tu saldo general no se borrarán.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "El próximo ciclo irá del ${nextPeriod.start.format(dateFormatter)} al ${nextPeriod.endInclusive.format(dateFormatter)}.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            PrimaryButton(
+                text = if (closingCycle) "Cerrando…" else "Cerrar ciclo",
+                onClick = onConfirm,
+                enabled = !closingCycle,
+            )
+        },
+        dismissButton = {
+            SecondaryButton("Cancelar", onDismiss)
+        },
+    )
 }
 
 @Composable

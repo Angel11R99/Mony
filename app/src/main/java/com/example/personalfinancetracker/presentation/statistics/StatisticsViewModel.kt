@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.BudgetConfig
+import com.example.personalfinancetracker.domain.model.BudgetCycleSchedule
 import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
+import com.example.personalfinancetracker.domain.model.budgetPeriodForSchedule
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
@@ -66,6 +68,13 @@ internal fun statisticsPeriod(
     StatisticsRange.ALL_TIME -> StatisticsPeriod(startDate = null, endDate = null)
 }
 
+internal fun statisticsPeriod(
+    schedule: BudgetCycleSchedule,
+    today: LocalDate = LocalDate.now(),
+): StatisticsPeriod = budgetPeriodForSchedule(schedule, today).let {
+    StatisticsPeriod(startDate = it.start, endDate = it.endInclusive)
+}
+
 data class StatisticsReport(
     val incomeInCents: Long,
     val expenseInCents: Long,
@@ -100,6 +109,9 @@ class StatisticsViewModel @Inject constructor(
 internal fun StatisticsRange.displayLabel(budget: BudgetConfig?): String =
     if (this != StatisticsRange.CURRENT_BUDGET) label
     else if (budget?.period == BudgetPeriod.MONTHLY) "Este ciclo mensual" else "Esta quincena"
+
+internal fun BudgetCycleSchedule.displayLabel(index: Int): String =
+    "Ciclo ${index + 1} · días $openingDay-$closingDay"
 
 internal fun calculateStatistics(
     transactions: List<FinanceTransaction>,

@@ -13,8 +13,10 @@ import com.example.personalfinancetracker.data.mapper.toDomain
 import com.example.personalfinancetracker.data.mapper.toEntity
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.BudgetConfig
+import com.example.personalfinancetracker.domain.model.BudgetCycleSchedule
 import com.example.personalfinancetracker.domain.model.BudgetCycle
 import com.example.personalfinancetracker.domain.model.BudgetPeriod
+import com.example.personalfinancetracker.domain.model.defaultCycleSchedules
 import com.example.personalfinancetracker.domain.model.DateRange
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
@@ -126,7 +128,7 @@ class RoomBudgetRepository @Inject constructor(
                 cycleStart = it.cycleStartEpochDay?.let(LocalDate::ofEpochDay),
                 cycleStartedAt = it.cycleStartedAtEpochMillis?.let(Instant::ofEpochMilli),
                 incomeTransactionId = it.incomeTransactionId,
-                closingDays = parseClosingDays(it.closingDays),
+                cycleSchedules = parseCycleSchedules(it.closingDays, BudgetPeriod.valueOf(it.period)),
             )
         }
     }
@@ -164,18 +166,36 @@ private fun BudgetConfig.toEntity() = BudgetConfigEntity(
     cycleStartEpochDay = cycleStart?.toEpochDay(),
     cycleStartedAtEpochMillis = cycleStartedAt?.toEpochMilli(),
     incomeTransactionId = incomeTransactionId,
-    closingDays = closingDays.toSerializedClosingDays(),
+    closingDays = cycleSchedules.toSerializedCycleSchedules(),
 )
 
-private fun parseClosingDays(raw: String): List<Int> =
-    raw.split(',').mapNotNull(String::toIntOrNull)
+private fun parseCycleSchedules(raw: String, period: BudgetPeriod): List<BudgetCycleSchedule> {
+    val schedules = raw.split(',').mapNotNull { value ->
+        val parts = value.split(':')
+        if (parts.size != 2) return@mapNotNull null
+        val openingDay = parts[0].toIntOrNull() ?: return@mapNotNull null
+        val closingDay = parts[1].toIntOrNull() ?: return@mapNotNull null
+        if (openingDay !in 1..31 || closingDay !in 1..31) return@mapNotNull null
+        BudgetCycleSchedule(openingDay, closingDay)
+    }.distinct()
+    if (schedules.isNotEmpty()) return schedules
+
+    val legacyOpeningDays = raw.split(',').mapNotNull(String::toIntOrNull)
         .filter { it in 1..31 }
         .distinct()
         .sorted()
-        .ifEmpty { listOf(15) }
+    if (legacyOpeningDays.size < 2) return defaultCycleSchedules(period)
+    return legacyOpeningDays.mapIndexed { index, openingDay ->
+        val nextOpeningDay = legacyOpeningDays[(index + 1) % legacyOpeningDays.size]
+        BudgetCycleSchedule(
+            openingDay = openingDay,
+            closingDay = if (nextOpeningDay == 1) 31 else nextOpeningDay - 1,
+        )
+    }
+}
 
-private fun List<Int>.toSerializedClosingDays(): String =
-    filter { it in 1..31 }.distinct().sorted().ifEmpty { listOf(15) }.joinToString(",")
+private fun List<BudgetCycleSchedule>.toSerializedCycleSchedules(): String =
+    distinct().joinToString(",") { "${it.openingDay}:${it.closingDay}" }
 
 private fun BudgetCycle.toEntity() = BudgetCycleEntity(
     id = id,

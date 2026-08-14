@@ -34,9 +34,12 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.example.personalfinancetracker.MainActivity
 import com.example.personalfinancetracker.R
+import com.example.personalfinancetracker.core.CyclePreferences
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.availableForBudget
+import com.example.personalfinancetracker.domain.model.belongsToActiveBudgetCycle
+import com.example.personalfinancetracker.domain.model.budgetPeriodForView
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.ui.theme.AppearancePreferences
@@ -55,8 +58,12 @@ class FinanceWidget : GlanceAppWidget() {
         )
         val transactions = entryPoint.transactions().observeAll().first()
         val budget = entryPoint.budgets().observe().first()
-        val available = availableForBudget(budget, transactions)
-        val latestExpense = transactions.firstOrNull { it.type == TransactionType.EXPENSE }
+        val pinnedView = CyclePreferences(context).pinnedBudgetView.value
+        val period = budgetPeriodForView(budget, pinnedView)
+        val available = availableForBudget(budget, transactions, period)
+        val latestExpense = transactions.firstOrNull {
+            it.type == TransactionType.EXPENSE && it.belongsToActiveBudgetCycle(budget, period)
+        }
         provideContent { WidgetContent(context, available, latestExpense?.amountInCents) }
     }
 }

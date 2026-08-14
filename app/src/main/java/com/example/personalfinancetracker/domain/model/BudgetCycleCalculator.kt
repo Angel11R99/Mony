@@ -7,16 +7,64 @@ import java.time.YearMonth
 
 val DEFAULT_AUTOMATIC_CLOSE_TIME: LocalTime = LocalTime.of(21, 0)
 
+enum class BudgetPeriodView {
+    CURRENT,
+    NEXT,
+}
+
 fun activeBudgetPeriod(
     budget: BudgetConfig?,
     today: LocalDate = LocalDate.now(),
 ): DateRange {
-    val calendarPeriod = DateRange.current(budget?.period ?: BudgetPeriod.FORTNIGHTLY, today)
-    val activeCycleStart = budget?.cycleStart?.takeIf {
-        it in calendarPeriod.start..calendarPeriod.endInclusive
-    }
-    return DateRange(activeCycleStart ?: calendarPeriod.start, calendarPeriod.endInclusive)
+    if (budget == null) return DateRange.current(BudgetPeriod.FORTNIGHTLY, today)
+    return configuredPeriodsAround(budget, today)
+        .filter { today in it.start..it.endInclusive }
+        .maxByOrNull(DateRange::start)
+        ?: DateRange.current(budget.period, today)
 }
+
+fun budgetPeriodForView(
+    budget: BudgetConfig?,
+    view: BudgetPeriodView,
+    today: LocalDate = LocalDate.now(),
+): DateRange = when (view) {
+    BudgetPeriodView.CURRENT -> activeBudgetPeriod(budget, today)
+    BudgetPeriodView.NEXT -> nextBudgetPeriod(budget, today)
+}
+
+fun nextBudgetPeriod(
+    budget: BudgetConfig?,
+    today: LocalDate = LocalDate.now(),
+): DateRange {
+    val current = activeBudgetPeriod(budget, today)
+    if (budget == null) return DateRange.current(BudgetPeriod.FORTNIGHTLY, current.endInclusive.plusDays(1))
+    return configuredPeriodsAround(budget, current.endInclusive.plusDays(1))
+        .filter { it.start.isAfter(current.start) }
+        .minByOrNull(DateRange::start)
+        ?: DateRange.current(budget.period, current.endInclusive.plusDays(1))
+}
+
+fun budgetPeriodForSchedule(
+    schedule: BudgetCycleSchedule,
+    today: LocalDate = LocalDate.now(),
+): DateRange = schedule.toDateRange(YearMonth.from(today))
+
+private fun configuredPeriodsAround(budget: BudgetConfig, date: LocalDate): List<DateRange> {
+    val schedules = budget.cycleSchedules.ifEmpty { defaultCycleSchedules(budget.period) }
+    val referenceMonth = YearMonth.from(date)
+    return (-2..2).flatMap { offset ->
+        val openingMonth = referenceMonth.plusMonths(offset.toLong())
+        schedules.map { it.toDateRange(openingMonth) }
+    }.distinct().sortedBy(DateRange::start)
+}
+
+private fun BudgetCycleSchedule.toDateRange(openingMonth: YearMonth): DateRange {
+    val start = openingMonth.atClampedDay(openingDay)
+    val closingMonth = if (closingDay < openingDay) openingMonth.plusMonths(1) else openingMonth
+    return DateRange(start, closingMonth.atClampedDay(closingDay))
+}
+
+private fun YearMonth.atClampedDay(day: Int): LocalDate = atDay(day.coerceAtMost(lengthOfMonth()))
 
 fun FinanceTransaction.belongsToActiveBudgetCycle(
     budget: BudgetConfig?,
@@ -37,7 +85,19 @@ fun availableForBudget(
             if (it.type == TransactionType.INCOME) it.amountInCents else -it.amountInCents
         }
     }
-    val period = activeBudgetPeriod(budget, today)
+    return availableForBudget(budget, transactions, activeBudgetPeriod(budget, today))
+}
+
+fun availableForBudget(
+    budget: BudgetConfig?,
+    transactions: List<FinanceTransaction>,
+    period: DateRange,
+): Long {
+    if (budget == null) {
+        return transactions.filter { it.date in period.start..period.endInclusive }.sumOf {
+            if (it.type == TransactionType.INCOME) it.amountInCents else -it.amountInCents
+        }
+    }
     val expenses = transactions
         .filter { it.type == TransactionType.EXPENSE && it.belongsToActiveBudgetCycle(budget, period) }
         .sumOf(FinanceTransaction::amountInCents)
@@ -48,8 +108,8 @@ fun canManuallyCloseBudgetCycle(
     budget: BudgetConfig?,
     today: LocalDate = LocalDate.now(),
 ): Boolean {
-    if (budget == null || budget.cycleStart == today) return false
-    return today.dayOfMonth in budget.closingDays
+    if (budget == null || budget.cycleStart?.let { !it.isBefore(today) } == true) return false
+    return activeBudgetPeriod(budget, today).endInclusive == today
 }
 
 fun shouldAutomaticallyCloseBudgetCycle(
@@ -57,38 +117,13 @@ fun shouldAutomaticallyCloseBudgetCycle(
     now: LocalDateTime = LocalDateTime.now(),
     closeTime: LocalTime = DEFAULT_AUTOMATIC_CLOSE_TIME,
 ): Boolean {
-    if (budget == null || budget.cycleStart == now.toLocalDate()) return false
-    return now.toLocalDate().dayOfMonth in budget.closingDays && !now.toLocalTime().isBefore(closeTime)
+    if (budget == null || budget.cycleStart?.let { !it.isBefore(now.toLocalDate()) } == true) return false
+    val today = now.toLocalDate()
+    return activeBudgetPeriod(budget, today).endInclusive == today &&
+        !now.toLocalTime().isBefore(closeTime)
 }
 
-fun budgetCyclePeriodToClose(
-    period: BudgetPeriod,
-    closingDays: List<Int>,
+fun budgetPeriodToClose(
+    budget: BudgetConfig,
     today: LocalDate = LocalDate.now(),
-): DateRange {
-    val days = closingDays.filter { it in 1..31 }.distinct().sorted()
-    if (days.isEmpty()) {
-        return when (period) {
-            BudgetPeriod.FORTNIGHTLY -> if (today.dayOfMonth == 16) {
-                DateRange(today.withDayOfMonth(1), today.withDayOfMonth(15))
-            } else {
-                DateRange(today.withDayOfMonth(16), today)
-            }
-            BudgetPeriod.MONTHLY -> if (today.dayOfMonth == 1) {
-                YearMonth.from(today).minusMonths(1).let {
-                    DateRange(it.atDay(1), it.atEndOfMonth())
-                }
-            } else {
-                DateRange(today.withDayOfMonth(1), today)
-            }
-        }
-    }
-    val todayDay = today.dayOfMonth
-    val prevThisMonth = days.lastOrNull { it < todayDay }
-    val startDate = if (prevThisMonth != null) {
-        today.withDayOfMonth(prevThisMonth)
-    } else {
-        YearMonth.from(today).minusMonths(1).atDay(days.last())
-    }
-    return DateRange(startDate, today.minusDays(1))
-}
+): DateRange = activeBudgetPeriod(budget, today)

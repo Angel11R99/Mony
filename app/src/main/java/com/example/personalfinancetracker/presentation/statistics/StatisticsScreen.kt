@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.domain.model.Category
+import com.example.personalfinancetracker.domain.model.BudgetCycleSchedule
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
 import com.example.personalfinancetracker.domain.model.belongsToActiveBudgetCycle
@@ -78,22 +80,35 @@ fun StatisticsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var range by remember { mutableStateOf(StatisticsRange.CURRENT_BUDGET) }
+    var cycleIndex by remember { mutableStateOf<Int?>(null) }
     var categoryId by remember { mutableStateOf<Long?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     var draftRange by remember { mutableStateOf(range) }
+    var draftCycleIndex by remember { mutableStateOf(cycleIndex) }
     var draftCategoryId by remember { mutableStateOf(categoryId) }
+    val cycleSchedules = state.budget?.cycleSchedules.orEmpty()
+    val selectedCycle = cycleIndex?.let(cycleSchedules::getOrNull)
+    val periodLabel = selectedCycle?.displayLabel(cycleIndex ?: 0) ?: range.displayLabel(state.budget)
+    LaunchedEffect(cycleSchedules, cycleIndex) {
+        if (cycleIndex != null && selectedCycle == null) cycleIndex = null
+    }
     val expenseCategories = remember(state.categories) {
         state.categories.values
             .filter { it.type == TransactionType.EXPENSE }
             .sortedBy(Category::name)
     }
-    val period = remember(range, state.budget) {
-        statisticsPeriod(range = range, budget = state.budget)
+    val period = remember(range, selectedCycle, state.budget) {
+        selectedCycle?.let { statisticsPeriod(it) }
+            ?: statisticsPeriod(range = range, budget = state.budget)
     }
-    val periodTransactions = remember(state.transactions, state.budget, range, period) {
-        if (range != StatisticsRange.CURRENT_BUDGET) state.transactions
+    val isBudgetCycleFilter = selectedCycle != null || range == StatisticsRange.CURRENT_BUDGET
+    val periodTransactions = remember(state.transactions, state.budget, isBudgetCycleFilter, period) {
+        val activePeriod = activeBudgetPeriod(state.budget)
+        if (!isBudgetCycleFilter ||
+            period.startDate != activePeriod.start ||
+            period.endDate != activePeriod.endInclusive
+        ) state.transactions
         else {
-            val activePeriod = activeBudgetPeriod(state.budget)
             state.transactions.filter { it.belongsToActiveBudgetCycle(state.budget, activePeriod) }
         }
     }
@@ -107,7 +122,7 @@ fun StatisticsScreen(
     }
     val selectedCategory = categoryId?.let(state.categories::get)
     val selectedStatistic = report.expenseByCategory.firstOrNull { it.category.id == categoryId }
-    val comparisonAmount = if (range == StatisticsRange.CURRENT_BUDGET) {
+    val comparisonAmount = if (isBudgetCycleFilter) {
         state.budget?.amountInCents ?: report.incomeInCents
     } else {
         report.expenseInCents
@@ -136,10 +151,11 @@ fun StatisticsScreen(
         ) {
             item {
                 StatisticsFilterButton(
-                    period = range.displayLabel(state.budget),
+                    period = periodLabel,
                     category = selectedCategory?.name ?: "Todas las categorías",
                     onClick = {
                         draftRange = range
+                        draftCycleIndex = cycleIndex
                         draftCategoryId = categoryId
                         showFilters = true
                     },
@@ -154,7 +170,7 @@ fun StatisticsScreen(
                         category = selectedCategory,
                         amountInCents = selectedStatistic?.amountInCents ?: 0,
                         comparisonAmountInCents = comparisonAmount,
-                        periodLabel = range.displayLabel(state.budget),
+                        periodLabel = periodLabel,
                     )
                 }
             }
@@ -191,17 +207,25 @@ fun StatisticsScreen(
         StatisticsFilterSheet(
             ranges = StatisticsRange.entries,
             selectedRange = draftRange,
-            onRangeChange = { draftRange = it },
+            onRangeChange = {
+                draftRange = it
+                draftCycleIndex = null
+            },
+            cycles = cycleSchedules,
+            selectedCycleIndex = draftCycleIndex,
+            onCycleChange = { draftCycleIndex = it },
             categories = expenseCategories,
             selectedCategoryId = draftCategoryId,
             onCategoryChange = { draftCategoryId = it },
             rangeLabel = { it.displayLabel(state.budget) },
             onClear = {
                 draftRange = StatisticsRange.CURRENT_BUDGET
+                draftCycleIndex = null
                 draftCategoryId = null
             },
             onApply = {
                 range = draftRange
+                cycleIndex = draftCycleIndex
                 categoryId = draftCategoryId
                 showFilters = false
             },
@@ -237,6 +261,9 @@ private fun StatisticsFilterSheet(
     ranges: List<StatisticsRange>,
     selectedRange: StatisticsRange,
     onRangeChange: (StatisticsRange) -> Unit,
+    cycles: List<BudgetCycleSchedule>,
+    selectedCycleIndex: Int?,
+    onCycleChange: (Int) -> Unit,
     categories: List<Category>,
     selectedCategoryId: Long?,
     onCategoryChange: (Long?) -> Unit,
@@ -283,12 +310,30 @@ private fun StatisticsFilterSheet(
             ) {
                 ranges.forEach { option ->
                     FilterChip(
-                        selected = selectedRange == option,
+                        selected = selectedCycleIndex == null && selectedRange == option,
                         onClick = { onRangeChange(option) },
                         label = { Text(rangeLabel(option)) },
                         shape = MaterialTheme.shapes.small,
                         colors = financeFilterChipColors(),
                     )
+                }
+            }
+            if (cycles.isNotEmpty()) {
+                Text("MIS CICLOS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    cycles.forEachIndexed { index, cycle ->
+                        FilterChip(
+                            selected = selectedCycleIndex == index,
+                            onClick = { onCycleChange(index) },
+                            label = { Text(cycle.displayLabel(index)) },
+                            shape = MaterialTheme.shapes.small,
+                            colors = financeFilterChipColors(),
+                        )
+                    }
                 }
             }
             Text("CATEGORÍA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)

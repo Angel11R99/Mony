@@ -6,12 +6,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.glance.appwidget.updateAll
 import androidx.glance.unit.ColorProvider
 import com.example.personalfinancetracker.MainActivity
+import com.example.personalfinancetracker.core.CyclePreferences
 import com.example.personalfinancetracker.domain.model.BudgetConfig
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
-import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
 import com.example.personalfinancetracker.domain.model.availableForBudget
 import com.example.personalfinancetracker.domain.model.belongsToActiveBudgetCycle
+import com.example.personalfinancetracker.domain.model.budgetPeriodForView
 import com.example.personalfinancetracker.ui.theme.AppearancePreferences
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
 import dagger.hilt.android.EntryPointAccessors
@@ -43,13 +44,14 @@ internal suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot {
     )
     val transactions = entryPoint.transactions().observeAll().first()
     val budget = entryPoint.budgets().observe().first()
-    val period = activeBudgetPeriod(budget)
+    val pinnedView = CyclePreferences(context).pinnedBudgetView.value
+    val period = budgetPeriodForView(budget, pinnedView)
     val periodTransactions = transactions.filter {
         it.belongsToActiveBudgetCycle(budget, period)
     }
     return WidgetSnapshot(
         budget = budget,
-        availableInCents = availableForBudget(budget, transactions),
+        availableInCents = availableForBudget(budget, transactions, period),
         incomeInCents = periodTransactions
             .filter { it.type == TransactionType.INCOME }
             .sumOf(FinanceTransaction::amountInCents),

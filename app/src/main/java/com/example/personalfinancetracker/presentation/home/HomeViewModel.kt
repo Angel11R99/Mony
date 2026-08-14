@@ -6,17 +6,22 @@ import androidx.lifecycle.viewModelScope
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.BudgetConfig
 import com.example.personalfinancetracker.domain.model.BudgetCycle
+import com.example.personalfinancetracker.domain.model.BudgetPeriodView
 import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.DateRange
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
 import com.example.personalfinancetracker.domain.model.belongsToActiveBudgetCycle
-import com.example.personalfinancetracker.domain.model.budgetCyclePeriodToClose
+import com.example.personalfinancetracker.domain.model.budgetPeriodForView
+import com.example.personalfinancetracker.domain.model.defaultCycleSchedules
+import com.example.personalfinancetracker.domain.model.nextBudgetPeriod
+import com.example.personalfinancetracker.domain.model.budgetPeriodToClose
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.core.MoneyFormatter
+import com.example.personalfinancetracker.core.CyclePreferences
 import com.example.personalfinancetracker.core.showToast
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -42,6 +47,10 @@ data class HomeUiState(
     val categories: Map<Long, Category> = emptyMap(),
     val spending: List<CategorySpending> = emptyList(),
     val period: DateRange = DateRange.currentFortnight(),
+    val currentPeriod: DateRange = DateRange.currentFortnight(),
+    val nextPeriod: DateRange = DateRange.currentFortnight(),
+    val selectedPeriodView: BudgetPeriodView = BudgetPeriodView.CURRENT,
+    val pinnedPeriodView: BudgetPeriodView = BudgetPeriodView.CURRENT,
     val budget: BudgetConfig? = null,
     val cycleHistory: List<BudgetCycle> = emptyList(),
 )
@@ -55,32 +64,56 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
     val closingCycle = MutableStateFlow(false)
     private val budgetIncomeMutex = Mutex()
+    private val cyclePreferences = CyclePreferences(context)
+    private val selectedPeriodView = MutableStateFlow(cyclePreferences.pinnedBudgetView.value)
+    private val periodViewState = combine(
+        cyclePreferences.pinnedBudgetView,
+        selectedPeriodView,
+    ) { pinned, selected -> pinned to selected }
 
     val state = combine(
         transactions.observeAll(),
         categories.observeAll(),
         budgetRepository.observe(),
         budgetRepository.observeHistory(),
-    ) { all, categoryList, budget, history ->
-        val period = activeBudgetPeriod(budget)
-        val current = all.filter { it.belongsToActiveBudgetCycle(budget, period) }
+        periodViewState,
+    ) { all, categoryList, budget, history, (pinnedView, selectedView) ->
+        val currentPeriod = budgetPeriodForView(budget, BudgetPeriodView.CURRENT)
+        val nextPeriod = budgetPeriodForView(budget, BudgetPeriodView.NEXT)
+        val period = if (selectedView == BudgetPeriodView.CURRENT) currentPeriod else nextPeriod
+        val periodTransactions = all.filter { it.belongsToActiveBudgetCycle(budget, period) }
         val byId = categoryList.associateBy(Category::id)
-        val income = current.filter { it.type == TransactionType.INCOME }.sumOf { it.amountInCents }
-        val expense = current.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amountInCents }
+        val income = periodTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amountInCents }
+        val expense = periodTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amountInCents }
         HomeUiState(
             periodIncomeInCents = income,
             periodExpenseInCents = expense,
-            recent = all.take(5),
+            recent = periodTransactions.take(5),
             categories = byId,
-            spending = current.filter { it.type == TransactionType.EXPENSE }
+            spending = periodTransactions.filter { it.type == TransactionType.EXPENSE }
                 .groupBy { it.categoryId }
                 .mapNotNull { (id, items) -> byId[id]?.let { CategorySpending(it, items.sumOf(FinanceTransaction::amountInCents)) } }
                 .sortedByDescending(CategorySpending::amountInCents),
             period = period,
+            currentPeriod = currentPeriod,
+            nextPeriod = nextPeriod,
+            selectedPeriodView = selectedView,
+            pinnedPeriodView = pinnedView,
             budget = budget,
             cycleHistory = history,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+
+    fun selectPeriodView(view: BudgetPeriodView) {
+        selectedPeriodView.value = view
+    }
+
+    fun pinPeriodView(view: BudgetPeriodView) {
+        selectedPeriodView.value = view
+        cyclePreferences.setPinnedBudgetView(view)
+        context.showToast("Vista fijada correctamente")
+        viewModelScope.launch { updateAllFinanceWidgets(context) }
+    }
 
     init {
         viewModelScope.launch {
@@ -132,7 +165,7 @@ class HomeViewModel @Inject constructor(
                         cycleStart = existing?.cycleStart,
                         cycleStartedAt = existing?.cycleStartedAt,
                         incomeTransactionId = incomeTransactionId,
-                        closingDays = existing?.closingDays ?: listOf(15),
+                        cycleSchedules = existing?.cycleSchedules ?: defaultCycleSchedules(period),
                     )
                 )
             }
@@ -145,11 +178,16 @@ class HomeViewModel @Inject constructor(
     fun closeCurrentCycle(onClosed: () -> Unit) {
         val budget = state.value.budget ?: return
         if (closingCycle.value) return
+        val today = LocalDate.now()
+        val periodToClose = budgetPeriodToClose(budget, today)
+        if (periodToClose.endInclusive != today) {
+            context.showToast("Este ciclo todavía no ha llegado a su día de cierre")
+            return
+        }
         viewModelScope.launch {
             closingCycle.value = true
             val now = Instant.now()
-            val today = LocalDate.now()
-            val periodToClose = budgetCyclePeriodToClose(budget.period, budget.closingDays, today)
+            val nextStart = nextBudgetPeriod(budget, today).start
             val cycleTransactions = transactions.observeAll().first().filter {
                 it.belongsToActiveBudgetCycle(budget, periodToClose)
             }
@@ -174,11 +212,11 @@ class HomeViewModel @Inject constructor(
                         period = budget.period,
                         categoryId = categoryId,
                         existingId = null,
-                        date = today,
+                        date = nextStart,
                         now = now,
                     )
                     val nextConfig = budget.copy(
-                        cycleStart = today,
+                        cycleStart = nextStart,
                         cycleStartedAt = now,
                         incomeTransactionId = nextIncomeId,
                     )
@@ -189,6 +227,9 @@ class HomeViewModel @Inject constructor(
                     context.showToast("Ciclo cerrado correctamente")
                     onClosed()
                     viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
+                }
+                .onFailure {
+                    context.showToast("No se pudo cerrar el ciclo")
                 }
             closingCycle.value = false
         }
