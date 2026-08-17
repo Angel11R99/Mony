@@ -200,7 +200,7 @@ fun HomeScreen(
         }
         if (state.spending.isNotEmpty()) {
             item { EditorialHeading("GASTOS POR CATEGORÍA") }
-            items(state.spending.take(5), key = { it.category.id }) { spending ->
+            items(state.spending.take(5), key = { "spending-category-${it.category.id}" }) { spending ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(spending.category.name.uppercase(), style = MaterialTheme.typography.labelLarge)
                     Text(MoneyFormatter.format(spending.amountInCents), style = MaterialTheme.typography.titleSmall)
@@ -222,7 +222,7 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        items(state.recent, key = { it.id }) { transaction ->
+        items(state.recent, key = { "recent-transaction-${it.id}" }) { transaction ->
             TransactionRow(
                 transaction = transaction,
                 category = state.categories[transaction.categoryId],
