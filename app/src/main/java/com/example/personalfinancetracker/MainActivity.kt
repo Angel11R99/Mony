@@ -64,19 +64,19 @@ class MainActivity : ComponentActivity() {
                         automaticCloseTime = automaticCloseTime,
                         onThemeChange = {
                             appearancePreferences.setThemeMode(it)
-                            lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
+                            lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
                         },
                         onPrimaryChange = {
                             appearancePreferences.setPrimaryColor(it)
-                            lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
+                            lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
                         },
                         onAccentChange = {
                             appearancePreferences.setAccentColor(it)
-                            lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
+                            lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
                         },
                         onResetAppearance = {
                             appearancePreferences.reset()
-                            lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
+                            lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
                         },
                         onAutomaticCycleCloseChange = cyclePreferences::setAutomaticClose,
                         onAutomaticCloseTimeChange = cyclePreferences::setAutomaticCloseTime,
@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        lifecycleScope.launch { updateAllFinanceWidgets(applicationContext) }
+        lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
     }
 
     companion object {

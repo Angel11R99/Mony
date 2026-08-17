@@ -126,7 +126,7 @@ class HomeViewModel @Inject constructor(
         selectedPeriodView.value = view
         cyclePreferences.setPinnedBudgetView(view)
         context.showToast("Vista fijada correctamente")
-        viewModelScope.launch { updateAllFinanceWidgets(context) }
+        viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
     }
 
     init {
@@ -146,7 +146,7 @@ class HomeViewModel @Inject constructor(
                         now = Instant.now(),
                     )
                     budgetRepository.save(budget.copy(incomeTransactionId = transactionId))
-                    updateAllFinanceWidgets(context)
+                    runCatching { updateAllFinanceWidgets(context) }
                 }
             }
         }

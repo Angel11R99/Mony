@@ -33,6 +33,6 @@ class HistoryViewModel @Inject constructor(
 
     fun delete(id: Long) = viewModelScope.launch {
         transactions.delete(id)
-        updateAllFinanceWidgets(context)
+        runCatching { updateAllFinanceWidgets(context) }
     }
 }

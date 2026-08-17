@@ -9,7 +9,9 @@ object MoneyFormatter {
         currency = Currency.getInstance("DOP")
     }
 
-    fun format(cents: Long): String = formatter.format(cents / 100.0)
+    fun format(cents: Long): String = synchronized(formatter) {
+        formatter.format(cents / 100.0)
+    }
 
     fun parseToCents(value: String): Long? = runCatching {
         value.trim().replace(',', '.').toBigDecimalOrNull()
