@@ -1,6 +1,7 @@
 package com.example.personalfinancetracker.presentation.savings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
@@ -12,21 +13,27 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,6 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
+import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.SavingsGoalProgress
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceCard
@@ -59,6 +67,8 @@ import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +80,8 @@ fun SavingsScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
     val pendingDelete by viewModel.pendingDelete.collectAsStateWithLifecycle()
+    val selectedGoal by viewModel.selectedGoal.collectAsStateWithLifecycle()
+    val contributions by viewModel.contributions.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showEditor by remember { mutableStateOf(false) }
     var editingGoal by remember { mutableStateOf<SavingsGoalProgress?>(null) }
@@ -133,6 +145,7 @@ fun SavingsScreen(
             items(state.goals, key = { it.goal.id }) { goal ->
                 SavingsGoalCard(
                     progress = goal,
+                    onOpen = { viewModel.openContributions(goal) },
                     onContribute = { contributingGoal = goal },
                     onEdit = {
                         editingGoal = goal
@@ -171,6 +184,14 @@ fun SavingsScreen(
         )
     }
 
+    selectedGoal?.let { goal ->
+        ContributionsSheet(
+            goal = goal,
+            contributions = contributions,
+            onDismiss = viewModel::closeContributions,
+        )
+    }
+
     pendingDelete?.let { goal ->
         AlertDialog(
             onDismissRequest = viewModel::cancelDelete,
@@ -194,6 +215,7 @@ fun SavingsScreen(
 @Composable
 private fun SavingsGoalCard(
     progress: SavingsGoalProgress,
+    onOpen: () -> Unit,
     onContribute: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -201,7 +223,7 @@ private fun SavingsGoalCard(
     val fraction =
         if (progress.goal.targetAmountInCents <= 0) 0f
         else progress.savedInCents.toFloat() / progress.goal.targetAmountInCents
-    FinanceCard(Modifier.fillMaxWidth()) {
+    FinanceCard(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -363,3 +385,93 @@ private fun ContributeDialog(
         shape = MaterialTheme.shapes.medium,
     )
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ContributionsSheet(
+    goal: SavingsGoalProgress,
+    contributions: List<FinanceTransaction>,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.large,
+        dragHandle = null,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(goal.goal.name, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "${MoneyFormatter.format(goal.savedInCents)} aportados · ${contributions.size} " +
+                            if (contributions.size == 1) "aporte" else "aportes",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Cerrar aportes")
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            if (contributions.isEmpty()) {
+                Text(
+                    "Todavía no has aportado a esta meta.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 12.dp),
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 480.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    items(contributions, key = { it.id }) { contribution ->
+                        ContributionRow(contribution)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContributionRow(contribution: FinanceTransaction) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.AutoMirrored.Outlined.ReceiptLong,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                contribution.description.orEmpty(),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                contribution.date.format(contributionDateFormatter),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            "−${MoneyFormatter.format(contribution.amountInCents)}",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+private val contributionDateFormatter =
+    DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-DO"))

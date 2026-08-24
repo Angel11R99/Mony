@@ -51,6 +51,8 @@ class RoomTransactionRepository @Inject constructor(
     override fun observeByPeriod(period: DateRange) = dao.observeByPeriod(
         period.start.toEpochDay(), period.endInclusive.toEpochDay()
     ).map { items -> items.map { it.toDomain() } }
+    override fun observeBySavingsGoal(goalId: Long) =
+        dao.observeBySavingsGoal(goalId).map { items -> items.map { it.toDomain() } }
     override suspend fun get(id: Long) = dao.get(id)?.toDomain()
     override suspend fun create(transaction: FinanceTransaction) = dao.insert(transaction.toEntity())
     override suspend fun update(transaction: FinanceTransaction) = dao.update(transaction.toEntity())

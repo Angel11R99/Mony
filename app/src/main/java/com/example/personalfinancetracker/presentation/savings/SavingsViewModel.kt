@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -28,6 +30,7 @@ data class SavingsUiState(
 )
 
 @HiltViewModel
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SavingsViewModel @Inject constructor(
     private val savings: SavingsRepository,
     private val transactions: TransactionRepository,
@@ -46,6 +49,23 @@ class SavingsViewModel @Inject constructor(
     val isSaving = MutableStateFlow(false)
     private val pendingDeleteGoal = MutableStateFlow<SavingsGoalProgress?>(null)
     val pendingDelete: StateFlow<SavingsGoalProgress?> = pendingDeleteGoal
+
+    val selectedGoal = MutableStateFlow<SavingsGoalProgress?>(null)
+
+    val contributions: StateFlow<List<FinanceTransaction>> = selectedGoal
+        .flatMapLatest { goal ->
+            if (goal == null) flowOf(emptyList())
+            else transactions.observeBySavingsGoal(goal.goal.id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun openContributions(goal: SavingsGoalProgress) {
+        selectedGoal.value = goal
+    }
+
+    fun closeContributions() {
+        selectedGoal.value = null
+    }
 
     fun consumeMessage() {
         message.value = null
@@ -73,7 +93,10 @@ class SavingsViewModel @Inject constructor(
         val goal = pendingDeleteGoal.value ?: return
         viewModelScope.launch {
             runCatching { savings.delete(goal.goal.id) }
-                .onSuccess { message.value = "Meta eliminada. Sus aportes quedan en el historial." }
+                .onSuccess {
+                    message.value = "Meta eliminada. Sus aportes quedan en el historial."
+                    if (selectedGoal.value?.goal?.id == goal.goal.id) closeContributions()
+                }
                 .onFailure { message.value = "No se pudo eliminar la meta" }
             pendingDeleteGoal.value = null
         }
