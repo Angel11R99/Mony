@@ -26,13 +26,19 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 internal data class ModuleDestination(
     val label: String,
@@ -118,11 +124,34 @@ private fun ModuleItem(
             modifier = Modifier.size(21.dp).scale(iconScale),
             tint = contentColor,
         )
-        Text(
+        AutoShrinkingLabel(
             text = destination.label,
             style = MaterialTheme.typography.labelSmall,
             color = contentColor,
-            maxLines = 1,
         )
     }
+}
+
+private val MIN_MODULE_LABEL_FONT_SIZE = 8.sp
+
+@Composable
+private fun AutoShrinkingLabel(
+    text: String,
+    style: TextStyle,
+    color: Color,
+) {
+    var fontSize by remember(text) { mutableStateOf(style.fontSize) }
+    Text(
+        text = text,
+        style = style.copy(fontSize = fontSize),
+        color = color,
+        maxLines = 1,
+        softWrap = false,
+        onTextLayout = { result ->
+            if (result.hasVisualOverflow && fontSize > MIN_MODULE_LABEL_FONT_SIZE) {
+                val shrunk = fontSize * 0.92f
+                fontSize = if (shrunk >= MIN_MODULE_LABEL_FONT_SIZE) shrunk else MIN_MODULE_LABEL_FONT_SIZE
+            }
+        },
+    )
 }

@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,17 +27,22 @@ import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -66,9 +72,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,11 +86,13 @@ import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.DateRange
+import com.example.personalfinancetracker.domain.model.PendingCardSize
 import com.example.personalfinancetracker.domain.model.PendingEntry
 import com.example.personalfinancetracker.domain.model.PendingPeriodFilter
 import com.example.personalfinancetracker.domain.model.PendingType
 import com.example.personalfinancetracker.domain.model.isPendingReminderInFuture
 import com.example.personalfinancetracker.domain.model.isPendingDateValid
+import com.example.personalfinancetracker.domain.model.label
 import com.example.personalfinancetracker.domain.model.toTransactionType
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceCard
@@ -122,6 +133,8 @@ fun PendingEntriesScreen(
     }
     var selectedType by remember { mutableStateOf(PendingType.PAYMENT) }
     var periodFilter by remember { mutableStateOf(PendingPeriodFilter.FORTNIGHT) }
+    var query by remember { mutableStateOf("") }
+    val cardSize by viewModel.cardSize.collectAsStateWithLifecycle()
     var editorEntry by remember { mutableStateOf<PendingEntry?>(null) }
     var showEditor by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<PendingEntry?>(null) }
@@ -136,11 +149,8 @@ fun PendingEntriesScreen(
         }
     }
 
-    val visibleEntries = remember(state.entries, selectedType, periodRange) {
-        state.entries
-            .filter { it.type == selectedType }
-            .filter { periodRange == null || it.date in periodRange.start..periodRange.endInclusive }
-            .sortedWith(compareBy<PendingEntry> { it.isDone }.thenBy(PendingEntry::date))
+    val visibleEntries = remember(state.entries, selectedType, periodRange, query, state.categories) {
+        filterPendingEntries(state.entries, selectedType, periodRange, query, state.categories)
     }
     val pendingTotal = remember(visibleEntries) {
         visibleEntries.filterNot(PendingEntry::isDone).sumOf(PendingEntry::amountInCents)
@@ -196,6 +206,38 @@ fun PendingEntriesScreen(
                 }
             }
             item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FinanceTextField(
+                        query,
+                        { query = it },
+                        "Buscar",
+                        modifier = Modifier.weight(1f),
+                        placeholder = "Buscar...",
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (query.isNotBlank()) {
+                                IconButton(
+                                    onClick = { query = "" },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Close,
+                                        contentDescription = "Limpiar búsqueda",
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+                        },
+                    )
+                    PendingCardSizeMenu(cardSize, viewModel::setCardSize)
+                }
+            }
+            item {
                 PendingSummaryCard(
                     type = selectedType,
                     filter = periodFilter,
@@ -205,7 +247,7 @@ fun PendingEntriesScreen(
                     formatter = formatter,
                 )
             }
-            if (visibleEntries.isEmpty()) {
+            if (state.entries.isEmpty()) {
                 item {
                     FinanceCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -222,11 +264,20 @@ fun PendingEntriesScreen(
                         }
                     }
                 }
+            } else if (visibleEntries.isEmpty()) {
+                item {
+                    Text(
+                        "No encontramos recordatorios que coincidan con tu búsqueda.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 16.dp),
+                    )
+                }
             }
             items(visibleEntries, key = PendingEntry::id) { entry ->
                 PendingEntryCard(
                     entry = entry,
                     category = state.categories[entry.categoryId],
+                    size = cardSize,
                     formatter = formatter,
                     onToggleDone = { viewModel.toggleDone(entry) },
                     onEdit = {
@@ -385,62 +436,260 @@ private fun PendingSummaryCard(
 private fun PendingEntryCard(
     entry: PendingEntry,
     category: Category?,
+    size: PendingCardSize,
     formatter: DateTimeFormatter,
     onToggleDone: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     FinanceCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(entry.description, style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        category?.name ?: "Sin categoría",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                }
-                PendingStatusBadge(entry)
+        when (size) {
+            PendingCardSize.COMPACT ->
+                PendingCompactCardContent(entry, category, formatter, onToggleDone, onEdit, onDelete)
+            PendingCardSize.NORMAL ->
+                PendingNormalCardContent(entry, category, formatter, onToggleDone, onEdit, onDelete)
+            PendingCardSize.DETAILED ->
+                PendingDetailedCardContent(entry, category, formatter, onToggleDone, onEdit, onDelete)
+        }
+    }
+}
+
+@Composable
+private fun PendingCompactCardContent(
+    entry: PendingEntry,
+    category: Category?,
+    formatter: DateTimeFormatter,
+    onToggleDone: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    entry.description,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    category?.name ?: "Sin categoría",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Text(
                 MoneyFormatter.format(entry.amountInCents),
-                style = MaterialTheme.typography.headlineMedium,
-                color = if (entry.type == PendingType.PAYMENT) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleMedium,
+                color = pendingAmountColor(entry.type),
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            PendingStatusBadge(entry)
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Outlined.CalendarMonth,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                entry.date.format(formatter),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (entry.isDone) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onToggleDone, modifier = Modifier.size(36.dp)) {
                 Icon(
-                    Icons.Outlined.CalendarMonth,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    entry.date.format(formatter) +
-                        (entry.reminderTime?.takeUnless { entry.isDone }?.let {
-                            " · Alerta ${it.format(reminderTimeFormatter)}"
-                        } ?: "") +
-                        (entry.doneAt?.let { " · HECHO ${it.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter)}" } ?: ""),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (entry.isDone) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onSurface,
+                    if (entry.isDone) Icons.AutoMirrored.Outlined.Undo else Icons.Outlined.CheckCircle,
+                    contentDescription = if (entry.isDone) "Reabrir" else "Marcar hecho",
+                    tint = if (entry.isDone) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
                 )
             }
-            entry.comment?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Outlined.Edit, "Editar", modifier = Modifier.size(20.dp))
             }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                PrimaryButton(
-                    text = if (entry.isDone) "Reabrir" else "Marcar hecho",
-                    onClick = onToggleDone,
-                    modifier = Modifier.weight(1f),
+            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingNormalCardContent(
+    entry: PendingEntry,
+    category: Category?,
+    formatter: DateTimeFormatter,
+    onToggleDone: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        PendingCardHeader(entry, category)
+        Text(
+            MoneyFormatter.format(entry.amountInCents),
+            style = MaterialTheme.typography.headlineMedium,
+            color = pendingAmountColor(entry.type),
+        )
+        PendingCardDateRow(entry, formatter)
+        entry.comment?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        PendingCardActionsRow(onToggleDone = onToggleDone, isDone = entry.isDone, onEdit = onEdit, onDelete = onDelete)
+    }
+}
+
+@Composable
+private fun PendingDetailedCardContent(
+    entry: PendingEntry,
+    category: Category?,
+    formatter: DateTimeFormatter,
+    onToggleDone: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    var expanded by remember(entry.id, entry.updatedAt) { mutableStateOf(false) }
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        PendingCardHeader(entry, category)
+        Text(
+            MoneyFormatter.format(entry.amountInCents),
+            style = MaterialTheme.typography.headlineMedium,
+            color = pendingAmountColor(entry.type),
+        )
+        PendingCardDateRow(entry, formatter)
+        TextButton(onClick = { expanded = !expanded }) {
+            Icon(
+                if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(if (expanded) "Ver menos" else "Ver más", modifier = Modifier.padding(start = 6.dp))
+        }
+        if (expanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PendingDetailRow("Tipo", entry.type.label())
+                PendingDetailRow(
+                    "Alerta",
+                    entry.reminderTime?.takeUnless { entry.isDone }?.format(reminderTimeFormatter) ?: "Sin alerta",
                 )
-                IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Editar") }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
+                entry.comment?.let { PendingDetailRow("Comentario", it) }
+                entry.doneAt?.let {
+                    PendingDetailRow(
+                        "Registrado",
+                        it.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter),
+                    )
                 }
+                PendingDetailRow("Creado", entry.createdAt.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter))
+            }
+        }
+        PendingCardActionsRow(onToggleDone = onToggleDone, isDone = entry.isDone, onEdit = onEdit, onDelete = onDelete)
+    }
+}
+
+@Composable
+private fun PendingCardHeader(entry: PendingEntry, category: Category?) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(entry.description, style = MaterialTheme.typography.titleLarge)
+            Text(
+                category?.name ?: "Sin categoría",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
+        PendingStatusBadge(entry)
+    }
+}
+
+@Composable
+private fun PendingCardDateRow(entry: PendingEntry, formatter: DateTimeFormatter) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            Icons.Outlined.CalendarMonth,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            entry.date.format(formatter) +
+                (entry.reminderTime?.takeUnless { entry.isDone }?.let {
+                    " · Alerta ${it.format(reminderTimeFormatter)}"
+                } ?: "") +
+                (entry.doneAt?.let { " · HECHO ${it.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter)}" } ?: ""),
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (entry.isDone) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+@Composable
+private fun PendingCardActionsRow(
+    isDone: Boolean,
+    onToggleDone: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        PrimaryButton(
+            text = if (isDone) "Reabrir" else "Marcar hecho",
+            onClick = onToggleDone,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Editar") }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Composable
+private fun PendingDetailRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f).padding(start = 16.dp),
+        )
+    }
+}
+
+@Composable
+private fun pendingAmountColor(type: PendingType): Color =
+    if (type == PendingType.PAYMENT) MaterialTheme.colorScheme.error
+    else MaterialTheme.colorScheme.primary
+
+@Composable
+private fun PendingCardSizeMenu(selected: PendingCardSize, onSelect: (PendingCardSize) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { expanded = true }) {
+            Icon(Icons.Outlined.ViewAgenda, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(selected.label, modifier = Modifier.padding(start = 6.dp))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            PendingCardSize.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    leadingIcon = if (selected == option) {
+                        { Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                    } else null,
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
+                )
             }
         }
     }
@@ -780,3 +1029,46 @@ private const val MILLIS_PER_DAY = 86_400_000L
 
 private val reminderTimeFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("h:mm a", Locale.forLanguageTag("es-DO"))
+
+private val searchDateLongFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-DO"))
+
+private val searchDateNumericFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("dd/MM/yyyy")
+
+internal fun filterPendingEntries(
+    entries: List<PendingEntry>,
+    type: PendingType,
+    range: DateRange?,
+    query: String,
+    categories: Map<Long, Category>,
+): List<PendingEntry> {
+    val normalizedQuery = query.trim()
+    val digitQuery = normalizedQuery.filter(Char::isDigit)
+    return entries
+        .filter { it.type == type }
+        .filter { range == null || it.date in range.start..range.endInclusive }
+        .filter {
+            normalizedQuery.isEmpty() || it.matchesPendingQuery(normalizedQuery, digitQuery, categories)
+        }
+        .sortedWith(compareBy<PendingEntry> { it.isDone }.thenBy(PendingEntry::date))
+}
+
+private fun PendingEntry.matchesPendingQuery(
+    query: String,
+    digitQuery: String,
+    categories: Map<Long, Category>,
+): Boolean {
+    val haystack = listOfNotNull(
+        description,
+        comment,
+        categories[categoryId]?.name,
+        type.label(),
+        MoneyFormatter.format(amountInCents),
+        date.format(searchDateLongFormatter),
+        date.format(searchDateNumericFormatter),
+        reminderTime?.format(reminderTimeFormatter),
+    ).joinToString(" ")
+    return haystack.contains(query, ignoreCase = true) ||
+        (digitQuery.isNotEmpty() && amountInCents.toString().contains(digitQuery))
+}

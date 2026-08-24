@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.personalfinancetracker.core.MoneyFormatter
+import com.example.personalfinancetracker.core.PendingDisplayPreferences
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
+import com.example.personalfinancetracker.domain.model.PendingCardSize
 import com.example.personalfinancetracker.domain.model.PendingEntry
 import com.example.personalfinancetracker.domain.model.PendingType
 import com.example.personalfinancetracker.domain.model.label
@@ -19,6 +21,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -45,6 +48,11 @@ class PendingEntriesViewModel @Inject constructor(
     val message = MutableStateFlow<String?>(null)
     val isSaving = MutableStateFlow(false)
     private val processingEntryIds = mutableSetOf<Long>()
+    private val displayPreferences = PendingDisplayPreferences(context)
+
+    val cardSize: StateFlow<PendingCardSize> = displayPreferences.cardSize
+
+    fun setCardSize(size: PendingCardSize) = displayPreferences.setCardSize(size)
 
     fun consumeMessage() { message.value = null }
 

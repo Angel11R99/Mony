@@ -26,6 +26,12 @@ enum class PendingPeriodFilter {
     ALL,
 }
 
+enum class PendingCardSize(val label: String) {
+    COMPACT("Compacto"),
+    NORMAL("Normal"),
+    DETAILED("Detallado"),
+}
+
 data class PendingEntry(
     val id: Long = 0,
     val type: PendingType,

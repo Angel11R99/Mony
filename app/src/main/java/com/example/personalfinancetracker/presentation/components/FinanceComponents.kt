@@ -201,6 +201,7 @@ fun FinanceTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingIcon: (@Composable () -> Unit)? = null,
+    leadingIcon: (@Composable () -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -212,6 +213,7 @@ fun FinanceTextField(
         keyboardOptions = keyboardOptions,
         visualTransformation = visualTransformation,
         trailingIcon = trailingIcon,
+        leadingIcon = leadingIcon,
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.small,
         colors = OutlinedTextFieldDefaults.colors(
