@@ -156,11 +156,11 @@ fun PendingEntriesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { ModuleTitle("Pendientes") },
+                title = { ModuleTitle("Recordatorios") },
                 actions = {
                     GlobalOutlinedIconButton(
                         icon = Icons.Outlined.Add,
-                        contentDescription = "Nuevo pendiente",
+                        contentDescription = "Nuevo recordatorio",
                         onClick = {
                             editorEntry = null
                             showEditor = true
@@ -210,7 +210,7 @@ fun PendingEntriesScreen(
                     FinanceCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(Icons.AutoMirrored.Outlined.PlaylistAdd, null, tint = MaterialTheme.colorScheme.primary)
-                            Text("Todavía no hay pendientes", style = MaterialTheme.typography.titleLarge)
+                            Text("Todavía no hay recordatorios", style = MaterialTheme.typography.titleLarge)
                             Text(
                                 "Guarda aquí las cosas que piensas pagar o cobrar y ponles la fecha. Aparecerán en la quincena o el mes que elijas.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -271,8 +271,8 @@ fun PendingEntriesScreen(
     pendingDelete?.let { entry ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("¿Eliminar pendiente?") },
-            text = { Text("${entry.description} dejará de aparecer en Pendientes. Los movimientos ya registrados no se borrarán.") },
+            title = { Text("¿Eliminar recordatorio?") },
+            text = { Text("${entry.description} dejará de aparecer en Recordatorios. Los movimientos ya registrados no se borrarán.") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.delete(entry)
@@ -350,7 +350,7 @@ private fun PendingSummaryCard(
     val periodTitle = when (filter) {
         PendingPeriodFilter.FORTNIGHT -> "QUINCENA ACTUAL"
         PendingPeriodFilter.MONTH -> "MES ACTUAL"
-        PendingPeriodFilter.ALL -> "TODOS LOS PENDIENTES"
+        PendingPeriodFilter.ALL -> "TODOS LOS RECORDATORIOS"
     }
     val periodSubtitle = range?.let {
         "${it.start.format(formatter)} – ${it.endInclusive.format(formatter)}"
@@ -363,7 +363,7 @@ private fun PendingSummaryCard(
                 color = MaterialTheme.colorScheme.secondary,
             )
             Text(
-                if (type == PendingType.PAYMENT) "PAGOS PENDIENTES" else "COBROS PENDIENTES",
+                if (type == PendingType.PAYMENT) "POR PAGAR" else "POR COBRAR",
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
@@ -373,7 +373,7 @@ private fun PendingSummaryCard(
                 else MaterialTheme.colorScheme.primary,
             )
             Text(
-                "$count pendiente${if (count == 1) "" else "s"} · $periodSubtitle",
+                "$count recordatorio${if (count == 1) "" else "s"} · $periodSubtitle",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -518,7 +518,7 @@ private fun PendingEntryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (entry == null) "Nuevo pendiente" else "Editar pendiente") },
+        title = { Text(if (entry == null) "Nuevo recordatorio" else "Editar recordatorio") },
         text = {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),

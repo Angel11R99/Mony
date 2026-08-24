@@ -66,7 +66,7 @@ class PendingEntriesViewModel @Inject constructor(
             description.isBlank() -> message.value = "Escribe una descripción"
             cents == null || cents <= 0 -> message.value = "Introduce un monto válido"
             categoryId == null -> message.value = "Selecciona una categoría"
-            !isPendingDateValid(date) -> message.value = "La fecha del pendiente no puede haber pasado"
+            !isPendingDateValid(date) -> message.value = "La fecha del recordatorio no puede haber pasado"
             reminderTime != null && !isPendingReminderInFuture(date, reminderTime, now) ->
                 message.value = "La fecha y hora de la alerta deben estar en el futuro"
             else -> viewModelScope.launch {
@@ -97,7 +97,7 @@ class PendingEntriesViewModel @Inject constructor(
                     val persistedEntry = savedEntry.copy(id = existing?.id ?: savedId)
                     PendingReminderScheduler.schedule(context, persistedEntry)
                 }.onSuccess {
-                    message.value = "${type.label()} pendiente guardado"
+                    message.value = "Recordatorio de ${type.label()} guardado"
                     onSaved()
                 }.onFailure { message.value = "No se pudo guardar" }
                 isSaving.value = false
@@ -126,11 +126,11 @@ class PendingEntriesViewModel @Inject constructor(
                 updateAllFinanceWidgets(context)
             }.onSuccess {
                 message.value = if (entry.isDone) {
-                    "Pendiente restaurado"
+                    "Recordatorio restaurado"
                 } else {
                     "${entry.type.label()} registrado en el historial"
                 }
-            }.onFailure { message.value = "No se pudo actualizar el pendiente" }
+            }.onFailure { message.value = "No se pudo actualizar el recordatorio" }
             processingEntryIds.remove(entry.id)
         }
     }
@@ -143,7 +143,7 @@ class PendingEntriesViewModel @Inject constructor(
         }.onSuccess {
             message.value = "${entry.type.label()} eliminado"
         }.onFailure {
-            message.value = "No se pudo eliminar el pendiente"
+            message.value = "No se pudo eliminar el recordatorio"
         }
         processingEntryIds.remove(entry.id)
     }

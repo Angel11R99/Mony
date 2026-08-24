@@ -72,7 +72,7 @@ class PendingReminderWorker(
             openPending,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val action = if (entry.type == PendingType.PAYMENT) "Pago pendiente" else "Cobro pendiente"
+        val action = if (entry.type == PendingType.PAYMENT) "Recordatorio de pago" else "Recordatorio de cobro"
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("$action para hoy")
@@ -130,10 +130,10 @@ object PendingReminderScheduler {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             PendingReminderWorker.CHANNEL_ID,
-            "Recordatorios de pendientes",
+            "Recordatorios",
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
-            description = "Alertas de pagos y cobros pendientes"
+            description = "Alertas de pagos y cobros programados"
         }
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
