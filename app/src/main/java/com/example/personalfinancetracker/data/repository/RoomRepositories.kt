@@ -63,6 +63,20 @@ class RoomTransactionRepository @Inject constructor(
         }
         Unit
     }
+
+    override suspend fun duplicate(id: Long): Long? {
+        val original = dao.get(id) ?: return null
+        val now = Instant.now()
+        return dao.insert(
+            original.copy(
+                id = 0,
+                dateEpochDay = LocalDate.now().toEpochDay(),
+                createdAtEpochMillis = now.toEpochMilli(),
+                updatedAtEpochMillis = now.toEpochMilli(),
+                fixedEntryId = null,
+            )
+        )
+    }
 }
 
 class RoomCategoryRepository @Inject constructor(

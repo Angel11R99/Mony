@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FileDownload
@@ -233,6 +234,9 @@ fun HistoryScreen(
                     )
                     IconButton(onClick = { onEdit(transaction.id, transaction.type) }) {
                         Icon(Icons.Outlined.Edit, "Editar")
+                    }
+                    IconButton(onClick = { viewModel.duplicate(transaction.id) }) {
+                        Icon(Icons.Outlined.ContentCopy, "Duplicar")
                     }
                     IconButton(onClick = { pendingDelete = transaction }) {
                         Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)

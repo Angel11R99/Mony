@@ -46,6 +46,19 @@ class HistoryViewModel @Inject constructor(
         runCatching { updateAllFinanceWidgets(context) }
     }
 
+    fun duplicate(id: Long) = viewModelScope.launch {
+        runCatching { transactions.duplicate(id) }
+            .onSuccess { created ->
+                if (created != null) {
+                    message.value = "Movimiento duplicado."
+                    updateAllFinanceWidgets(context)
+                } else {
+                    message.value = "No se encontró el movimiento"
+                }
+            }
+            .onFailure { message.value = "No se pudo duplicar el movimiento" }
+    }
+
     fun exportTo(uri: Uri) {
         if (isExporting) return
         viewModelScope.launch {

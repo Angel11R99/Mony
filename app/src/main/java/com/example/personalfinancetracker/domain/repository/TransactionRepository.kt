@@ -11,4 +11,5 @@ interface TransactionRepository {
     suspend fun create(transaction: FinanceTransaction): Long
     suspend fun update(transaction: FinanceTransaction)
     suspend fun delete(id: Long)
+    suspend fun duplicate(id: Long): Long?
 }
