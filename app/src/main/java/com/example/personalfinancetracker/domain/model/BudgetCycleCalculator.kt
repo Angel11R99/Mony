@@ -98,10 +98,25 @@ fun availableForBudget(
             if (it.type == TransactionType.INCOME) it.amountInCents else -it.amountInCents
         }
     }
-    val expenses = transactions
-        .filter { it.type == TransactionType.EXPENSE && it.belongsToActiveBudgetCycle(budget, period) }
-        .sumOf(FinanceTransaction::amountInCents)
-    return budget.amountInCents - expenses
+    return budget.amountInCents - budgetCycleExpenses(budget, transactions, period)
+}
+
+fun budgetCycleExpenses(
+    budget: BudgetConfig,
+    transactions: List<FinanceTransaction>,
+    period: DateRange,
+): Long = transactions
+    .filter { it.type == TransactionType.EXPENSE && it.belongsToActiveBudgetCycle(budget, period) }
+    .sumOf(FinanceTransaction::amountInCents)
+
+fun budgetUsagePercent(
+    budget: BudgetConfig,
+    transactions: List<FinanceTransaction>,
+    period: DateRange,
+): Int {
+    if (budget.amountInCents <= 0) return 0
+    val expenses = budgetCycleExpenses(budget, transactions, period)
+    return ((expenses * 100) / budget.amountInCents).toInt()
 }
 
 fun canManuallyCloseBudgetCycle(

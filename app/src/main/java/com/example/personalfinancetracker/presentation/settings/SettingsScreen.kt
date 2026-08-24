@@ -28,6 +28,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,11 +73,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Schedule
 import com.example.personalfinancetracker.presentation.components.FinanceCard
+import com.example.personalfinancetracker.presentation.categories.CategoriesTab
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
@@ -112,6 +116,7 @@ fun SettingsScreen(
     val budget by viewModel.budget.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val isSavingCycles by viewModel.isSavingCycles.collectAsStateWithLifecycle()
+    val alertsEnabled by viewModel.alertsEnabled.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(message) {
@@ -180,8 +185,11 @@ fun SettingsScreen(
                     currentSchedules = budget?.cycleSchedules
                         ?: defaultCycleSchedules(budget?.period ?: BudgetPeriod.FORTNIGHTLY),
                     isSaving = isSavingCycles,
+                    alertsEnabled = alertsEnabled,
+                    onAlertsEnabledChange = viewModel::setAlertsEnabled,
                     onSchedulesSave = viewModel::updateCycleSchedules,
                 )
+                SettingsTab.CATEGORIES -> CategoriesTab()
             }
         }
     }
@@ -256,15 +264,17 @@ private fun SettingsTabItem(
         contentColor = contentColor,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp),
+            modifier = Modifier.padding(horizontal = 6.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(tab.icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            Icon(tab.icon, contentDescription = null, modifier = Modifier.size(16.dp))
             Text(
                 tab.label,
-                modifier = Modifier.padding(start = 8.dp),
+                modifier = Modifier.padding(start = 5.dp),
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
+                maxLines = 1,
             )
         }
     }
@@ -366,6 +376,8 @@ private fun CyclesTab(
     onPickCloseTime: () -> Unit,
     currentSchedules: List<BudgetCycleSchedule>,
     isSaving: Boolean,
+    alertsEnabled: Boolean,
+    onAlertsEnabledChange: (Boolean) -> Unit,
     onSchedulesSave: (List<BudgetCycleSchedule>) -> Unit,
 ) {
     LazyColumn(
@@ -422,6 +434,30 @@ private fun CyclesTab(
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
+                    HorizontalDivider()
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Outlined.NotificationsActive,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Alertas de presupuesto", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Te avisa al alcanzar el 75% del presupuesto y cuando lo superes en el ciclo actual.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = alertsEnabled,
+                            onCheckedChange = onAlertsEnabledChange,
+                        )
+                    }
                 }
             }
         }
@@ -438,6 +474,7 @@ private fun CyclesTab(
 private enum class SettingsTab(val label: String, val icon: ImageVector) {
     APPEARANCE("Apariencia", Icons.Outlined.Palette),
     CYCLES("Ciclos", Icons.Outlined.Schedule),
+    CATEGORIES("Categorías", Icons.Outlined.Category),
 }
 
 @Composable

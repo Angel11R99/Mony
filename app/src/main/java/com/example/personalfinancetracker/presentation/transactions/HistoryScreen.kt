@@ -1,5 +1,7 @@
 package com.example.personalfinancetracker.presentation.transactions
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Check
@@ -60,12 +63,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
+import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
@@ -110,6 +115,18 @@ fun HistoryScreen(
     var query by remember { mutableStateOf("") }
     var pendingDelete by remember { mutableStateOf<FinanceTransaction?>(null) }
     var selectedTransaction by remember { mutableStateOf<FinanceTransaction?>(null) }
+    val message by viewModel.message.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri -> uri?.let(viewModel::exportTo) }
+
+    LaunchedEffect(message) {
+        message?.let {
+            context.showToast(it)
+            viewModel.consumeMessage()
+        }
+    }
 
     val availableCategories = remember(state.categories, typeFilter) {
         state.categories.values
@@ -137,6 +154,14 @@ fun HistoryScreen(
             TopAppBar(
                 title = { ModuleTitle("Historial") },
                 actions = {
+                    GlobalOutlinedIconButton(
+                        icon = Icons.Outlined.FileDownload,
+                        contentDescription = "Exportar historial a CSV",
+                        onClick = {
+                            exportLauncher.launch("movimientos-${LocalDate.now()}.csv")
+                        },
+                    )
+                    Spacer(Modifier.width(8.dp))
                     GlobalSettingsButton(onClick = onSettings)
                     Spacer(Modifier.width(14.dp))
                 },

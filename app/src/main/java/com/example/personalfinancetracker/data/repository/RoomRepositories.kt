@@ -8,6 +8,7 @@ import com.example.personalfinancetracker.data.local.dao.FixedEntryDao
 import com.example.personalfinancetracker.data.local.dao.PendingEntryDao
 import com.example.personalfinancetracker.data.local.entity.BudgetConfigEntity
 import com.example.personalfinancetracker.data.local.entity.BudgetCycleEntity
+import com.example.personalfinancetracker.data.local.entity.CategoryEntity
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
 import com.example.personalfinancetracker.data.mapper.toDomain
 import com.example.personalfinancetracker.data.mapper.toEntity
@@ -27,6 +28,7 @@ import com.example.personalfinancetracker.domain.repository.TransactionRepositor
 import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
 import com.example.personalfinancetracker.domain.repository.PendingEntryRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import androidx.room.withTransaction
 import java.time.Instant
@@ -70,6 +72,34 @@ class RoomCategoryRepository @Inject constructor(
         dao.observeActive(type.name).map { items -> items.map { it.toDomain() } }
     override fun observeAll(): Flow<List<Category>> =
         dao.observeAll().map { items -> items.map { it.toDomain() } }
+    override fun observeUsedCategoryIds(): Flow<Set<Long>> =
+        dao.observeUsedCategoryIds().map { ids -> ids.toSet() }
+
+    override suspend fun create(name: String, type: TransactionType) {
+        dao.insert(
+            CategoryEntity(
+                name = name.trim(),
+                type = type.name,
+                icon = DEFAULT_CATEGORY_ICON,
+                createdAtEpochMillis = System.currentTimeMillis(),
+            )
+        )
+    }
+
+    override suspend fun rename(id: Long, name: String) = dao.rename(id, name.trim())
+
+    override suspend fun setActive(id: Long, isActive: Boolean) = dao.setActive(id, isActive)
+
+    override suspend fun deleteIfUnused(id: Long): Boolean {
+        val usedIds = dao.observeUsedCategoryIds().first()
+        if (id in usedIds) return false
+        dao.deleteById(id)
+        return true
+    }
+
+    private companion object {
+        const val DEFAULT_CATEGORY_ICON = "label"
+    }
 }
 
 class RoomFixedEntryRepository @Inject constructor(

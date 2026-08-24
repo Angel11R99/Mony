@@ -3,6 +3,7 @@ package com.example.personalfinancetracker.presentation.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.personalfinancetracker.core.BudgetAlertPreferences
 import com.example.personalfinancetracker.domain.model.BudgetCycleSchedule
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
@@ -10,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -20,13 +22,22 @@ class SettingsViewModel @Inject constructor(
     private val budgetRepository: BudgetRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
+    private val alertPreferences = BudgetAlertPreferences(context)
+
     val budget = budgetRepository.observe()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val message = MutableStateFlow<String?>(null)
     val isSavingCycles = MutableStateFlow(false)
+    val alertsEnabled: StateFlow<Boolean> = alertPreferences.alertsEnabled
 
     fun consumeMessage() {
         message.value = null
+    }
+
+    fun setAlertsEnabled(enabled: Boolean) {
+        alertPreferences.setAlertsEnabled(enabled)
+        message.value = if (enabled) "Alertas de presupuesto activadas"
+        else "Alertas de presupuesto desactivadas"
     }
 
     fun updateCycleSchedules(schedules: List<BudgetCycleSchedule>) {
