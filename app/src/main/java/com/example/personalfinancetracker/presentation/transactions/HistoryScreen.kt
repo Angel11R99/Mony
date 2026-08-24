@@ -64,6 +64,7 @@ import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.presentation.components.FinanceCard
+import com.example.personalfinancetracker.presentation.components.FinanceTextField
 import com.example.personalfinancetracker.presentation.components.TransactionRow
 import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
@@ -99,6 +100,7 @@ fun HistoryScreen(
     var startDate by remember { mutableStateOf<LocalDate?>(null) }
     var endDate by remember { mutableStateOf<LocalDate?>(null) }
     var sort by remember { mutableStateOf(HistorySort.NEWEST) }
+    var query by remember { mutableStateOf("") }
     var pendingDelete by remember { mutableStateOf<FinanceTransaction?>(null) }
     var selectedTransaction by remember { mutableStateOf<FinanceTransaction?>(null) }
 
@@ -110,8 +112,12 @@ fun HistoryScreen(
     LaunchedEffect(typeFilter) {
         if (categoryId != null && availableCategories.none { it.id == categoryId }) categoryId = null
     }
-    val filtered = remember(state.transactions, typeFilter, categoryId, startDate, endDate) {
-        filterTransactions(state.transactions, typeFilter.type, categoryId, startDate, endDate)
+    val filtered = remember(state.transactions, typeFilter, categoryId, startDate, endDate, query, state.categories) {
+        searchFinanceTransactions(
+            filterTransactions(state.transactions, typeFilter.type, categoryId, startDate, endDate),
+            state.categories,
+            query,
+        )
     }
     val sorted = remember(filtered, state.categories, sort) {
         sortTransactions(filtered, state.categories, sort)
@@ -143,6 +149,8 @@ fun HistoryScreen(
         ) {
             item {
                 HistoryFilters(
+                    query = query,
+                    onQueryChange = { query = it },
                     typeFilter = typeFilter,
                     onTypeChange = { typeFilter = it },
                     categories = availableCategories,
@@ -251,6 +259,8 @@ fun HistoryScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryFilters(
+    query: String,
+    onQueryChange: (String) -> Unit,
     typeFilter: HistoryTypeFilter,
     onTypeChange: (HistoryTypeFilter) -> Unit,
     categories: List<Category>,
@@ -274,6 +284,28 @@ private fun HistoryFilters(
         searchCategories(categories, categorySearch)
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        FinanceTextField(
+            query,
+            onQueryChange,
+            "Buscar",
+            placeholder = "Buscar movimientos...",
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+            trailingIcon = {
+                if (query.isNotBlank()) {
+                    IconButton(
+                        onClick = { onQueryChange("") },
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = "Limpiar búsqueda",
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            },
+        )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HistoryTypeFilter.entries.forEach { option ->
                 FilterChip(
@@ -375,6 +407,7 @@ private fun HistoryFilters(
                 onClick = {
                     categorySearch = ""
                     categoryExpanded = false
+                    onQueryChange("")
                     onClear()
                 },
             ) {
@@ -507,6 +540,40 @@ internal fun searchCategories(categories: List<Category>, query: String): List<C
     categories.filter { category ->
         query.isBlank() || category.name.contains(query.trim(), ignoreCase = true)
     }
+
+private val searchDateLongFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.forLanguageTag("es-DO"))
+
+private val searchDateNumericFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("dd/MM/yyyy")
+
+internal fun searchFinanceTransactions(
+    transactions: List<FinanceTransaction>,
+    categories: Map<Long, Category>,
+    query: String,
+): List<FinanceTransaction> {
+    val normalizedQuery = query.trim()
+    val digitQuery = normalizedQuery.filter(Char::isDigit)
+    if (normalizedQuery.isEmpty()) return transactions
+    return transactions.filter { it.matchesTransactionQuery(normalizedQuery, digitQuery, categories) }
+}
+
+private fun FinanceTransaction.matchesTransactionQuery(
+    query: String,
+    digitQuery: String,
+    categories: Map<Long, Category>,
+): Boolean {
+    val haystack = listOfNotNull(
+        description,
+        categories[categoryId]?.name,
+        if (type == TransactionType.EXPENSE) "Gastos" else "Ingresos",
+        MoneyFormatter.format(amountInCents),
+        date.format(searchDateLongFormatter),
+        date.format(searchDateNumericFormatter),
+    ).joinToString(" ")
+    return haystack.contains(query, ignoreCase = true) ||
+        (digitQuery.isNotEmpty() && amountInCents.toString().contains(digitQuery))
+}
 
 internal fun sortTransactions(
     transactions: List<FinanceTransaction>,

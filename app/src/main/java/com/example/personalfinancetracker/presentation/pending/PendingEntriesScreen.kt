@@ -86,7 +86,7 @@ import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.DateRange
-import com.example.personalfinancetracker.domain.model.PendingCardSize
+import com.example.personalfinancetracker.domain.model.EntryCardSize
 import com.example.personalfinancetracker.domain.model.PendingEntry
 import com.example.personalfinancetracker.domain.model.PendingPeriodFilter
 import com.example.personalfinancetracker.domain.model.PendingType
@@ -96,6 +96,7 @@ import com.example.personalfinancetracker.domain.model.label
 import com.example.personalfinancetracker.domain.model.toTransactionType
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceCard
+import com.example.personalfinancetracker.presentation.components.FinanceDetailRow
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
@@ -234,7 +235,7 @@ fun PendingEntriesScreen(
                             }
                         },
                     )
-                    PendingCardSizeMenu(cardSize, viewModel::setCardSize)
+                    EntryCardSizeMenu(cardSize, viewModel::setCardSize)
                 }
             }
             item {
@@ -436,7 +437,7 @@ private fun PendingSummaryCard(
 private fun PendingEntryCard(
     entry: PendingEntry,
     category: Category?,
-    size: PendingCardSize,
+    size: EntryCardSize,
     formatter: DateTimeFormatter,
     onToggleDone: () -> Unit,
     onEdit: () -> Unit,
@@ -444,11 +445,11 @@ private fun PendingEntryCard(
 ) {
     FinanceCard(Modifier.fillMaxWidth()) {
         when (size) {
-            PendingCardSize.COMPACT ->
+            EntryCardSize.COMPACT ->
                 PendingCompactCardContent(entry, category, formatter, onToggleDone, onEdit, onDelete)
-            PendingCardSize.NORMAL ->
+            EntryCardSize.NORMAL ->
                 PendingNormalCardContent(entry, category, formatter, onToggleDone, onEdit, onDelete)
-            PendingCardSize.DETAILED ->
+            EntryCardSize.DETAILED ->
                 PendingDetailedCardContent(entry, category, formatter, onToggleDone, onEdit, onDelete)
         }
     }
@@ -574,19 +575,19 @@ private fun PendingDetailedCardContent(
         }
         if (expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PendingDetailRow("Tipo", entry.type.label())
-                PendingDetailRow(
+                FinanceDetailRow("Tipo", entry.type.label())
+                FinanceDetailRow(
                     "Alerta",
                     entry.reminderTime?.takeUnless { entry.isDone }?.format(reminderTimeFormatter) ?: "Sin alerta",
                 )
-                entry.comment?.let { PendingDetailRow("Comentario", it) }
+                entry.comment?.let { FinanceDetailRow("Comentario", it) }
                 entry.doneAt?.let {
-                    PendingDetailRow(
+                    FinanceDetailRow(
                         "Registrado",
                         it.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter),
                     )
                 }
-                PendingDetailRow("Creado", entry.createdAt.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter))
+                FinanceDetailRow("Creado", entry.createdAt.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter))
             }
         }
         PendingCardActionsRow(onToggleDone = onToggleDone, isDone = entry.isDone, onEdit = onEdit, onDelete = onDelete)
@@ -652,26 +653,12 @@ private fun PendingCardActionsRow(
 }
 
 @Composable
-private fun PendingDetailRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth()) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.End,
-            modifier = Modifier.weight(1f).padding(start = 16.dp),
-        )
-    }
-}
-
-@Composable
 private fun pendingAmountColor(type: PendingType): Color =
     if (type == PendingType.PAYMENT) MaterialTheme.colorScheme.error
     else MaterialTheme.colorScheme.primary
 
 @Composable
-private fun PendingCardSizeMenu(selected: PendingCardSize, onSelect: (PendingCardSize) -> Unit) {
+private fun EntryCardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSize) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         TextButton(onClick = { expanded = true }) {
@@ -679,7 +666,7 @@ private fun PendingCardSizeMenu(selected: PendingCardSize, onSelect: (PendingCar
             Text(selected.label, modifier = Modifier.padding(start = 6.dp))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            PendingCardSize.entries.forEach { option ->
+            EntryCardSize.entries.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(option.label) },
                     leadingIcon = if (selected == option) {

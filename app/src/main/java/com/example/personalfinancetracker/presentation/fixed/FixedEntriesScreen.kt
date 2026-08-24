@@ -3,6 +3,7 @@ package com.example.personalfinancetracker.presentation.fixed
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -23,14 +24,19 @@ import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -60,22 +66,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.Category
+import com.example.personalfinancetracker.domain.model.EntryCardSize
+import com.example.personalfinancetracker.domain.model.FixedDateMode
 import com.example.personalfinancetracker.domain.model.FixedEntry
 import com.example.personalfinancetracker.domain.model.FixedScheduleMode
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.previousFortnightEnd
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceCard
+import com.example.personalfinancetracker.presentation.components.FinanceDetailRow
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
@@ -99,13 +110,15 @@ fun FixedEntriesScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
+    var query by remember { mutableStateOf("") }
+    val cardSize by viewModel.cardSize.collectAsStateWithLifecycle()
     var editorEntry by remember { mutableStateOf<FixedEntry?>(null) }
     var showEditor by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<FixedEntry?>(null) }
     var configEntry by remember { mutableStateOf<FixedEntry?>(null) }
     var manualEntry by remember { mutableStateOf<FixedEntry?>(null) }
-    val visibleEntries = remember(state.entries, selectedType) {
-        state.entries.filter { it.type == selectedType }
+    val visibleEntries = remember(state.entries, selectedType, query, state.categories) {
+        filterFixedEntries(state.entries, selectedType, query, state.categories)
     }
 
     LaunchedEffect(message) {
@@ -151,13 +164,45 @@ fun FixedEntriesScreen(
                 }
             }
             item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FinanceTextField(
+                        query,
+                        { query = it },
+                        "Buscar",
+                        modifier = Modifier.weight(1f),
+                        placeholder = "Buscar...",
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (query.isNotBlank()) {
+                                IconButton(
+                                    onClick = { query = "" },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Close,
+                                        contentDescription = "Limpiar búsqueda",
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+                        },
+                    )
+                    EntryCardSizeMenu(cardSize, viewModel::setCardSize)
+                }
+            }
+            item {
                 Text(
                     if (selectedType == TransactionType.EXPENSE) "GASTOS RECURRENTES" else "INGRESOS RECURRENTES",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.secondary,
                 )
             }
-            if (visibleEntries.isEmpty()) {
+            if (state.entries.isEmpty()) {
                 item {
                     FinanceCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -174,11 +219,20 @@ fun FixedEntriesScreen(
                         }
                     }
                 }
+            } else if (visibleEntries.isEmpty()) {
+                item {
+                    Text(
+                        "No encontramos plantillas que coincidan con tu búsqueda.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 16.dp),
+                    )
+                }
             }
             items(visibleEntries, key = FixedEntry::id) { entry ->
                 FixedEntryCard(
                     entry = entry,
                     category = state.categories[entry.categoryId],
+                    size = cardSize,
                     onToggle = { viewModel.toggle(entry) },
                     onAddNow = { manualEntry = entry },
                     onConfigure = { configEntry = entry },
@@ -281,6 +335,7 @@ private fun TypeChip(
 private fun FixedEntryCard(
     entry: FixedEntry,
     category: Category?,
+    size: EntryCardSize,
     onToggle: () -> Unit,
     onAddNow: () -> Unit,
     onConfigure: () -> Unit,
@@ -288,44 +343,249 @@ private fun FixedEntryCard(
     onDelete: () -> Unit,
 ) {
     FinanceCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(entry.description, style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        category?.name ?: "Sin categoría",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                }
-                Switch(checked = entry.isActive, onCheckedChange = { onToggle() })
+        when (size) {
+            EntryCardSize.COMPACT ->
+                FixedCompactCardContent(entry, category, onToggle, onAddNow, onConfigure, onEdit, onDelete)
+            EntryCardSize.NORMAL ->
+                FixedNormalCardContent(entry, category, onToggle, onAddNow, onConfigure, onEdit, onDelete)
+            EntryCardSize.DETAILED ->
+                FixedDetailedCardContent(entry, category, onToggle, onAddNow, onConfigure, onEdit, onDelete)
+        }
+    }
+}
+
+@Composable
+private fun fixedAmountColor(type: TransactionType): Color =
+    if (type == TransactionType.EXPENSE) MaterialTheme.colorScheme.error
+    else MaterialTheme.colorScheme.primary
+
+@Composable
+private fun FixedCompactCardContent(
+    entry: FixedEntry,
+    category: Category?,
+    onToggle: () -> Unit,
+    onAddNow: () -> Unit,
+    onConfigure: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    entry.description,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    category?.name ?: "Sin categoría",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Text(
                 MoneyFormatter.format(entry.amountInCents),
-                style = MaterialTheme.typography.headlineMedium,
-                color = if (entry.type == TransactionType.EXPENSE) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleMedium,
+                color = fixedAmountColor(entry.type),
             )
-            entry.comment?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            FixedEntryTimingStatus(entry)
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                PrimaryButton(
-                    text = when {
-                        entry.isActive -> "Agregar"
-                        entry.lastAddedAt != null -> "Agregado"
-                        else -> "Inactivo"
-                    },
-                    onClick = onAddNow,
-                    modifier = Modifier.weight(1f),
-                    enabled = entry.isActive,
+            Switch(checked = entry.isActive, onCheckedChange = { onToggle() })
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                compactTimingText(entry),
+                style = MaterialTheme.typography.labelSmall,
+                color = if (entry.isActive) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onAddNow, enabled = entry.isActive, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = "Agregar ahora",
+                    tint = if (entry.isActive) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                    modifier = Modifier.size(20.dp),
                 )
-                IconButton(onClick = onConfigure) { Icon(Icons.Outlined.Settings, "Configurar fechas") }
-                IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Editar") }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
+            }
+            IconButton(onClick = onConfigure, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Outlined.Settings, "Configurar fechas", modifier = Modifier.size(20.dp))
+            }
+            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Outlined.Edit, "Editar", modifier = Modifier.size(20.dp))
+            }
+            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun FixedNormalCardContent(
+    entry: FixedEntry,
+    category: Category?,
+    onToggle: () -> Unit,
+    onAddNow: () -> Unit,
+    onConfigure: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(entry.description, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    category?.name ?: "Sin categoría",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+            Switch(checked = entry.isActive, onCheckedChange = { onToggle() })
+        }
+        Text(
+            MoneyFormatter.format(entry.amountInCents),
+            style = MaterialTheme.typography.headlineMedium,
+            color = fixedAmountColor(entry.type),
+        )
+        entry.comment?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        FixedEntryTimingStatus(entry)
+        FixedEntryActionsRow(entry, onAddNow, onConfigure, onEdit, onDelete)
+    }
+}
+
+@Composable
+private fun FixedDetailedCardContent(
+    entry: FixedEntry,
+    category: Category?,
+    onToggle: () -> Unit,
+    onAddNow: () -> Unit,
+    onConfigure: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    var expanded by remember(entry.id, entry.lastAddedAt, entry.nextRunAt) { mutableStateOf(false) }
+    val zone = remember { ZoneId.systemDefault() }
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(entry.description, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    category?.name ?: "Sin categoría",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+            Switch(checked = entry.isActive, onCheckedChange = { onToggle() })
+        }
+        Text(
+            MoneyFormatter.format(entry.amountInCents),
+            style = MaterialTheme.typography.headlineMedium,
+            color = fixedAmountColor(entry.type),
+        )
+        FixedEntryTimingStatus(entry)
+        TextButton(onClick = { expanded = !expanded }) {
+            Icon(
+                if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(if (expanded) "Ver menos" else "Ver más", modifier = Modifier.padding(start = 6.dp))
+        }
+        if (expanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FinanceDetailRow("Tipo", if (entry.type == TransactionType.EXPENSE) "Gasto" else "Ingreso")
+                FinanceDetailRow("Programación", scheduleModeLabel(entry.scheduleMode))
+                if (entry.scheduleMode != FixedScheduleMode.MANUAL) {
+                    FinanceDetailRow("Hora programada", formatScheduleHour(entry.scheduleHour))
                 }
+                entry.scheduleSpecificDate?.let {
+                    FinanceDetailRow("Fecha específica", it.format(timingDateFormatter))
+                }
+                FinanceDetailRow("Fecha al agregar", manualDateModeLabel(entry.manualDateMode))
+                entry.lastAddedDate?.let {
+                    FinanceDetailRow("Última fecha agregada", it.format(timingDateFormatter))
+                }
+                entry.comment?.let { FinanceDetailRow("Comentario", it) }
+            }
+        }
+        FixedEntryActionsRow(entry, onAddNow, onConfigure, onEdit, onDelete)
+    }
+}
+
+@Composable
+private fun FixedEntryActionsRow(
+    entry: FixedEntry,
+    onAddNow: () -> Unit,
+    onConfigure: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        PrimaryButton(
+            text = when {
+                entry.isActive -> "Agregar"
+                entry.lastAddedAt != null -> "Agregado"
+                else -> "Inactivo"
+            },
+            onClick = onAddNow,
+            modifier = Modifier.weight(1f),
+            enabled = entry.isActive,
+        )
+        IconButton(onClick = onConfigure) { Icon(Icons.Outlined.Settings, "Configurar fechas") }
+        IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Editar") }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+private fun compactTimingText(entry: FixedEntry): String {
+    val zone = ZoneId.systemDefault()
+    return when {
+        !entry.isActive -> "INACTIVA"
+        entry.nextRunAt != null -> "PRÓXIMO · ${entry.nextRunAt.atZone(zone).format(timingDateTimeFormatter)}"
+        entry.lastAddedAt != null -> "ÚLTIMO AGREGADO · ${entry.lastAddedAt.atZone(zone).format(timingDateTimeFormatter)}"
+        else -> "SIN PROGRAMACIÓN"
+    }
+}
+
+private fun formatScheduleHour(hour: Int): String =
+    LocalDate.now().atTime(hour.coerceIn(0, 23), 0).format(scheduleHourFormatter)
+
+private fun manualDateModeLabel(mode: FixedDateMode): String = when (mode) {
+    FixedDateMode.TODAY -> "Hoy"
+    FixedDateMode.PREVIOUS_FORTNIGHT -> "Quincena anterior"
+    FixedDateMode.PREVIOUS_MONTH -> "Mes anterior"
+    FixedDateMode.SPECIFIC_DATE -> "Fecha específica"
+}
+
+@Composable
+private fun EntryCardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSize) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { expanded = true }) {
+            Icon(Icons.Outlined.ViewAgenda, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(selected.label, modifier = Modifier.padding(start = 6.dp))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            EntryCardSize.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    leadingIcon = if (selected == option) {
+                        { Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                    } else null,
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
+                )
             }
         }
     }
@@ -334,24 +594,18 @@ private fun FixedEntryCard(
 @Composable
 private fun FixedEntryTimingStatus(entry: FixedEntry) {
     val zone = remember { ZoneId.systemDefault() }
-    val dateTimeFormatter = remember {
-        DateTimeFormatter.ofPattern("d MMM · h:mm a", Locale.forLanguageTag("es-DO"))
-    }
-    val dateFormatter = remember {
-        DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-DO"))
-    }
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         entry.nextRunAt?.let {
             Text(
-                "PRÓXIMO · ${it.atZone(zone).format(dateTimeFormatter)}",
+                "PRÓXIMO · ${it.atZone(zone).format(timingDateTimeFormatter)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
         }
         entry.lastAddedAt?.let {
             Text(
-                "ÚLTIMO AGREGADO · ${it.atZone(zone).format(dateTimeFormatter)}" +
-                    (entry.lastAddedDate?.let { date -> " · FECHA ${date.format(dateFormatter)}" } ?: ""),
+                "ÚLTIMO AGREGADO · ${it.atZone(zone).format(timingDateTimeFormatter)}" +
+                    (entry.lastAddedDate?.let { date -> " · FECHA ${date.format(timingDateFormatter)}" } ?: ""),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -609,6 +863,52 @@ private fun scheduleModeLabel(mode: FixedScheduleMode): String = when (mode) {
 }
 
 private const val MILLIS_PER_DAY = 86_400_000L
+
+private val timingDateTimeFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("d MMM · h:mm a", Locale.forLanguageTag("es-DO"))
+
+private val timingDateFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-DO"))
+
+private val scheduleHourFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("h:mm a", Locale.forLanguageTag("es-DO"))
+
+private val searchDateNumericFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("dd/MM/yyyy")
+
+internal fun filterFixedEntries(
+    entries: List<FixedEntry>,
+    type: TransactionType,
+    query: String,
+    categories: Map<Long, Category>,
+): List<FixedEntry> {
+    val normalizedQuery = query.trim()
+    val digitQuery = normalizedQuery.filter(Char::isDigit)
+    return entries
+        .filter { it.type == type }
+        .filter {
+            normalizedQuery.isEmpty() || it.matchesFixedQuery(normalizedQuery, digitQuery, categories)
+        }
+}
+
+private fun FixedEntry.matchesFixedQuery(
+    query: String,
+    digitQuery: String,
+    categories: Map<Long, Category>,
+): Boolean {
+    val haystack = listOfNotNull(
+        description,
+        comment,
+        categories[categoryId]?.name,
+        if (type == TransactionType.EXPENSE) "Gastos" else "Ingresos",
+        MoneyFormatter.format(amountInCents),
+        scheduleModeLabel(scheduleMode),
+        scheduleSpecificDate?.format(searchDateNumericFormatter),
+        lastAddedDate?.format(searchDateNumericFormatter),
+    ).joinToString(" ")
+    return haystack.contains(query, ignoreCase = true) ||
+        (digitQuery.isNotEmpty() && amountInCents.toString().contains(digitQuery))
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

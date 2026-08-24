@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.personalfinancetracker.core.MoneyFormatter
+import com.example.personalfinancetracker.core.EntryDisplayPreferences
 import com.example.personalfinancetracker.domain.model.Category
+import com.example.personalfinancetracker.domain.model.EntryCardSize
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.FixedEntry
 import com.example.personalfinancetracker.domain.model.FixedScheduleMode
@@ -17,6 +19,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -40,6 +43,11 @@ class FixedEntriesViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FixedEntriesUiState())
 
     val message = MutableStateFlow<String?>(null)
+    private val displayPreferences = EntryDisplayPreferences(context)
+
+    val cardSize: StateFlow<EntryCardSize> = displayPreferences.fixedCardSize
+
+    fun setCardSize(size: EntryCardSize) = displayPreferences.setFixedCardSize(size)
 
     fun consumeMessage() { message.value = null }
 
