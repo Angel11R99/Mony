@@ -79,7 +79,12 @@ class SavingsViewModel @Inject constructor(
         }
     }
 
-    fun contribute(goal: SavingsGoalProgress, rawAmount: String, onDone: () -> Unit) {
+    fun contribute(
+        goal: SavingsGoalProgress,
+        rawAmount: String,
+        rawDescription: String,
+        onDone: () -> Unit,
+    ) {
         if (isSaving.value) return
         val cents = MoneyFormatter.parseToCents(rawAmount)
         when {
@@ -96,12 +101,14 @@ class SavingsViewModel @Inject constructor(
                 val categoryId = state.value.savingsCategoryId
                 runCatching {
                     val now = Instant.now()
+                    val note = rawDescription.trim()
                     transactions.create(
                         FinanceTransaction(
                             amountInCents = cents,
                             type = TransactionType.EXPENSE,
                             categoryId = categoryId!!,
-                            description = "$CONTRIBUTION_PREFIX${goal.goal.name}",
+                            description = if (note.isEmpty()) "$CONTRIBUTION_PREFIX${goal.goal.name}"
+                            else "$CONTRIBUTION_PREFIX${goal.goal.name} · $note",
                             date = now.atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
                             createdAt = now,
                             updatedAt = now,

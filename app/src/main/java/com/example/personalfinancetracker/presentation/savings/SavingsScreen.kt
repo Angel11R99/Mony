@@ -165,8 +165,8 @@ fun SavingsScreen(
             goal = goal,
             isSaving = isSaving,
             onDismiss = { contributingGoal = null },
-            onConfirm = { amount ->
-                viewModel.contribute(goal, amount) { contributingGoal = null }
+            onConfirm = { amount, description ->
+                viewModel.contribute(goal, amount, description) { contributingGoal = null }
             },
         )
     }
@@ -321,9 +321,10 @@ private fun ContributeDialog(
     goal: SavingsGoalProgress,
     isSaving: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
+    onConfirm: (String, String) -> Unit,
 ) {
     var amount by remember(goal) { mutableStateOf("") }
+    var description by remember(goal) { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
         title = { Text("Aportar a ${goal.goal.name}") },
@@ -342,12 +343,18 @@ private fun ContributeDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     visualTransformation = AmountVisualTransformation,
                 )
+                FinanceTextField(
+                    description,
+                    { description = it },
+                    "Descripción (opcional)",
+                    singleLine = true,
+                )
             }
         },
         confirmButton = {
             PrimaryButton(
                 text = if (isSaving) "Registrando…" else "Aportar",
-                onClick = { onConfirm(amount) },
+                onClick = { onConfirm(amount, description) },
                 enabled = !isSaving && amount.isNotBlank(),
             )
         },

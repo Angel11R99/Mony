@@ -151,17 +151,44 @@ class HistoryViewModel @Inject constructor(
             isExporting = true
             runCatching {
                 if (request.transactions.isEmpty()) error("No hay movimientos para exportar")
-                val stream = context.contentResolver.openOutputStream(uri)
-                    ?: error("No se pudo abrir el archivo seleccionado")
-                stream.use {
-                    HistoryPdfWriter.writeTo(it, request.transactions, state.value.categories, request.meta)
-                }
+                writePdf(request, context.contentResolver.openOutputStream(uri)
+                    ?: error("No se pudo abrir el archivo seleccionado"))
             }.onSuccess {
                 message.value = "PDF generado correctamente."
             }.onFailure {
                 message.value = it.message ?: "No se pudo generar el PDF"
             }
             isExporting = false
+        }
+    }
+
+    /** Genera el PDF en la caché y entrega el URI compartible para abrirlo con otras aplicaciones. */
+    fun sharePdf(request: HistoryPdfRequest, onReady: (android.net.Uri) -> Unit) {
+        if (isExporting) return
+        viewModelScope.launch {
+            isExporting = true
+            runCatching {
+                if (request.transactions.isEmpty()) error("No hay movimientos para exportar")
+                val sharedDir = java.io.File(context.cacheDir, "shared").apply { mkdirs() }
+                val file = java.io.File(sharedDir, "historial-${java.time.LocalDate.now()}.pdf")
+                file.outputStream().use { writePdf(request, it) }
+                androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file,
+                )
+            }.onSuccess { uri ->
+                onReady(uri)
+            }.onFailure {
+                message.value = it.message ?: "No se pudo generar el PDF"
+            }
+            isExporting = false
+        }
+    }
+
+    private fun writePdf(request: HistoryPdfRequest, stream: java.io.OutputStream) {
+        stream.use {
+            HistoryPdfWriter.writeTo(it, request.transactions, state.value.categories, request.meta)
         }
     }
 

@@ -1,5 +1,6 @@
 package com.example.personalfinancetracker.presentation.transactions
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -124,6 +125,7 @@ fun HistoryScreen(
     var pendingDuplicate by remember { mutableStateOf<FinanceTransaction?>(null) }
     var selectedTransaction by remember { mutableStateOf<FinanceTransaction?>(null) }
     var showPdfScopeDialog by remember { mutableStateOf(false) }
+    var pdfScopeAllHistory by remember { mutableStateOf(false) }
     var pendingPdfRequest by remember { mutableStateOf<HistoryPdfRequest?>(null) }
     val message by viewModel.message.collectAsStateWithLifecycle()
     val restorePreview by viewModel.restorePreview.collectAsStateWithLifecycle()
@@ -225,7 +227,10 @@ fun HistoryScreen(
                     GlobalOutlinedIconButton(
                         icon = Icons.Outlined.PictureAsPdf,
                         contentDescription = "Generar PDF del historial",
-                        onClick = { showPdfScopeDialog = true },
+                        onClick = {
+                            pdfScopeAllHistory = false
+                            showPdfScopeDialog = true
+                        },
                         size = 48.dp,
                     )
                     Spacer(Modifier.width(8.dp))
@@ -454,20 +459,52 @@ fun HistoryScreen(
                         "Elige qué movimientos incluir en el documento.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    SecondaryButton(
-                        text = "Todo el historial (${state.transactions.size})",
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = !pdfScopeAllHistory,
+                            onClick = { pdfScopeAllHistory = false },
+                            label = { Text("Filtros actuales (${filtered.size})", maxLines = 1) },
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.small,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        )
+                        FilterChip(
+                            selected = pdfScopeAllHistory,
+                            onClick = { pdfScopeAllHistory = true },
+                            label = { Text("Todo (${state.transactions.size})", maxLines = 1) },
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.small,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        )
+                    }
+                    PrimaryButton(
+                        text = "Compartir",
                         onClick = {
                             showPdfScopeDialog = false
-                            pendingPdfRequest = buildPdfRequest(allHistory = true)
-                            pdfLauncher.launch("historial-${LocalDate.now()}.pdf")
+                            viewModel.sharePdf(buildPdfRequest(pdfScopeAllHistory)) { uri ->
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/pdf"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(
+                                    Intent.createChooser(shareIntent, "Compartir historial")
+                                )
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    PrimaryButton(
-                        text = "Filtros actuales (${filtered.size})",
+                    SecondaryButton(
+                        text = "Guardar como archivo",
                         onClick = {
                             showPdfScopeDialog = false
-                            pendingPdfRequest = buildPdfRequest(allHistory = false)
+                            pendingPdfRequest = buildPdfRequest(pdfScopeAllHistory)
                             pdfLauncher.launch("historial-${LocalDate.now()}.pdf")
                         },
                         modifier = Modifier.fillMaxWidth(),
