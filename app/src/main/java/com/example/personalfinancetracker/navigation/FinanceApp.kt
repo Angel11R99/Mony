@@ -23,6 +23,7 @@ import com.example.personalfinancetracker.presentation.home.HomeScreen
 import com.example.personalfinancetracker.presentation.statistics.StatisticsScreen
 import com.example.personalfinancetracker.presentation.fixed.FixedEntriesScreen
 import com.example.personalfinancetracker.presentation.pending.PendingEntriesScreen
+import com.example.personalfinancetracker.presentation.savings.SavingsScreen
 import com.example.personalfinancetracker.presentation.transactions.AddTransactionScreen
 import com.example.personalfinancetracker.presentation.transactions.HistoryScreen
 import com.example.personalfinancetracker.presentation.settings.SettingsScreen
@@ -132,6 +133,11 @@ fun FinanceApp(
                     onReset = onResetAppearance,
                     onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
                     onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
+                )
+            }
+            composable("savings") {
+                SavingsScreen(
+                    onSettings = { navController.navigate("settings") },
                 )
             }
         }

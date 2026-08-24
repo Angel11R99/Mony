@@ -13,7 +13,7 @@ import androidx.room.PrimaryKey
         childColumns = ["categoryId"],
         onDelete = ForeignKey.RESTRICT,
     )],
-    indices = [Index("categoryId"), Index("dateEpochDay"), Index("fixedEntryId")],
+    indices = [Index("categoryId"), Index("dateEpochDay"), Index("fixedEntryId"), Index("savingsGoalId")],
 )
 data class TransactionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -25,4 +25,5 @@ data class TransactionEntity(
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
     val fixedEntryId: Long?,
+    val savingsGoalId: Long? = null,
 )

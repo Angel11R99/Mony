@@ -4,8 +4,11 @@ import com.example.personalfinancetracker.data.local.entity.CategoryEntity
 import com.example.personalfinancetracker.data.local.entity.TransactionEntity
 import com.example.personalfinancetracker.data.local.entity.FixedEntryEntity
 import com.example.personalfinancetracker.data.local.entity.PendingEntryEntity
+import com.example.personalfinancetracker.data.local.dao.SavingsGoalWithSaved
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
+import com.example.personalfinancetracker.domain.model.SavingsGoal
+import com.example.personalfinancetracker.domain.model.SavingsGoalProgress
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.FixedEntry
 import com.example.personalfinancetracker.domain.model.FixedDateMode
@@ -19,6 +22,16 @@ import java.time.LocalTime
 fun CategoryEntity.toDomain() =
     Category(id, name, TransactionType.valueOf(type), icon, isActive, budgetLimitInCents)
 
+fun SavingsGoalWithSaved.toDomain() = SavingsGoalProgress(
+    goal = SavingsGoal(
+        id = id,
+        name = name,
+        targetAmountInCents = targetAmountInCents,
+        createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    ),
+    savedInCents = savedInCents,
+)
+
 fun TransactionEntity.toDomain() = FinanceTransaction(
     id = id,
     amountInCents = amountInCents,
@@ -29,6 +42,7 @@ fun TransactionEntity.toDomain() = FinanceTransaction(
     createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
     updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
     fixedEntryId = fixedEntryId,
+    savingsGoalId = savingsGoalId,
 )
 
 fun FinanceTransaction.toEntity() = TransactionEntity(
@@ -41,6 +55,7 @@ fun FinanceTransaction.toEntity() = TransactionEntity(
     createdAtEpochMillis = createdAt.toEpochMilli(),
     updatedAtEpochMillis = updatedAt.toEpochMilli(),
     fixedEntryId = fixedEntryId,
+    savingsGoalId = savingsGoalId,
 )
 
 fun FixedEntryEntity.toDomain() = FixedEntry(

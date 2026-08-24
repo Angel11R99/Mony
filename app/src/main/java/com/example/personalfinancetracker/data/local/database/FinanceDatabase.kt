@@ -8,16 +8,18 @@ import com.example.personalfinancetracker.data.local.dao.BudgetCycleDao
 import com.example.personalfinancetracker.data.local.dao.TransactionDao
 import com.example.personalfinancetracker.data.local.dao.FixedEntryDao
 import com.example.personalfinancetracker.data.local.dao.PendingEntryDao
+import com.example.personalfinancetracker.data.local.dao.SavingsGoalDao
 import com.example.personalfinancetracker.data.local.entity.CategoryEntity
 import com.example.personalfinancetracker.data.local.entity.BudgetConfigEntity
 import com.example.personalfinancetracker.data.local.entity.BudgetCycleEntity
 import com.example.personalfinancetracker.data.local.entity.TransactionEntity
 import com.example.personalfinancetracker.data.local.entity.FixedEntryEntity
 import com.example.personalfinancetracker.data.local.entity.PendingEntryEntity
+import com.example.personalfinancetracker.data.local.entity.SavingsGoalEntity
 
 @Database(
-    entities = [CategoryEntity::class, TransactionEntity::class, BudgetConfigEntity::class, BudgetCycleEntity::class, FixedEntryEntity::class, PendingEntryEntity::class],
-    version = 11,
+    entities = [CategoryEntity::class, TransactionEntity::class, BudgetConfigEntity::class, BudgetCycleEntity::class, FixedEntryEntity::class, PendingEntryEntity::class, SavingsGoalEntity::class],
+    version = 12,
     exportSchema = true,
 )
 abstract class FinanceDatabase : RoomDatabase() {
@@ -27,4 +29,5 @@ abstract class FinanceDatabase : RoomDatabase() {
     abstract fun budgetCycleDao(): BudgetCycleDao
     abstract fun fixedEntryDao(): FixedEntryDao
     abstract fun pendingEntryDao(): PendingEntryDao
+    abstract fun savingsGoalDao(): SavingsGoalDao
 }

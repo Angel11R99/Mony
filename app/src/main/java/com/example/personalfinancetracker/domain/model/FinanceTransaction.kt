@@ -13,4 +13,5 @@ data class FinanceTransaction(
     val createdAt: Instant = Instant.now(),
     val updatedAt: Instant = Instant.now(),
     val fixedEntryId: Long? = null,
+    val savingsGoalId: Long? = null,
 )

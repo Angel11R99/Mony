@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -44,6 +45,7 @@ internal val moduleDestinations = listOf(
     ModuleDestination("Inicio", "home", Icons.Outlined.AccountBalanceWallet),
     ModuleDestination("Fijos", "fixed", Icons.Outlined.Repeat),
     ModuleDestination("Recordatorios", "pending", Icons.Outlined.Notifications),
+    ModuleDestination("Ahorros", "savings", Icons.Outlined.Savings),
     ModuleDestination("Estadísticas", "statistics", Icons.Outlined.Insights),
     ModuleDestination("Historial", "history", Icons.Outlined.History),
 )

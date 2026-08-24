@@ -6,9 +6,11 @@ import com.example.personalfinancetracker.data.local.dao.BudgetCycleDao
 import com.example.personalfinancetracker.data.local.dao.TransactionDao
 import com.example.personalfinancetracker.data.local.dao.FixedEntryDao
 import com.example.personalfinancetracker.data.local.dao.PendingEntryDao
+import com.example.personalfinancetracker.data.local.dao.SavingsGoalDao
 import com.example.personalfinancetracker.data.local.entity.BudgetConfigEntity
 import com.example.personalfinancetracker.data.local.entity.BudgetCycleEntity
 import com.example.personalfinancetracker.data.local.entity.CategoryEntity
+import com.example.personalfinancetracker.data.local.entity.SavingsGoalEntity
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
 import com.example.personalfinancetracker.data.mapper.toDomain
 import com.example.personalfinancetracker.data.mapper.toEntity
@@ -17,6 +19,7 @@ import com.example.personalfinancetracker.domain.model.BudgetConfig
 import com.example.personalfinancetracker.domain.model.BudgetCycleSchedule
 import com.example.personalfinancetracker.domain.model.BudgetCycle
 import com.example.personalfinancetracker.domain.model.BudgetPeriod
+import com.example.personalfinancetracker.domain.model.SavingsGoalProgress
 import com.example.personalfinancetracker.domain.model.defaultCycleSchedules
 import com.example.personalfinancetracker.domain.model.DateRange
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
@@ -27,6 +30,7 @@ import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
 import com.example.personalfinancetracker.domain.repository.PendingEntryRepository
+import com.example.personalfinancetracker.domain.repository.SavingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -74,6 +78,7 @@ class RoomTransactionRepository @Inject constructor(
                 createdAtEpochMillis = now.toEpochMilli(),
                 updatedAtEpochMillis = now.toEpochMilli(),
                 fixedEntryId = null,
+                savingsGoalId = null,
             )
         )
     }
@@ -160,6 +165,33 @@ class RoomPendingEntryRepository @Inject constructor(
         }
     }
     override suspend fun delete(id: Long) = dao.delete(id)
+}
+
+class RoomSavingsRepository @Inject constructor(
+    private val dao: SavingsGoalDao,
+    private val database: FinanceDatabase,
+) : SavingsRepository {
+    override fun observeGoals(): Flow<List<SavingsGoalProgress>> =
+        dao.observeAllWithSaved().map { rows -> rows.map { it.toDomain() } }
+
+    override suspend fun create(name: String, targetAmountInCents: Long): Long =
+        dao.insert(
+            SavingsGoalEntity(
+                name = name.trim(),
+                targetAmountInCents = targetAmountInCents,
+                createdAtEpochMillis = System.currentTimeMillis(),
+            )
+        )
+
+    override suspend fun update(id: Long, name: String, targetAmountInCents: Long) =
+        dao.update(id, name.trim(), targetAmountInCents)
+
+    override suspend fun delete(id: Long) {
+        database.withTransaction {
+            dao.unlinkTransactions(id)
+            dao.deleteById(id)
+        }
+    }
 }
 
 class RoomBudgetRepository @Inject constructor(

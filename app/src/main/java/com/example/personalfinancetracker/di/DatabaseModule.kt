@@ -11,17 +11,20 @@ import com.example.personalfinancetracker.data.local.dao.BudgetCycleDao
 import com.example.personalfinancetracker.data.local.dao.TransactionDao
 import com.example.personalfinancetracker.data.local.dao.FixedEntryDao
 import com.example.personalfinancetracker.data.local.dao.PendingEntryDao
+import com.example.personalfinancetracker.data.local.dao.SavingsGoalDao
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
 import com.example.personalfinancetracker.data.repository.RoomCategoryRepository
 import com.example.personalfinancetracker.data.repository.RoomBudgetRepository
 import com.example.personalfinancetracker.data.repository.RoomTransactionRepository
 import com.example.personalfinancetracker.data.repository.RoomFixedEntryRepository
 import com.example.personalfinancetracker.data.repository.RoomPendingEntryRepository
+import com.example.personalfinancetracker.data.repository.RoomSavingsRepository
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
 import com.example.personalfinancetracker.domain.repository.PendingEntryRepository
+import com.example.personalfinancetracker.domain.repository.SavingsRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -149,11 +152,26 @@ object DatabaseModule {
         }
     }
 
+    private val migration11To12 = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS savings_goals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    name TEXT NOT NULL,
+                    targetAmountInCents INTEGER NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL
+                )""".trimIndent()
+            )
+            db.execSQL("ALTER TABLE transactions ADD COLUMN savingsGoalId INTEGER")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_transactions_savingsGoalId ON transactions(savingsGoalId)")
+        }
+    }
+
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): FinanceDatabase =
         Room.databaseBuilder(context, FinanceDatabase::class.java, "personal_finance.db")
-            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9, migration9To10, migration10To11)
+            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9, migration9To10, migration10To11, migration11To12)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -174,6 +192,7 @@ object DatabaseModule {
     @Provides fun budgetCycleDao(db: FinanceDatabase): BudgetCycleDao = db.budgetCycleDao()
     @Provides fun fixedEntryDao(db: FinanceDatabase): FixedEntryDao = db.fixedEntryDao()
     @Provides fun pendingEntryDao(db: FinanceDatabase): PendingEntryDao = db.pendingEntryDao()
+    @Provides fun savingsGoalDao(db: FinanceDatabase): SavingsGoalDao = db.savingsGoalDao()
 
     private val initialCategories = listOf(
         Triple("Salario", "INCOME", "payments"),
@@ -208,4 +227,5 @@ abstract class RepositoryModule {
     @Binds abstract fun budget(implementation: RoomBudgetRepository): BudgetRepository
     @Binds abstract fun fixedEntries(implementation: RoomFixedEntryRepository): FixedEntryRepository
     @Binds abstract fun pendingEntries(implementation: RoomPendingEntryRepository): PendingEntryRepository
+    @Binds abstract fun savings(implementation: RoomSavingsRepository): SavingsRepository
 }
