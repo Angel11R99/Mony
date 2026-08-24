@@ -58,6 +58,44 @@ class HistoryFilterTest {
         assertEquals(listOf("Transporte"), searchCategories(categories, "transPOR" ).map(Category::name))
     }
 
+    @Test fun `transaction search matches description ignoring case and surrounding spaces`() {
+        val notes = listOf(
+            transaction(1, TransactionType.EXPENSE, 10, LocalDate.of(2026, 8, 10), 1_000)
+                .copy(description = "Gasolina · viaje Santiago"),
+        )
+
+        assertEquals(
+            listOf(1L),
+            searchFinanceTransactions(notes, emptyMap(), "  santiago ").map(FinanceTransaction::id),
+        )
+    }
+
+    @Test fun `transaction search matches category name`() {
+        val categories = mapOf(
+            10L to Category(10, "Transporte", TransactionType.EXPENSE, "car", true),
+        )
+
+        assertEquals(
+            listOf(1L, 3L),
+            searchFinanceTransactions(transactions, categories, "transporte").map(FinanceTransaction::id),
+        )
+    }
+
+    @Test fun `transaction search matches amount digits without separators`() {
+        assertEquals(
+            listOf(2L),
+            searchFinanceTransactions(transactions, emptyMap(), "20.00").map(FinanceTransaction::id),
+        )
+        assertEquals(
+            listOf(3L),
+            searchFinanceTransactions(transactions, emptyMap(), "3000").map(FinanceTransaction::id),
+        )
+    }
+
+    @Test fun `blank query returns all transactions`() {
+        assertEquals(3, searchFinanceTransactions(transactions, emptyMap(), "   ").size)
+    }
+
     @Test fun `sorts amount in both directions`() {
         assertEquals(
             listOf(3L, 2L, 1L),

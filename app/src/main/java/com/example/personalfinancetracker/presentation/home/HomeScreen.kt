@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -130,18 +131,18 @@ fun HomeScreen(
         ) {
             item {
                 Row(
-                    Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth().height(54.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     PrimaryButton(
                         "Registrar gasto",
                         { onAdd(TransactionType.EXPENSE) },
-                        Modifier.weight(1f),
+                        Modifier.weight(1f).fillMaxHeight(),
                     )
                     SecondaryButton(
                         "Registrar ingreso",
                         { onAdd(TransactionType.INCOME) },
-                        Modifier.weight(1f),
+                        Modifier.weight(1f).fillMaxHeight(),
                     )
                 }
             }
