@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -183,11 +184,11 @@ fun HomeScreen(
                                     onClick = { showingHistory = true },
                                     modifier = Modifier.weight(1f),
                                 )
-                                PrimaryButton(
-                                    text = "Cerrar ciclo",
+                                CloseCycleButton(
+                                    closing = closingCycle,
+                                    available = !automaticCycleClose && manualCloseAvailable,
                                     onClick = { confirmingClose = true },
                                     modifier = Modifier.weight(1f),
-                                    enabled = !closingCycle && !automaticCycleClose && manualCloseAvailable,
                                 )
                             }
                             if (automaticCycleClose) {
@@ -410,6 +411,54 @@ private fun CloseCycleDialog(
             SecondaryButton("Cancelar", onDismiss)
         },
     )
+}
+
+@Composable
+private fun CloseCycleButton(
+    closing: Boolean,
+    available: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when {
+        closing -> PrimaryButton(
+            text = "Cerrando…",
+            onClick = onClick,
+            modifier = modifier,
+            enabled = false,
+        )
+        available -> PrimaryButton(
+            text = "Cerrar ciclo",
+            onClick = onClick,
+            modifier = modifier,
+        )
+        else -> Surface(
+            modifier = modifier.heightIn(min = 54.dp),
+            shape = MaterialTheme.shapes.small,
+            color = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Outlined.Lock,
+                    contentDescription = null,
+                    modifier = Modifier.size(15.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "Cerrar ciclo",
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
 }
 
 @Composable

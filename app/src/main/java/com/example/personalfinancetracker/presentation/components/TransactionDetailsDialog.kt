@@ -2,23 +2,17 @@ package com.example.personalfinancetracker.presentation.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.domain.model.Category
@@ -49,70 +43,37 @@ fun TransactionDetailsDialog(
                 tint = movementColor,
             )
         },
-        title = {
-            Text(
-                buildAnnotatedString {
-                    append("Detalle del ")
-                    withStyle(SpanStyle(color = movementColor, fontWeight = FontWeight.Bold)) {
-                        append(if (isExpense) "gasto" else "ingreso")
-                    }
-                },
-            )
-        },
+        title = { Text("Detalle del ${if (isExpense) "gasto" else "ingreso"}") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(
                     (if (isExpense) "−" else "+") + MoneyFormatter.format(transaction.amountInCents),
                     style = MaterialTheme.typography.headlineMedium,
                     color = movementColor,
                 )
-                DetailField(
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                FinanceDetailRow(
                     label = "Categoría",
                     value = category?.name ?: "Sin categoría",
-                    labelColor = MaterialTheme.colorScheme.secondary,
                     valueColor = movementColor,
                 )
-                DetailField(
+                FinanceDetailRow(
                     label = "Fecha",
                     value = transaction.date.format(dateFormatter),
-                    labelColor = MaterialTheme.colorScheme.secondary,
                 )
-                DetailField(
-                    label = "Nota",
-                    value = transaction.description?.takeIf { it.isNotBlank() } ?: "Sin nota",
-                    labelColor = MaterialTheme.colorScheme.secondary,
-                    valueColor = if (transaction.description.isNullOrBlank()) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                )
+                transaction.description?.takeIf { it.isNotBlank() }?.let { note ->
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "NOTA",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                        Text(note, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
             }
         },
         confirmButton = { PrimaryButton("Cerrar", onDismiss) },
     )
-}
-
-@Composable
-private fun DetailField(
-    label: String,
-    value: String,
-    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    valueColor: Color = MaterialTheme.colorScheme.onSurface,
-) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(
-            label.uppercase(),
-            modifier = Modifier.width(88.dp).alignByBaseline(),
-            style = MaterialTheme.typography.labelSmall,
-            color = labelColor,
-        )
-        Text(
-            value,
-            modifier = Modifier.weight(1f).alignByBaseline(),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = valueColor,
-        )
-    }
 }

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Search
@@ -49,6 +50,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -139,6 +141,7 @@ fun PendingEntriesScreen(
     var editorEntry by remember { mutableStateOf<PendingEntry?>(null) }
     var showEditor by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<PendingEntry?>(null) }
+    var selectedEntry by remember { mutableStateOf<PendingEntry?>(null) }
 
     val formatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-DO")) }
 
@@ -286,6 +289,7 @@ fun PendingEntriesScreen(
                         showEditor = true
                     },
                     onDelete = { pendingDelete = entry },
+                    onSelect = { selectedEntry = entry },
                 )
             }
         }
@@ -336,6 +340,74 @@ fun PendingEntriesScreen(
             shape = MaterialTheme.shapes.medium,
         )
     }
+
+    selectedEntry?.let { entry ->
+        PendingEntryDetailsDialog(
+            entry = entry,
+            category = state.categories[entry.categoryId],
+            formatter = formatter,
+            onDismiss = { selectedEntry = null },
+        )
+    }
+}
+
+@Composable
+private fun PendingEntryDetailsDialog(
+    entry: PendingEntry,
+    category: Category?,
+    formatter: DateTimeFormatter,
+    onDismiss: () -> Unit,
+) {
+    val amountColor = pendingAmountColor(entry.type)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.medium,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        icon = {
+            Icon(
+                Icons.AutoMirrored.Outlined.PlaylistAdd,
+                contentDescription = null,
+                tint = amountColor,
+            )
+        },
+        title = { Text("Detalle del recordatorio") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(
+                    MoneyFormatter.format(entry.amountInCents),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = amountColor,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                FinanceDetailRow("Tipo", entry.type.label(), valueColor = amountColor)
+                FinanceDetailRow("Categoría", category?.name ?: "Sin categoría")
+                FinanceDetailRow(
+                    "Fecha",
+                    entry.date.format(formatter) + (entry.reminderTime?.takeUnless { entry.isDone }
+                        ?.let { " · Alerta ${it.format(reminderTimeFormatter)}" } ?: ""),
+                )
+                FinanceDetailRow("Estado", if (entry.isDone) "Hecho" else "Pendiente")
+                entry.doneAt?.let {
+                    FinanceDetailRow(
+                        "Registrado",
+                        it.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter),
+                    )
+                }
+                entry.comment?.takeIf { it.isNotBlank() }?.let { comment ->
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "COMENTARIO",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                        Text(comment, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        },
+        confirmButton = { PrimaryButton("Cerrar", onDismiss) },
+    )
 }
 
 @Composable
@@ -442,8 +514,9 @@ private fun PendingEntryCard(
     onToggleDone: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onSelect: () -> Unit,
 ) {
-    FinanceCard(Modifier.fillMaxWidth()) {
+    FinanceCard(Modifier.fillMaxWidth().clickable(onClick = onSelect)) {
         when (size) {
             EntryCardSize.COMPACT ->
                 PendingCompactCardContent(entry, category, formatter, onToggleDone, onEdit, onDelete)
@@ -479,6 +552,14 @@ private fun PendingCompactCardContent(
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (!entry.comment.isNullOrBlank()) {
+                Icon(
+                    Icons.Outlined.Notes,
+                    contentDescription = "Tiene comentario",
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(16.dp),
                 )
             }
             Text(
@@ -540,8 +621,19 @@ private fun PendingNormalCardContent(
             color = pendingAmountColor(entry.type),
         )
         PendingCardDateRow(entry, formatter)
-        entry.comment?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        entry.comment?.takeIf { it.isNotBlank() }?.let {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    "COMENTARIO",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
         PendingCardActionsRow(onToggleDone = onToggleDone, isDone = entry.isDone, onEdit = onEdit, onDelete = onDelete)
     }

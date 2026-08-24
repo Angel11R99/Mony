@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import android.content.Context
 import android.net.Uri
 import com.example.personalfinancetracker.core.CsvExporter
+import com.example.personalfinancetracker.core.HistoryPdfMeta
+import com.example.personalfinancetracker.core.HistoryPdfWriter
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
@@ -24,17 +26,31 @@ data class HistoryUiState(
     val categories: Map<Long, Category> = emptyMap(),
 )
 
+data class RestorePreview(
+    val movementsCount: Int,
+    val firstDate: java.time.LocalDate?,
+    val lastDate: java.time.LocalDate?,
+    val movements: List<com.example.personalfinancetracker.domain.model.BackupMovement>,
+)
+
+data class HistoryPdfRequest(
+    val transactions: List<FinanceTransaction>,
+    val meta: HistoryPdfMeta,
+)
+
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val transactions: TransactionRepository,
+    private val transactionsRepository: TransactionRepository,
     categories: CategoryRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
-    val state = combine(transactions.observeAll(), categories.observeAll()) { items, cats ->
+    val state = combine(transactionsRepository.observeAll(), categories.observeAll()) { items, cats ->
         HistoryUiState(items, cats.associateBy(Category::id))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
 
     val message = MutableStateFlow<String?>(null)
+    val restorePreview = MutableStateFlow<RestorePreview?>(null)
+    val isRestoring = MutableStateFlow(false)
     private var isExporting = false
 
     fun consumeMessage() {
@@ -42,12 +58,12 @@ class HistoryViewModel @Inject constructor(
     }
 
     fun delete(id: Long) = viewModelScope.launch {
-        transactions.delete(id)
+        transactionsRepository.delete(id)
         runCatching { updateAllFinanceWidgets(context) }
     }
 
     fun duplicate(id: Long) = viewModelScope.launch {
-        runCatching { transactions.duplicate(id) }
+        runCatching { transactionsRepository.duplicate(id) }
             .onSuccess { created ->
                 if (created != null) {
                     message.value = "Movimiento duplicado."
@@ -67,9 +83,7 @@ class HistoryViewModel @Inject constructor(
                 val snapshot = state.value
                 if (snapshot.transactions.isEmpty()) error("No hay movimientos para exportar")
                 val csv = CsvExporter.buildCsv(snapshot.transactions, snapshot.categories)
-                context.contentResolver.openOutputStream(uri)?.use { stream ->
-                    stream.write(csv.toByteArray(Charsets.UTF_8))
-                } ?: error("No se pudo abrir el archivo seleccionado")
+                writeCsvTo(uri, csv)
             }.onSuccess {
                 message.value = "Historial completo exportado correctamente."
             }.onFailure {
@@ -77,5 +91,84 @@ class HistoryViewModel @Inject constructor(
             }
             isExporting = false
         }
+    }
+
+    /** Lee el archivo seleccionado, valida su contenido y prepara la restauración sin tocar la base de datos. */
+    fun prepareImportFrom(uri: Uri) {
+        if (isRestoring.value) return
+        viewModelScope.launch {
+            runCatching {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: error("No se pudo abrir el archivo seleccionado")
+                // Decodificación explícita en UTF-8, tolerando archivos con o sin BOM.
+                val content = bytes.toString(Charsets.UTF_8).removePrefix(CsvExporter.UTF8_BOM)
+                val movements = CsvExporter.parseBackup(content)
+                if (movements.isEmpty()) error("El archivo no contiene movimientos para restaurar")
+                RestorePreview(
+                    movementsCount = movements.size,
+                    firstDate = movements.minOfOrNull { it.date },
+                    lastDate = movements.maxOfOrNull { it.date },
+                    movements = movements,
+                )
+            }.onSuccess { preview ->
+                restorePreview.value = preview
+            }.onFailure {
+                message.value = it.message ?: "No se pudo leer el archivo de respaldo"
+            }
+        }
+    }
+
+    fun cancelRestore() {
+        if (!isRestoring.value) restorePreview.value = null
+    }
+
+    fun confirmRestore() {
+        val preview = restorePreview.value ?: return
+        if (isRestoring.value) return
+        viewModelScope.launch {
+            isRestoring.value = true
+            runCatching {
+                transactionsRepository.restoreBackup(preview.movements)
+            }.onSuccess { inserted ->
+                updateAllFinanceWidgets(context)
+                val skipped = preview.movementsCount - inserted
+                message.value = if (skipped > 0) {
+                    "Se restauraron $inserted movimientos. $skipped omitidos por duplicados."
+                } else {
+                    "Se restauraron $inserted movimientos correctamente."
+                }
+                restorePreview.value = null
+            }.onFailure {
+                message.value = "No se pudo restaurar el respaldo"
+            }
+            isRestoring.value = false
+        }
+    }
+
+    fun exportPdfTo(uri: Uri, request: HistoryPdfRequest) {
+        if (isExporting) return
+        viewModelScope.launch {
+            isExporting = true
+            runCatching {
+                if (request.transactions.isEmpty()) error("No hay movimientos para exportar")
+                val stream = context.contentResolver.openOutputStream(uri)
+                    ?: error("No se pudo abrir el archivo seleccionado")
+                stream.use {
+                    HistoryPdfWriter.writeTo(it, request.transactions, state.value.categories, request.meta)
+                }
+            }.onSuccess {
+                message.value = "PDF generado correctamente."
+            }.onFailure {
+                message.value = it.message ?: "No se pudo generar el PDF"
+            }
+            isExporting = false
+        }
+    }
+
+    private fun writeCsvTo(uri: Uri, csv: String) {
+        val stream = context.contentResolver.openOutputStream(uri)
+            ?: error("No se pudo abrir el archivo seleccionado")
+        // Escritura explícita en UTF-8 con BOM para máxima compatibilidad.
+        stream.use { it.write(csv.toByteArray(Charsets.UTF_8)) }
     }
 }

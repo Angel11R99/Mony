@@ -10,11 +10,13 @@ import com.example.personalfinancetracker.data.local.dao.SavingsGoalDao
 import com.example.personalfinancetracker.data.local.entity.BudgetConfigEntity
 import com.example.personalfinancetracker.data.local.entity.BudgetCycleEntity
 import com.example.personalfinancetracker.data.local.entity.CategoryEntity
+import com.example.personalfinancetracker.data.local.entity.TransactionEntity
 import com.example.personalfinancetracker.data.local.entity.SavingsGoalEntity
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
 import com.example.personalfinancetracker.data.mapper.toDomain
 import com.example.personalfinancetracker.data.mapper.toEntity
 import com.example.personalfinancetracker.domain.model.Category
+import com.example.personalfinancetracker.domain.model.BackupMovement
 import com.example.personalfinancetracker.domain.model.BudgetConfig
 import com.example.personalfinancetracker.domain.model.BudgetCycleSchedule
 import com.example.personalfinancetracker.domain.model.BudgetCycle
@@ -42,6 +44,7 @@ import javax.inject.Inject
 class RoomTransactionRepository @Inject constructor(
     private val dao: TransactionDao,
     private val fixedEntryDao: FixedEntryDao,
+    private val categoryDao: CategoryDao,
     private val database: FinanceDatabase,
 ) : TransactionRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
@@ -81,6 +84,64 @@ class RoomTransactionRepository @Inject constructor(
                 savingsGoalId = null,
             )
         )
+    }
+
+    override suspend fun restoreBackup(movements: List<BackupMovement>): Int = database.withTransaction {
+        val categoryKeyToId = mutableMapOf<String, Long>()
+        categoryDao.getAll().forEach { entity ->
+            categoryKeyToId[categoryKey(entity.name, entity.type)] = entity.id
+        }
+        suspend fun resolveCategoryId(name: String, type: TransactionType): Long =
+            categoryKeyToId.getOrPut(categoryKey(name, type.name)) {
+                categoryDao.insert(
+                    CategoryEntity(
+                        name = name,
+                        type = type.name,
+                        icon = DEFAULT_RESTORED_CATEGORY_ICON,
+                        isActive = true,
+                        createdAtEpochMillis = System.currentTimeMillis(),
+                    )
+                )
+            }
+
+        val existingKeys = dao.getAll().mapTo(mutableSetOf()) { it.deduplicationKey() }
+        var inserted = 0
+        movements.forEach { movement ->
+            val categoryId = resolveCategoryId(movement.categoryName, movement.type)
+            val entity = TransactionEntity(
+                amountInCents = movement.amountInCents,
+                type = movement.type.name,
+                categoryId = categoryId,
+                description = movement.description,
+                dateEpochDay = movement.date.toEpochDay(),
+                createdAtEpochMillis = System.currentTimeMillis(),
+                updatedAtEpochMillis = System.currentTimeMillis(),
+                fixedEntryId = null,
+                savingsGoalId = null,
+            )
+            val key = entity.deduplicationKey()
+            if (existingKeys.add(key)) {
+                dao.insert(entity)
+                inserted++
+            }
+        }
+        inserted
+    }
+
+    private fun TransactionEntity.deduplicationKey(): String =
+        listOf(
+            dateEpochDay.toString(),
+            amountInCents.toString(),
+            type,
+            categoryId.toString(),
+            description?.trim()?.lowercase().orEmpty(),
+        ).joinToString("|")
+
+    private fun categoryKey(name: String, type: String): String =
+        "${type.lowercase()}|${name.trim().lowercase()}"
+
+    private companion object {
+        const val DEFAULT_RESTORED_CATEGORY_ICON = "label"
     }
 }
 

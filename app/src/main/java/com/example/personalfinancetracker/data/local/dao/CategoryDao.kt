@@ -11,6 +11,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories ORDER BY type DESC, name")
     fun observeAll(): Flow<List<CategoryEntity>>
 
+    @Query("SELECT * FROM categories")
+    suspend fun getAll(): List<CategoryEntity>
+
     @Query("SELECT * FROM categories WHERE type = :type AND isActive = 1 ORDER BY name")
     fun observeActive(type: String): Flow<List<CategoryEntity>>
 
@@ -22,7 +25,7 @@ interface CategoryDao {
     fun observeUsedCategoryIds(): Flow<List<Long>>
 
     @Insert
-    suspend fun insert(entity: CategoryEntity)
+    suspend fun insert(entity: CategoryEntity): Long
 
     @Query("UPDATE categories SET name = :name, budgetLimitInCents = :budgetLimitInCents WHERE id = :id")
     suspend fun update(id: Long, name: String, budgetLimitInCents: Long?)

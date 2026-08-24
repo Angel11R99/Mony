@@ -28,8 +28,12 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.DatePicker
@@ -70,6 +74,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.personalfinancetracker.core.HistoryPdfMeta
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.Category
@@ -77,10 +82,11 @@ import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
+import com.example.personalfinancetracker.presentation.components.PrimaryButton
+import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.TransactionRow
 import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
-import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -115,12 +121,27 @@ fun HistoryScreen(
     var sort by remember { mutableStateOf(HistorySort.NEWEST) }
     var query by remember { mutableStateOf("") }
     var pendingDelete by remember { mutableStateOf<FinanceTransaction?>(null) }
+    var pendingDuplicate by remember { mutableStateOf<FinanceTransaction?>(null) }
     var selectedTransaction by remember { mutableStateOf<FinanceTransaction?>(null) }
+    var showPdfScopeDialog by remember { mutableStateOf(false) }
+    var pendingPdfRequest by remember { mutableStateOf<HistoryPdfRequest?>(null) }
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val restorePreview by viewModel.restorePreview.collectAsStateWithLifecycle()
+    val isRestoring by viewModel.isRestoring.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv")
     ) { uri -> uri?.let(viewModel::exportTo) }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(viewModel::prepareImportFrom) }
+    val pdfLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+        val request = pendingPdfRequest
+        if (uri != null && request != null) viewModel.exportPdfTo(uri, request)
+        pendingPdfRequest = null
+    }
 
     LaunchedEffect(message) {
         message?.let {
@@ -150,6 +171,36 @@ fun HistoryScreen(
     val incomeTotal = filtered.filter { it.type == TransactionType.INCOME }.sumOf(FinanceTransaction::amountInCents)
     val expenseTotal = filtered.filter { it.type == TransactionType.EXPENSE }.sumOf(FinanceTransaction::amountInCents)
 
+    val pdfDateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    fun buildPdfRequest(allHistory: Boolean): HistoryPdfRequest {
+        val periodLabel = when {
+            allHistory -> "Todo el historial"
+            startDate != null && endDate != null ->
+                "Período: ${startDate!!.format(pdfDateFormatter)} – ${endDate!!.format(pdfDateFormatter)}"
+            startDate != null -> "Desde: ${startDate!!.format(pdfDateFormatter)}"
+            endDate != null -> "Hasta: ${endDate!!.format(pdfDateFormatter)}"
+            else -> "Todo el historial"
+        }
+        val filterLines = if (allHistory) {
+            listOf("Sin filtros aplicados")
+        } else {
+            buildList {
+                if (typeFilter.type != null) add("Tipo: ${typeFilter.label}")
+                categoryId?.let {
+                    add("Categoría: ${state.categories[it]?.name ?: "Sin categoría"}")
+                }
+                if (query.isNotBlank()) add("Búsqueda: \"${query.trim()}\"")
+                if (isEmpty()) add("Sin filtros adicionales")
+            }
+        }
+        val items = if (allHistory) {
+            sortTransactions(state.transactions, state.categories, sort)
+        } else {
+            sorted
+        }
+        return HistoryPdfRequest(items, HistoryPdfMeta(periodLabel, filterLines, sort.label))
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -157,14 +208,34 @@ fun HistoryScreen(
                 actions = {
                     GlobalOutlinedIconButton(
                         icon = Icons.Outlined.FileDownload,
+                        contentDescription = "Importar respaldo CSV",
+                        onClick = { importLauncher.launch(arrayOf("*/*")) },
+                        size = 48.dp,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    GlobalOutlinedIconButton(
+                        icon = Icons.Outlined.FileUpload,
                         contentDescription = "Exportar historial a CSV",
                         onClick = {
                             exportLauncher.launch("movimientos-${LocalDate.now()}.csv")
                         },
+                        size = 48.dp,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    GlobalOutlinedIconButton(
+                        icon = Icons.Outlined.PictureAsPdf,
+                        contentDescription = "Generar PDF del historial",
+                        onClick = { showPdfScopeDialog = true },
+                        size = 48.dp,
                     )
                     Spacer(Modifier.width(8.dp))
-                    GlobalSettingsButton(onClick = onSettings)
-                    Spacer(Modifier.width(14.dp))
+                    GlobalOutlinedIconButton(
+                        icon = Icons.Outlined.Settings,
+                        contentDescription = "Ajustes de la app",
+                        onClick = onSettings,
+                        size = 48.dp,
+                    )
+                    Spacer(Modifier.width(12.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -235,7 +306,7 @@ fun HistoryScreen(
                     IconButton(onClick = { onEdit(transaction.id, transaction.type) }) {
                         Icon(Icons.Outlined.Edit, "Editar")
                     }
-                    IconButton(onClick = { viewModel.duplicate(transaction.id) }) {
+                    IconButton(onClick = { pendingDuplicate = transaction }) {
                         Icon(Icons.Outlined.ContentCopy, "Duplicar")
                     }
                     IconButton(onClick = { pendingDelete = transaction }) {
@@ -277,6 +348,135 @@ fun HistoryScreen(
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) { Text("Cancelar") }
+            },
+            shape = MaterialTheme.shapes.medium,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+    }
+
+    pendingDuplicate?.let { transaction ->
+        val categoryName = state.categories[transaction.categoryId]?.name ?: "Sin categoría"
+        AlertDialog(
+            onDismissRequest = { pendingDuplicate = null },
+            icon = {
+                Icon(
+                    Icons.Outlined.ContentCopy,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            },
+            title = { Text("¿Duplicar movimiento?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("$categoryName · ${MoneyFormatter.format(transaction.amountInCents)}")
+                    transaction.description?.takeIf { it.isNotBlank() }?.let { note ->
+                        Text(note, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text(
+                        "Se creará una copia con la fecha de hoy.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.duplicate(transaction.id)
+                    pendingDuplicate = null
+                }) {
+                    Text("Duplicar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDuplicate = null }) { Text("Cancelar") }
+            },
+            shape = MaterialTheme.shapes.medium,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+    }
+
+    restorePreview?.let { preview ->
+        val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        AlertDialog(
+            onDismissRequest = { if (!isRestoring) viewModel.cancelRestore() },
+            icon = {
+                Icon(
+                    Icons.Outlined.Restore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            },
+            title = { Text("¿Restaurar respaldo?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${preview.movementsCount} movimientos encontrados en el archivo.")
+                    val rangeText = when {
+                        preview.firstDate != null && preview.lastDate != null ->
+                            "${preview.firstDate.format(dateFormatter)} – ${preview.lastDate.format(dateFormatter)}"
+                        else -> null
+                    }
+                    rangeText?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Text(
+                        "Las categorías faltantes se crearán y los movimientos que ya existen se omitirán. Los datos actuales no se borrarán.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmRestore, enabled = !isRestoring) {
+                    Text(if (isRestoring) "Restaurando…" else "Restaurar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = viewModel::cancelRestore,
+                    enabled = !isRestoring,
+                ) { Text("Cancelar") }
+            },
+            shape = MaterialTheme.shapes.medium,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+    }
+
+    if (showPdfScopeDialog) {
+        AlertDialog(
+            onDismissRequest = { showPdfScopeDialog = false },
+            icon = {
+                Icon(
+                    Icons.Outlined.PictureAsPdf,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            },
+            title = { Text("Generar PDF del historial") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Elige qué movimientos incluir en el documento.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    SecondaryButton(
+                        text = "Todo el historial (${state.transactions.size})",
+                        onClick = {
+                            showPdfScopeDialog = false
+                            pendingPdfRequest = buildPdfRequest(allHistory = true)
+                            pdfLauncher.launch("historial-${LocalDate.now()}.pdf")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    PrimaryButton(
+                        text = "Filtros actuales (${filtered.size})",
+                        onClick = {
+                            showPdfScopeDialog = false
+                            pendingPdfRequest = buildPdfRequest(allHistory = false)
+                            pdfLauncher.launch("historial-${LocalDate.now()}.pdf")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPdfScopeDialog = false }) { Text("Cancelar") }
             },
             shape = MaterialTheme.shapes.medium,
             containerColor = MaterialTheme.colorScheme.surfaceVariant,

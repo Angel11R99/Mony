@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.VisualTransformation
@@ -193,13 +194,18 @@ fun FinanceCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) 
 }
 
 @Composable
-fun FinanceDetailRow(label: String, value: String, modifier: Modifier = Modifier) {
+fun FinanceDetailRow(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+) {
     Row(modifier.fillMaxWidth()) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
         Text(
             value,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = valueColor,
             textAlign = TextAlign.End,
             modifier = Modifier.weight(1f).padding(start = 16.dp),
         )
