@@ -2,8 +2,8 @@ package com.example.personalfinancetracker.navigation
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,9 +63,8 @@ internal fun FloatingModuleBar(
     Surface(
         modifier = modifier.fillMaxWidth().height(62.dp),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 5.dp, vertical = 5.dp),
@@ -113,6 +112,7 @@ private fun ModuleItem(
             .fillMaxHeight()
             .clip(itemShape)
             .background(containerColor)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, itemShape)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
             .padding(horizontal = 2.dp, vertical = 3.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
