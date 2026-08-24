@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -26,6 +25,8 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -131,19 +132,11 @@ fun HomeScreen(
         ) {
             item {
                 Row(
-                    Modifier.fillMaxWidth().height(54.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    PrimaryButton(
-                        "Registrar gasto",
-                        { onAdd(TransactionType.EXPENSE) },
-                        Modifier.weight(1f).fillMaxHeight(),
-                    )
-                    SecondaryButton(
-                        "Registrar ingreso",
-                        { onAdd(TransactionType.INCOME) },
-                        Modifier.weight(1f).fillMaxHeight(),
-                    )
+                    RegisterActionChip("Registrar gasto", { onAdd(TransactionType.EXPENSE) }, Modifier.weight(1f))
+                    RegisterActionChip("Registrar ingreso", { onAdd(TransactionType.INCOME) }, Modifier.weight(1f))
                 }
             }
             item {
@@ -416,6 +409,31 @@ private fun CloseCycleDialog(
         dismissButton = {
             SecondaryButton("Cancelar", onDismiss)
         },
+    )
+}
+
+@Composable
+private fun RegisterActionChip(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FilterChip(
+        selected = false,
+        onClick = onClick,
+        label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        modifier = modifier,
+        shape = MaterialTheme.shapes.small,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = false,
+            borderColor = MaterialTheme.colorScheme.outline,
+            selectedBorderColor = MaterialTheme.colorScheme.primary,
+        ),
     )
 }
 
