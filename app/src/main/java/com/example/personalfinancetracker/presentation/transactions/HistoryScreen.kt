@@ -11,16 +11,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.SwapVert
@@ -34,10 +38,12 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -67,6 +73,7 @@ import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
 import com.example.personalfinancetracker.presentation.components.TransactionRow
 import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
+import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import java.time.LocalDate
@@ -128,7 +135,7 @@ fun HistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { ModuleTitle("Movimientos") },
+                title = { ModuleTitle("Historial") },
                 actions = {
                     GlobalSettingsButton(onClick = onSettings)
                     Spacer(Modifier.width(14.dp))
@@ -274,38 +281,8 @@ private fun HistoryFilters(
     onSortChange: (HistorySort) -> Unit,
     onClear: () -> Unit,
 ) {
-    var categoryExpanded by remember { mutableStateOf(false) }
-    var categorySearch by remember { mutableStateOf("") }
-    LaunchedEffect(typeFilter) {
-        categorySearch = ""
-        categoryExpanded = false
-    }
-    val matchingCategories = remember(categories, categorySearch) {
-        searchCategories(categories, categorySearch)
-    }
+    var showAdvancedFilters by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        FinanceTextField(
-            query,
-            onQueryChange,
-            "Buscar",
-            placeholder = "Buscar movimientos...",
-            singleLine = true,
-            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-            trailingIcon = {
-                if (query.isNotBlank()) {
-                    IconButton(
-                        onClick = { onQueryChange("") },
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Icon(
-                            Icons.Outlined.Close,
-                            contentDescription = "Limpiar búsqueda",
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-            },
-        )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HistoryTypeFilter.entries.forEach { option ->
                 FilterChip(
@@ -321,81 +298,40 @@ private fun HistoryFilters(
                 )
             }
         }
-        ExposedDropdownMenuBox(
-            expanded = categoryExpanded,
-            onExpandedChange = { categoryExpanded = it },
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom,
         ) {
-            OutlinedTextField(
-                value = categorySearch,
-                onValueChange = { value ->
-                    categorySearch = value
-                    onCategoryChange(null)
-                    categoryExpanded = true
-                },
-                label = { Text("Buscar categoría") },
-                placeholder = { Text("Todas las categorías") },
+            FinanceTextField(
+                query,
+                onQueryChange,
+                "Buscar",
+                modifier = Modifier.weight(1f),
+                placeholder = "Buscar movimientos...",
+                singleLine = true,
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 trailingIcon = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (categorySearch.isNotBlank() || categoryId != null) {
-                            IconButton(
-                                onClick = {
-                                    categorySearch = ""
-                                    onCategoryChange(null)
-                                    categoryExpanded = false
-                                },
-                                modifier = Modifier.size(32.dp),
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Close,
-                                    contentDescription = "Limpiar categoría",
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
+                    if (query.isNotBlank()) {
+                        IconButton(
+                            onClick = { onQueryChange("") },
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Limpiar búsqueda",
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
-                        ExposedDropdownMenuDefaults.TrailingIcon(categoryExpanded)
                     }
                 },
-                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth(),
-                shape = MaterialTheme.shapes.small,
-                singleLine = true,
             )
-            ExposedDropdownMenu(
-                expanded = categoryExpanded,
-                onDismissRequest = { categoryExpanded = false },
-            ) {
-                if (categorySearch.isBlank()) {
-                    DropdownMenuItem(
-                        text = { Text("Todas las categorías") },
-                        onClick = {
-                            categorySearch = ""
-                            onCategoryChange(null)
-                            categoryExpanded = false
-                        },
-                    )
-                }
-                matchingCategories.forEach { category ->
-                    DropdownMenuItem(
-                        text = { Text(category.name) },
-                        onClick = {
-                            categorySearch = category.name
-                            onCategoryChange(category.id)
-                            categoryExpanded = false
-                        },
-                    )
-                }
-                if (matchingCategories.isEmpty()) {
-                    DropdownMenuItem(
-                        text = { Text("No se encontraron categorías") },
-                        onClick = {},
-                        enabled = false,
-                    )
-                }
-            }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HistoryDateField("Desde", startDate, onStartDateChange, Modifier.weight(1f))
-            HistoryDateField("Hasta", endDate, onEndDateChange, Modifier.weight(1f))
+            GlobalOutlinedIconButton(
+                icon = Icons.Outlined.Menu,
+                contentDescription = "Filtros avanzados",
+                onClick = { showAdvancedFilters = true },
+                size = 56.dp,
+            )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -403,15 +339,150 @@ private fun HistoryFilters(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             HistorySortMenu(sort = sort, onSortChange = onSortChange)
-            TextButton(
-                onClick = {
-                    categorySearch = ""
-                    categoryExpanded = false
-                    onQueryChange("")
-                    onClear()
-                },
-            ) {
+            TextButton(onClick = {
+                onQueryChange("")
+                onClear()
+            }) {
                 Text("Limpiar filtros")
+            }
+        }
+    }
+    if (showAdvancedFilters) {
+        HistoryAdvancedFiltersSheet(
+            categories = categories,
+            categoryId = categoryId,
+            onCategoryChange = onCategoryChange,
+            startDate = startDate,
+            onStartDateChange = onStartDateChange,
+            endDate = endDate,
+            onEndDateChange = onEndDateChange,
+            onDismiss = { showAdvancedFilters = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HistoryAdvancedFiltersSheet(
+    categories: List<Category>,
+    categoryId: Long?,
+    onCategoryChange: (Long?) -> Unit,
+    startDate: LocalDate?,
+    onStartDateChange: (LocalDate?) -> Unit,
+    endDate: LocalDate?,
+    onEndDateChange: (LocalDate?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var categoryExpanded by remember { mutableStateOf(false) }
+    var categorySearch by remember { mutableStateOf("") }
+    val matchingCategories = remember(categories, categorySearch) {
+        searchCategories(categories, categorySearch)
+    }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.large,
+        dragHandle = null,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 680.dp)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(start = 18.dp, top = 16.dp, end = 18.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("FILTROS", style = MaterialTheme.typography.headlineMedium)
+                    Text(
+                        "Refina los movimientos mostrados",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros")
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            ExposedDropdownMenuBox(
+                expanded = categoryExpanded,
+                onExpandedChange = { categoryExpanded = it },
+            ) {
+                OutlinedTextField(
+                    value = categorySearch,
+                    onValueChange = { value ->
+                        categorySearch = value
+                        onCategoryChange(null)
+                        categoryExpanded = true
+                    },
+                    label = { Text("Buscar categoría") },
+                    placeholder = { Text("Todas las categorías") },
+                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    trailingIcon = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (categorySearch.isNotBlank() || categoryId != null) {
+                                IconButton(
+                                    onClick = {
+                                        categorySearch = ""
+                                        onCategoryChange(null)
+                                        categoryExpanded = false
+                                    },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Close,
+                                        contentDescription = "Limpiar categoría",
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+                            ExposedDropdownMenuDefaults.TrailingIcon(categoryExpanded)
+                        }
+                    },
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth(),
+                    shape = MaterialTheme.shapes.small,
+                    singleLine = true,
+                )
+                ExposedDropdownMenu(
+                    expanded = categoryExpanded,
+                    onDismissRequest = { categoryExpanded = false },
+                ) {
+                    if (categorySearch.isBlank()) {
+                        DropdownMenuItem(
+                            text = { Text("Todas las categorías") },
+                            onClick = {
+                                categorySearch = ""
+                                onCategoryChange(null)
+                                categoryExpanded = false
+                            },
+                        )
+                    }
+                    matchingCategories.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category.name) },
+                            onClick = {
+                                categorySearch = category.name
+                                onCategoryChange(category.id)
+                                categoryExpanded = false
+                            },
+                        )
+                    }
+                    if (matchingCategories.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text("No se encontraron categorías") },
+                            onClick = {},
+                            enabled = false,
+                        )
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HistoryDateField("Desde", startDate, onStartDateChange, Modifier.weight(1f))
+                HistoryDateField("Hasta", endDate, onEndDateChange, Modifier.weight(1f))
             }
         }
     }
