@@ -10,6 +10,7 @@ import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
 import com.example.personalfinancetracker.domain.model.budgetPeriodForSchedule
+import com.example.personalfinancetracker.domain.model.previousBudgetPeriod
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 data class StatisticsUiState(
@@ -37,6 +39,7 @@ internal enum class StatisticsRange(val label: String) {
     CURRENT_MONTH("Este mes"),
     CURRENT_YEAR("Este año"),
     ALL_TIME("Todo"),
+    CUSTOM("Personalizado"),
 }
 
 internal data class StatisticsPeriod(
@@ -48,6 +51,8 @@ internal fun statisticsPeriod(
     range: StatisticsRange,
     today: LocalDate = LocalDate.now(),
     budget: BudgetConfig? = null,
+    customStart: LocalDate? = null,
+    customEnd: LocalDate? = null,
 ): StatisticsPeriod = when (range) {
     StatisticsRange.CURRENT_BUDGET -> activeBudgetPeriod(budget, today).let {
         StatisticsPeriod(startDate = it.start, endDate = it.endInclusive)
@@ -61,6 +66,48 @@ internal fun statisticsPeriod(
         endDate = today,
     )
     StatisticsRange.ALL_TIME -> StatisticsPeriod(startDate = null, endDate = null)
+    StatisticsRange.CUSTOM -> StatisticsPeriod(startDate = customStart, endDate = customEnd)
+}
+
+internal fun previousStatisticsPeriod(
+    range: StatisticsRange,
+    selectedCycle: BudgetCycleSchedule?,
+    budget: BudgetConfig?,
+    current: StatisticsPeriod,
+    today: LocalDate = LocalDate.now(),
+): StatisticsPeriod? = when {
+    range == StatisticsRange.ALL_TIME || range == StatisticsRange.CUSTOM -> null
+    selectedCycle != null -> budgetPeriodForSchedule(
+        selectedCycle,
+        (current.startDate ?: today).minusMonths(1),
+    ).let { StatisticsPeriod(it.start, it.endInclusive) }
+    range == StatisticsRange.CURRENT_BUDGET -> previousBudgetPeriod(budget, today).let {
+        StatisticsPeriod(it.start, it.endInclusive)
+    }
+    range == StatisticsRange.CURRENT_MONTH -> YearMonth.from(today).minusMonths(1).let {
+        StatisticsPeriod(it.atDay(1), it.atEndOfMonth())
+    }
+    else -> today.minusYears(1).let {
+        StatisticsPeriod(it.withDayOfYear(1), it.withDayOfYear(it.lengthOfYear()))
+    }
+}
+
+internal enum class TrendDirection { UP, DOWN, FLAT, NEW }
+
+internal data class TrendDelta(val direction: TrendDirection, val percent: Int?)
+
+internal fun trendDelta(current: Long, previous: Long): TrendDelta {
+    if (previous <= 0L) {
+        return if (current <= 0L) TrendDelta(TrendDirection.FLAT, null)
+        else TrendDelta(TrendDirection.NEW, null)
+    }
+    val percent = ((current - previous) * 100 / previous).toInt()
+    val direction = when {
+        percent > 0 -> TrendDirection.UP
+        percent < 0 -> TrendDirection.DOWN
+        else -> TrendDirection.FLAT
+    }
+    return TrendDelta(direction, percent)
 }
 
 internal fun statisticsPeriod(
@@ -104,6 +151,19 @@ class StatisticsViewModel @Inject constructor(
 internal fun StatisticsRange.displayLabel(budget: BudgetConfig?): String =
     if (this != StatisticsRange.CURRENT_BUDGET) label
     else if (budget?.period == BudgetPeriod.MONTHLY) "Este ciclo mensual" else "Esta quincena"
+
+private val customRangeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+
+internal fun customRangeLabel(start: LocalDate?, end: LocalDate?): String {
+    val formattedStart = start?.format(customRangeFormatter)
+    val formattedEnd = end?.format(customRangeFormatter)
+    return when {
+        formattedStart != null && formattedEnd != null -> "$formattedStart – $formattedEnd"
+        formattedStart != null -> "Desde $formattedStart"
+        formattedEnd != null -> "Hasta $formattedEnd"
+        else -> "Personalizado"
+    }
+}
 
 internal fun BudgetCycleSchedule.displayLabel(index: Int): String =
     "Ciclo ${index + 1} · días $openingDay-$closingDay"

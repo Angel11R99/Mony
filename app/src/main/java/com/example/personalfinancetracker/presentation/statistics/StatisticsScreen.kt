@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -25,9 +26,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.ArrowDropUp
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -38,9 +45,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,6 +67,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,6 +77,8 @@ import com.example.personalfinancetracker.domain.model.BudgetCycleSchedule
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.model.activeBudgetPeriod
 import com.example.personalfinancetracker.domain.model.belongsToActiveBudgetCycle
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
@@ -82,13 +95,21 @@ fun StatisticsScreen(
     var range by remember { mutableStateOf(StatisticsRange.CURRENT_BUDGET) }
     var cycleIndex by remember { mutableStateOf<Int?>(null) }
     var categoryId by remember { mutableStateOf<Long?>(null) }
+    var customStart by remember { mutableStateOf<LocalDate?>(null) }
+    var customEnd by remember { mutableStateOf<LocalDate?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     var draftRange by remember { mutableStateOf(range) }
     var draftCycleIndex by remember { mutableStateOf(cycleIndex) }
     var draftCategoryId by remember { mutableStateOf(categoryId) }
+    var draftCustomStart by remember { mutableStateOf(customStart) }
+    var draftCustomEnd by remember { mutableStateOf(customEnd) }
     val cycleSchedules = state.budget?.cycleSchedules.orEmpty()
     val selectedCycle = cycleIndex?.let(cycleSchedules::getOrNull)
-    val periodLabel = selectedCycle?.displayLabel(cycleIndex ?: 0) ?: range.displayLabel(state.budget)
+    val periodLabel = when {
+        selectedCycle != null -> selectedCycle.displayLabel(cycleIndex ?: 0)
+        range == StatisticsRange.CUSTOM -> customRangeLabel(customStart, customEnd)
+        else -> range.displayLabel(state.budget)
+    }
     LaunchedEffect(cycleSchedules, cycleIndex) {
         if (cycleIndex != null && selectedCycle == null) cycleIndex = null
     }
@@ -97,9 +118,14 @@ fun StatisticsScreen(
             .filter { it.type == TransactionType.EXPENSE }
             .sortedBy(Category::name)
     }
-    val period = remember(range, selectedCycle, state.budget) {
+    val period = remember(range, selectedCycle, state.budget, customStart, customEnd) {
         selectedCycle?.let { statisticsPeriod(it) }
-            ?: statisticsPeriod(range = range, budget = state.budget)
+            ?: statisticsPeriod(
+                range = range,
+                budget = state.budget,
+                customStart = customStart,
+                customEnd = customEnd,
+            )
     }
     val isBudgetCycleFilter = selectedCycle != null || range == StatisticsRange.CURRENT_BUDGET
     val periodTransactions = remember(state.transactions, state.budget, isBudgetCycleFilter, period) {
@@ -118,6 +144,22 @@ fun StatisticsScreen(
             categories = state.categories,
             startDate = period.startDate,
             endDate = period.endDate,
+        )
+    }
+    val previousPeriod = remember(range, selectedCycle, state.budget, period) {
+        previousStatisticsPeriod(
+            range = range,
+            selectedCycle = selectedCycle,
+            budget = state.budget,
+            current = period,
+        )
+    }
+    val previousReport = previousPeriod?.let { previous ->
+        calculateStatistics(
+            transactions = periodTransactions,
+            categories = state.categories,
+            startDate = previous.startDate,
+            endDate = previous.endDate,
         )
     }
     val selectedCategory = categoryId?.let(state.categories::get)
@@ -157,6 +199,8 @@ fun StatisticsScreen(
                         draftRange = range
                         draftCycleIndex = cycleIndex
                         draftCategoryId = categoryId
+                        draftCustomStart = customStart
+                        draftCustomEnd = customEnd
                         showFilters = true
                     },
                 )
@@ -164,6 +208,11 @@ fun StatisticsScreen(
             item { BalanceCard(report) }
             item { IncomeExpenseChart(report) }
             item { ActivityCard(report) }
+            val comparisonPeriod = previousPeriod
+            val comparisonReport = previousReport
+            if (comparisonPeriod != null && comparisonReport != null) {
+                item { TrendComparisonCard(current = report, previous = comparisonReport, previousPeriod = comparisonPeriod) }
+            }
             if (selectedCategory != null) {
                 item {
                     CategoryFocusCard(
@@ -204,6 +253,8 @@ fun StatisticsScreen(
     }
 
     if (showFilters) {
+        val draftValid = draftRange != StatisticsRange.CUSTOM ||
+            (draftCustomStart != null && draftCustomEnd != null && !draftCustomStart!!.isAfter(draftCustomEnd!!))
         StatisticsFilterSheet(
             ranges = StatisticsRange.entries,
             selectedRange = draftRange,
@@ -214,19 +265,38 @@ fun StatisticsScreen(
             cycles = cycleSchedules,
             selectedCycleIndex = draftCycleIndex,
             onCycleChange = { draftCycleIndex = it },
+            customStartDate = draftCustomStart,
+            onCustomStartDateChange = { date ->
+                draftCustomStart = date
+                if (date != null && draftCustomEnd != null && draftCustomEnd!!.isBefore(date)) {
+                    draftCustomEnd = date
+                }
+            },
+            customEndDate = draftCustomEnd,
+            onCustomEndDateChange = { date ->
+                draftCustomEnd = date
+                if (date != null && draftCustomStart != null && draftCustomStart!!.isAfter(date)) {
+                    draftCustomStart = date
+                }
+            },
             categories = expenseCategories,
             selectedCategoryId = draftCategoryId,
             onCategoryChange = { draftCategoryId = it },
             rangeLabel = { it.displayLabel(state.budget) },
+            applyEnabled = draftValid,
             onClear = {
                 draftRange = StatisticsRange.CURRENT_BUDGET
                 draftCycleIndex = null
                 draftCategoryId = null
+                draftCustomStart = null
+                draftCustomEnd = null
             },
             onApply = {
                 range = draftRange
                 cycleIndex = draftCycleIndex
                 categoryId = draftCategoryId
+                customStart = draftCustomStart
+                customEnd = draftCustomEnd
                 showFilters = false
             },
             onDismiss = { showFilters = false },
@@ -264,10 +334,15 @@ private fun StatisticsFilterSheet(
     cycles: List<BudgetCycleSchedule>,
     selectedCycleIndex: Int?,
     onCycleChange: (Int) -> Unit,
+    customStartDate: LocalDate?,
+    onCustomStartDateChange: (LocalDate?) -> Unit,
+    customEndDate: LocalDate?,
+    onCustomEndDateChange: (LocalDate?) -> Unit,
     categories: List<Category>,
     selectedCategoryId: Long?,
     onCategoryChange: (Long?) -> Unit,
     rangeLabel: (StatisticsRange) -> String,
+    applyEnabled: Boolean,
     onClear: () -> Unit,
     onApply: () -> Unit,
     onDismiss: () -> Unit,
@@ -336,6 +411,23 @@ private fun StatisticsFilterSheet(
                     }
                 }
             }
+            if (selectedRange == StatisticsRange.CUSTOM) {
+                Text("RANGO PERSONALIZADO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatisticsDateField(
+                        label = "Desde",
+                        value = customStartDate,
+                        onValueChange = onCustomStartDateChange,
+                        modifier = Modifier.weight(1f),
+                    )
+                    StatisticsDateField(
+                        label = "Hasta",
+                        value = customEndDate,
+                        onValueChange = onCustomEndDateChange,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
             Text("CATEGORÍA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -361,7 +453,7 @@ private fun StatisticsFilterSheet(
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SecondaryButton("Limpiar", onClear, Modifier.weight(1f))
-                PrimaryButton("Aplicar", onApply, Modifier.weight(1f))
+                PrimaryButton("Aplicar", onApply, Modifier.weight(1f), enabled = applyEnabled)
             }
         }
     }
@@ -374,6 +466,170 @@ private fun financeFilterChipColors() = FilterChipDefaults.filterChipColors(
     selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
     selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimary,
 )
+
+private const val MILLIS_PER_DAY = 86_400_000L
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StatisticsDateField(
+    label: String,
+    value: LocalDate?,
+    onValueChange: (LocalDate?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    val formatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    Surface(
+        modifier = modifier
+            .heightIn(min = 56.dp)
+            .clickable(role = Role.Button) { showPicker = true },
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    value?.format(formatter) ?: "Elige una fecha",
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                )
+            }
+            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+    if (showPicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = (value ?: LocalDate.now()).toEpochDay() * MILLIS_PER_DAY,
+        )
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    onValueChange(pickerState.selectedDateMillis?.let { LocalDate.ofEpochDay(it / MILLIS_PER_DAY) })
+                    showPicker = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Cancelar") }
+            },
+        ) { DatePicker(pickerState) }
+    }
+}
+
+@Composable
+private fun TrendComparisonCard(
+    current: StatisticsReport,
+    previous: StatisticsReport,
+    previousPeriod: StatisticsPeriod,
+) {
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                "COMPARACIÓN CON EL PERIODO ANTERIOR",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            TrendRow("GASTOS", current.expenseInCents, previous.expenseInCents, upIsGood = false)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            TrendRow("INGRESOS", current.incomeInCents, previous.incomeInCents, upIsGood = true)
+            Text(
+                "Periodo anterior: ${previousPeriod.startDate.orDash()} – ${previousPeriod.endDate?.format(trendDateFormatter) ?: "hoy"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private val trendDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+
+private fun LocalDate?.orDash(): String = this?.format(trendDateFormatter) ?: "—"
+
+@Composable
+private fun TrendRow(label: String, current: Long, previous: Long, upIsGood: Boolean) {
+    val delta = trendDelta(current, previous)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(MoneyFormatter.format(current), style = MaterialTheme.typography.titleLarge)
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            TrendDeltaLabel(delta, upIsGood)
+            Text(
+                "Antes ${MoneyFormatter.format(previous)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrendDeltaLabel(delta: TrendDelta, upIsGood: Boolean) {
+    val goodColor = MaterialTheme.colorScheme.primary
+    val badColor = MaterialTheme.colorScheme.error
+    when (delta.direction) {
+        TrendDirection.NEW -> Text(
+            "Nuevo",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = goodColor,
+        )
+        TrendDirection.FLAT -> Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Outlined.Remove,
+                contentDescription = "Sin cambios",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                if (delta.percent != null) "0%" else "Sin cambios",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TrendDirection.UP -> {
+            val color = if (upIsGood) goodColor else badColor
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Outlined.ArrowDropUp,
+                    contentDescription = "Subió",
+                    tint = color,
+                    modifier = Modifier.size(24.dp),
+                )
+                Text(
+                    "+${delta.percent}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = color,
+                )
+            }
+        }
+        TrendDirection.DOWN -> {
+            val color = if (upIsGood) badColor else goodColor
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Outlined.ArrowDropDown,
+                    contentDescription = "Bajó",
+                    tint = color,
+                    modifier = Modifier.size(24.dp),
+                )
+                Text(
+                    "−${delta.percent?.toString()?.trimStart('-')}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = color,
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun CategoryFocusCard(

@@ -44,6 +44,18 @@ fun nextBudgetPeriod(
         ?: DateRange.current(budget.period, current.endInclusive.plusDays(1))
 }
 
+fun previousBudgetPeriod(
+    budget: BudgetConfig?,
+    today: LocalDate = LocalDate.now(),
+): DateRange {
+    val current = activeBudgetPeriod(budget, today)
+    if (budget == null) return DateRange.current(BudgetPeriod.FORTNIGHTLY, current.start.minusDays(1))
+    return configuredPeriodsAround(budget, current.start.minusDays(1))
+        .filter { it.endInclusive.isBefore(current.start) }
+        .maxByOrNull(DateRange::endInclusive)
+        ?: DateRange.current(budget.period, current.start.minusDays(1))
+}
+
 fun budgetPeriodForSchedule(
     schedule: BudgetCycleSchedule,
     today: LocalDate = LocalDate.now(),
