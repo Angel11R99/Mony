@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="216dp"
+    android:height="72dp"
+    android:viewportWidth="216"
+    android:viewportHeight="72">
+    <!-- Card -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M0,0h216v72h-216z" />
+    <!-- Available label -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M14,16h40v6h-40z" />
+    <!-- Available amount -->
+    <path
+        android:fillColor="#1C1722"
+        android:pathData="M14,28h52v10h-52z" />
+    <!-- Progress track -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M78,30a4,4 0 0 1 4,-4h76a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-76a4,4 0 0 1 -4,-4z" />
+    <!-- Progress fill 62% -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M78,30a4,4 0 0 1 4,-4h48a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-48a4,4 0 0 1 -4,-4z" />
+    <!-- Percent -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M170,26h32v10h-32z" />
+</vector>

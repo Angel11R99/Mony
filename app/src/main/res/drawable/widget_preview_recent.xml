@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="216dp"
+    android:height="144dp"
+    android:viewportWidth="216"
+    android:viewportHeight="144">
+    <!-- Card -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M0,0h216v144h-216z" />
+    <!-- Header + action -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M14,18h76v7h-76z" />
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M158,18h44v7h-44z" />
+    <!-- Row 1: income -->
+    <circle android:fillColor="#7C3AED" android:centerX="19" android:centerY="46" android:radius="4dp" />
+    <path
+        android:fillColor="#1C1722"
+        android:pathData="M30,40h70v8h-70z" />
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M30,52h40v5h-40z" />
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M164,42h38v9h-38z" />
+    <!-- Row 2: expense -->
+    <circle android:fillColor="#C5283D" android:centerX="19" android:centerY="80" android:radius="4dp" />
+    <path
+        android:fillColor="#1C1722"
+        android:pathData="M30,74h58v8h-58z" />
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M30,86h34v5h-34z" />
+    <path
+        android:fillColor="#C5283D"
+        android:pathData="M168,76h34v9h-34z" />
+    <!-- Row 3 -->
+    <circle android:fillColor="#C5283D" android:centerX="19" android:centerY="112" android:radius="4dp" />
+    <path
+        android:fillColor="#1C1722"
+        android:pathData="M30,106h64v8h-64z" />
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M30,118h30v5h-30z" />
+    <path
+        android:fillColor="#C5283D"
+        android:pathData="M166,108h36v9h-36z" />
+</vector>

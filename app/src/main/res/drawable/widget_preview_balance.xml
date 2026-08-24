@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="216dp"
+    android:height="144dp"
+    android:viewportWidth="216"
+    android:viewportHeight="144">
+    <!-- Card -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M0,0h216v144h-216z" />
+    <!-- DISPONIBLE label -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M16,22h52v7h-52z" />
+    <!-- Amount -->
+    <path
+        android:fillColor="#1C1722"
+        android:pathData="M16,38h84v14h-84z" />
+    <!-- Latest expense column -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M120,22h56v7h-56z" />
+    <path
+        android:fillColor="#C5283D"
+        android:pathData="M120,38h48v14h-48z" />
+    <!-- Expense pill -->
+    <path
+        android:fillColor="#F1EDF4"
+        android:pathData="M16,92h88v26a6,6 0 0 1 -6,6h-76a6,6 0 0 1 -6,-6z" />
+    <path
+        android:fillColor="#C5283D"
+        android:pathData="M40,102h40v6h-40z" />
+    <!-- Income pill -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M112,92h88v26a6,6 0 0 1 -6,6h-76a6,6 0 0 1 -6,-6z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M136,102h40v6h-40z" />
+</vector>

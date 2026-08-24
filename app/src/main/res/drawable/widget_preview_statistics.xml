@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="216dp"
+    android:height="144dp"
+    android:viewportWidth="216"
+    android:viewportHeight="144">
+    <!-- Card -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M0,0h216v144h-216z" />
+    <!-- Title -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M14,18h64v7h-64z" />
+    <!-- Movements count -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M168,19h34v5h-34z" />
+    <!-- Balance -->
+    <path
+        android:fillColor="#1C1722"
+        android:pathData="M14,36h72v14h-72z" />
+    <!-- Split bar -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M14,62h66v8h-66z" />
+    <path
+        android:fillColor="#C5283D"
+        android:pathData="M80,62h122v8h-122z" />
+    <!-- Income / expense values -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M14,78h40v8h-40z" />
+    <path
+        android:fillColor="#C5283D"
+        android:pathData="M120,78h40v8h-40z" />
+    <!-- Separator -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M14,96h188v1h-188z" />
+    <!-- Top category rows -->
+    <circle android:fillColor="#7C3AED" android:centerX="19" android:centerY="110" android:radius="3dp" />
+    <path
+        android:fillColor="#1C1722"
+        android:pathData="M28,106h48v7h-48z" />
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M170,106h32v7h-32z" />
+    <circle android:fillColor="#7C3AED" android:centerX="19" android:centerY="128" android:radius="3dp" />
+    <path
+        android:fillColor="#1C1722"
+        android:pathData="M28,124h38v7h-38z" />
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M170,124h26v7h-26z" />
+</vector>

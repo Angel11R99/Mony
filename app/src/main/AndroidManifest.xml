@@ -36,7 +36,8 @@
         </provider>
         <receiver
             android:name=".widget.FinanceWidgetReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/widget_finance_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -76,6 +77,50 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/statistics_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.RecentMovementsWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_recent_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/recent_movements_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.PendingRemindersWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_pending_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pending_reminders_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.SavingsGoalsWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_savings_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/savings_goals_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.FixedCommitmentsWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_fixed_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/fixed_commitments_widget_info" />
         </receiver>
     </application>
 

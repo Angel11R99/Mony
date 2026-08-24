@@ -1,25 +1,94 @@
 <resources>
     <string name="app_name">PersonalFinanceTracker</string>
-    <string name="widget_description">Balance y registro rápido de movimientos</string>
+
+    <!-- Balance y registro rápido -->
+    <string name="widget_finance_name">Balance y registro rápido</string>
+    <string name="widget_description">Balance disponible y registro rápido de gastos e ingresos</string>
     <string name="widget_available">DISPONIBLE</string>
     <string name="widget_latest_expense">ÚLTIMO GASTO</string>
     <string name="widget_add_expense">+ Gasto</string>
     <string name="widget_add_income">+ Ingreso</string>
+    <string name="widget_period_income">INGRESOS DEL CICLO</string>
+    <string name="widget_period_expense">GASTOS DEL CICLO</string>
+
+    <!-- Ingresos vs gastos -->
     <string name="widget_income_expense_name">Ingresos vs gastos</string>
-    <string name="widget_income_expense_description">Comparación pequeña de ingresos y gastos del periodo</string>
+    <string name="widget_income_expense_description">Comparación pequeña de ingresos y gastos del ciclo actual</string>
     <string name="widget_income_expense_title">INGRESOS VS GASTOS</string>
+    <string name="widget_current_cycle">Ciclo actual</string>
+
+    <!-- Uso del presupuesto -->
     <string name="widget_budget_progress_name">Uso del presupuesto</string>
-    <string name="widget_budget_progress_description">Barra porcentual del presupuesto utilizado</string>
+    <string name="widget_budget_progress_description">Barra porcentual del presupuesto utilizado con días restantes</string>
+    <string name="widget_percentage_used">%1$d%% usado</string>
+    <string name="widget_no_budget">Sin presupuesto</string>
+    <string name="widget_configure_budget">Configura tu presupuesto en la app</string>
+    <string name="widget_spent_of">Gastado %1$s de %2$s</string>
+    <string name="widget_cycle_ends_today">El ciclo cierra hoy</string>
+
+    <!-- Resumen del ciclo -->
     <string name="widget_statistics_name">Resumen estadístico</string>
-    <string name="widget_statistics_description">Gráfica y balance del periodo actual</string>
-    <string name="widget_statistics_title">RESUMEN DEL PERIODO</string>
+    <string name="widget_statistics_description">Balance, proporciones y categorías principales del ciclo actual</string>
+    <string name="widget_statistics_title">RESUMEN DEL CICLO</string>
     <string name="widget_income">INGRESOS</string>
     <string name="widget_expense">GASTOS</string>
     <string name="widget_balance">BALANCE</string>
-    <string name="widget_percentage_used">%1$d%% usado</string>
-    <string name="widget_no_budget">Sin presupuesto</string>
+    <string name="widget_top_categories">CATEGORÍAS PRINCIPALES</string>
+    <string name="widget_trend_up">▲ %1$d%% vs ciclo anterior</string>
+    <string name="widget_trend_down">▼ %1$d%% vs ciclo anterior</string>
+    <string name="widget_trend_flat">= Igual que el ciclo anterior</string>
+    <string name="widget_no_previous_cycle">Primer ciclo registrado</string>
     <plurals name="widget_movements">
         <item quantity="one">%1$d movimiento</item>
         <item quantity="other">%1$d movimientos</item>
     </plurals>
+    <plurals name="widget_days_left">
+        <item quantity="one">%1$d día restante</item>
+        <item quantity="other">%1$d días restantes</item>
+    </plurals>
+
+    <!-- Últimos movimientos -->
+    <string name="widget_recent_name">Últimos movimientos</string>
+    <string name="widget_recent_description">Lista de tus registros más recientes con acceso al historial</string>
+    <string name="widget_recent_title">ÚLTIMOS MOVIMIENTOS</string>
+    <string name="widget_open_history">Historial</string>
+    <string name="widget_no_movements">Todavía no tienes movimientos.</string>
+    <string name="widget_no_movements_hint">Registra tu primer gasto o ingreso para comenzar.</string>
+    <string name="widget_no_category">Sin categoría</string>
+
+    <!-- Próximos pagos y cobros -->
+    <string name="widget_pending_name">Próximos pagos y cobros</string>
+    <string name="widget_pending_description">Recordatorios pendientes con montos y fechas próximas</string>
+    <string name="widget_pending_title">RECORDATORIOS</string>
+    <string name="widget_pending_today">Hoy</string>
+    <string name="widget_pending_tomorrow">Mañana</string>
+    <string name="widget_pending_overdue">Atrasado · %1$s</string>
+    <string name="widget_pending_to_pay">Por pagar −%1$s</string>
+    <string name="widget_pending_to_collect">Por cobrar %1$s</string>
+    <string name="widget_pending_empty">No tienes recordatorios pendientes.</string>
+    <string name="widget_pending_empty_hint">Crea pagos o cobros desde el módulo Recordatorios.</string>
+    <string name="widget_payment">Pago</string>
+    <string name="widget_collection">Cobro</string>
+
+    <!-- Metas de ahorro -->
+    <string name="widget_savings_name">Metas de ahorro</string>
+    <string name="widget_savings_description">Progreso de tus metas de ahorro</string>
+    <string name="widget_savings_title">AHORROS</string>
+    <string name="widget_savings_goal_completed">¡Meta completada!</string>
+    <string name="widget_savings_empty">Aún no tienes metas de ahorro.</string>
+    <string name="widget_savings_empty_hint">Crea una meta desde el módulo Ahorros.</string>
+    <string name="widget_savings_saved_of">%1$s de %2$s</string>
+    <string name="widget_savings_more_goals">+%1$d metas más</string>
+
+    <!-- Gastos fijos -->
+    <string name="widget_fixed_name">Gastos fijos activos</string>
+    <string name="widget_fixed_description">Compromiso mensual de entradas fijas y próximo registro automático</string>
+    <string name="widget_fixed_title">FIJOS ACTIVOS</string>
+    <string name="widget_fixed_entries_count">%1$d fijos activos</string>
+    <string name="widget_fixed_next_run">Próximo registro: %1$s</string>
+    <string name="widget_fixed_next_run_title">PRÓXIMO REGISTRO</string>
+    <string name="widget_fixed_no_next_run">Sin registros programados</string>
+    <string name="widget_fixed_empty">No tienes entradas fijas activas.</string>
+    <string name="widget_fixed_empty_hint">Programa gastos o ingresos recurrentes desde el módulo Fijos.</string>
+    <string name="widget_fixed_top_list">MAYORES COMPROMISOS</string>
 </resources>

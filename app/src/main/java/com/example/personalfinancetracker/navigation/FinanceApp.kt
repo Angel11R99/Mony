@@ -63,7 +63,7 @@ fun FinanceApp(
     }
 
     LaunchedEffect(initialDestination) {
-        if (initialDestination in setOf("home", "history", "statistics", "fixed", "pending")) {
+        if (initialDestination in setOf("home", "history", "statistics", "fixed", "pending", "savings")) {
             navigateToModule(initialDestination!!)
         }
     }

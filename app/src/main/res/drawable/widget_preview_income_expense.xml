@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Card -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- Title -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M12,16h56v6h-56z" />
+    <!-- Split bar -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M12,38h50v8h-50z" />
+    <path
+        android:fillColor="#C5283D"
+        android:pathData="M62,38h34v8h-34z" />
+    <!-- Income value -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M12,62h30v9h-30z" />
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M12,76h20v5h-20z" />
+    <!-- Expense value -->
+    <path
+        android:fillColor="#C5283D"
+        android:pathData="M60,62h30v9h-30z" />
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M60,76h20v5h-20z" />
+</vector>

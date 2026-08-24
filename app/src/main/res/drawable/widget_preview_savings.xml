@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Card -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- Title -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M12,16h36v6h-36z" />
+    <!-- Goal name -->
+    <path
+        android:fillColor="#1C1722"
+        android:pathData="M12,32h52v9h-52z" />
+    <!-- Percent + saved -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M12,50h20v10h-20z" />
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M66,53h30v6h-30z" />
+    <!-- Progress bar 72% -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M12,70a3,3 0 0 1 3,-3h78a3,3 0 0 1 3,3v7a3,3 0 0 1 -3,3h-78a3,3 0 0 1 -3,-3z" />
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M12,70a3,3 0 0 1 3,-3h58a3,3 0 0 1 3,3v7a3,3 0 0 1 -3,3h-58a3,3 0 0 1 -3,-3z" />
+    <!-- Saved of target -->
+    <path
+        android:fillColor="#E6E1E8"
+        android:pathData="M12,90h60v5h-60z" />
+</vector>
