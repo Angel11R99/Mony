@@ -24,8 +24,8 @@ interface CategoryDao {
     @Insert
     suspend fun insert(entity: CategoryEntity)
 
-    @Query("UPDATE categories SET name = :name WHERE id = :id")
-    suspend fun rename(id: Long, name: String)
+    @Query("UPDATE categories SET name = :name, budgetLimitInCents = :budgetLimitInCents WHERE id = :id")
+    suspend fun update(id: Long, name: String, budgetLimitInCents: Long?)
 
     @Query("UPDATE categories SET isActive = :isActive WHERE id = :id")
     suspend fun setActive(id: Long, isActive: Boolean)

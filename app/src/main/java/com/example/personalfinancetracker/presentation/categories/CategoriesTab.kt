@@ -33,15 +33,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
+import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 
 @Composable
 fun CategoriesTab(viewModel: CategoriesViewModel = hiltViewModel()) {
@@ -123,12 +127,12 @@ fun CategoriesTab(viewModel: CategoriesViewModel = hiltViewModel()) {
             initialType = TransactionType.EXPENSE,
             isSaving = isSaving,
             onDismiss = { showEditor = false },
-            onSave = { type, name ->
+            onSave = { type, name, limit ->
                 val category = editingCategory
                 if (category == null) {
-                    viewModel.create(name, type) { showEditor = false }
+                    viewModel.create(name, type, limit) { showEditor = false }
                 } else {
-                    viewModel.rename(category, name) { showEditor = false }
+                    viewModel.rename(category, name, limit) { showEditor = false }
                 }
             },
         )
@@ -244,10 +248,17 @@ private fun CategoryEditorDialog(
     initialType: TransactionType,
     isSaving: Boolean,
     onDismiss: () -> Unit,
-    onSave: (TransactionType, String) -> Unit,
+    onSave: (TransactionType, String, String) -> Unit,
 ) {
     var type by remember(category) { mutableStateOf(category?.type ?: initialType) }
     var name by remember(category) { mutableStateOf(category?.name.orEmpty()) }
+    var limit by remember(category) {
+        mutableStateOf(
+            category?.budgetLimitInCents
+                ?.let { java.math.BigDecimal.valueOf(it, 2).stripTrailingZeros().toPlainString() }
+                .orEmpty()
+        )
+    }
 
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
@@ -261,14 +272,33 @@ private fun CategoryEditorDialog(
                     }
                 }
                 FinanceTextField(name, { name = it }, "Nombre", singleLine = true)
+                FinanceTextField(
+                    limit,
+                    { limit = sanitizeAmountInput(it) },
+                    "Límite por ciclo (RD$)",
+                    placeholder = "Opcional",
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    visualTransformation = AmountVisualTransformation,
+                )
+                Text(
+                    "Si defines un límite, Estadísticas mostrará tu avance en esta categoría.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         },
         confirmButton = {
+            val nameChanged = name.trim() != (category?.name ?: "")
+            val limitChanged = when (val parsed = parseBudgetLimit(limit)) {
+                BudgetLimitInput.Invalid -> true
+                is BudgetLimitInput.Valid -> parsed.cents != category?.budgetLimitInCents
+            }
             PrimaryButton(
                 text = if (isSaving) "Guardando…" else "Guardar",
-                onClick = { onSave(type, name) },
+                onClick = { onSave(type, name, limit) },
                 enabled = !isSaving && name.isNotBlank() &&
-                    (category == null || name.trim() != category.name),
+                    (category == null || nameChanged || limitChanged),
             )
         },
         dismissButton = { SecondaryButton("Cancelar", onDismiss) },

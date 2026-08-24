@@ -8,8 +8,8 @@ interface CategoryRepository {
     fun observeActive(type: TransactionType): Flow<List<Category>>
     fun observeAll(): Flow<List<Category>>
     fun observeUsedCategoryIds(): Flow<Set<Long>>
-    suspend fun create(name: String, type: TransactionType)
-    suspend fun rename(id: Long, name: String)
+    suspend fun create(name: String, type: TransactionType, budgetLimitInCents: Long?)
+    suspend fun update(id: Long, name: String, budgetLimitInCents: Long?)
     suspend fun setActive(id: Long, isActive: Boolean)
     suspend fun deleteIfUnused(id: Long): Boolean
 }

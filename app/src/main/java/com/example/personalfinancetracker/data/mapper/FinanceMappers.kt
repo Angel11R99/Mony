@@ -16,7 +16,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
-fun CategoryEntity.toDomain() = Category(id, name, TransactionType.valueOf(type), icon, isActive)
+fun CategoryEntity.toDomain() =
+    Category(id, name, TransactionType.valueOf(type), icon, isActive, budgetLimitInCents)
 
 fun TransactionEntity.toDomain() = FinanceTransaction(
     id = id,

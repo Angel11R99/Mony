@@ -164,6 +164,7 @@ fun StatisticsScreen(
     }
     val selectedCategory = categoryId?.let(state.categories::get)
     val selectedStatistic = report.expenseByCategory.firstOrNull { it.category.id == categoryId }
+    val categoryFocusLimit = selectedStatistic?.category?.budgetLimitInCents?.takeIf { it > 0 }
     val comparisonAmount = if (isBudgetCycleFilter) {
         state.budget?.amountInCents ?: report.incomeInCents
     } else {
@@ -218,7 +219,7 @@ fun StatisticsScreen(
                     CategoryFocusCard(
                         category = selectedCategory,
                         amountInCents = selectedStatistic?.amountInCents ?: 0,
-                        comparisonAmountInCents = comparisonAmount,
+                        comparisonAmountInCents = categoryFocusLimit ?: comparisonAmount,
                         periodLabel = periodLabel,
                     )
                 }
@@ -833,15 +834,20 @@ private fun RatioBar(ratio: Float) {
 
 @Composable
 private fun CategoryBar(statistic: CategoryStatistic, comparisonAmount: Long) {
-    val fraction = if (comparisonAmount <= 0) 0f else statistic.amountInCents.toFloat() / comparisonAmount
+    val limit = statistic.category.budgetLimitInCents?.takeIf { it > 0 }
+    val effectiveComparison = limit ?: comparisonAmount
+    val fraction =
+        if (effectiveComparison <= 0) 0f else statistic.amountInCents.toFloat() / effectiveComparison
     val animatedFraction by animateFloatAsState(fraction.coerceIn(0f, 1f), label = "categoryFraction")
+    val summary = if (limit != null) {
+        "${(fraction * 100).toInt()}% del límite (${MoneyFormatter.format(limit)}) · ${MoneyFormatter.format(statistic.amountInCents)}"
+    } else {
+        "${(fraction * 100).toInt()}% · ${MoneyFormatter.format(statistic.amountInCents)}"
+    }
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(statistic.category.name.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-            Text(
-                "${(fraction * 100).toInt()}% · ${MoneyFormatter.format(statistic.amountInCents)}",
-                style = MaterialTheme.typography.titleSmall,
-            )
+            Text(summary, style = MaterialTheme.typography.titleSmall)
         }
         Box(
             Modifier.fillMaxWidth().height(7.dp).clip(MaterialTheme.shapes.extraSmall)
@@ -849,7 +855,11 @@ private fun CategoryBar(statistic: CategoryStatistic, comparisonAmount: Long) {
         ) {
             Box(
                 Modifier.fillMaxWidth(animatedFraction).height(7.dp)
-                    .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.extraSmall),
+                    .background(
+                        if (limit != null && fraction > 1f) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primary,
+                        MaterialTheme.shapes.extraSmall,
+                    ),
             )
         }
     }

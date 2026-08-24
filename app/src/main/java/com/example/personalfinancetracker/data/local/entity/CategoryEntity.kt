@@ -12,4 +12,5 @@ data class CategoryEntity(
     val icon: String,
     val isActive: Boolean = true,
     val createdAtEpochMillis: Long,
+    val budgetLimitInCents: Long? = null,
 )

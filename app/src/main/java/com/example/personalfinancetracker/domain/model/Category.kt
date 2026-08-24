@@ -6,4 +6,5 @@ data class Category(
     val type: TransactionType,
     val icon: String,
     val isActive: Boolean,
+    val budgetLimitInCents: Long? = null,
 )

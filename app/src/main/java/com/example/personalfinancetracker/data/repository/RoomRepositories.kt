@@ -75,18 +75,20 @@ class RoomCategoryRepository @Inject constructor(
     override fun observeUsedCategoryIds(): Flow<Set<Long>> =
         dao.observeUsedCategoryIds().map { ids -> ids.toSet() }
 
-    override suspend fun create(name: String, type: TransactionType) {
+    override suspend fun create(name: String, type: TransactionType, budgetLimitInCents: Long?) {
         dao.insert(
             CategoryEntity(
                 name = name.trim(),
                 type = type.name,
                 icon = DEFAULT_CATEGORY_ICON,
                 createdAtEpochMillis = System.currentTimeMillis(),
+                budgetLimitInCents = budgetLimitInCents,
             )
         )
     }
 
-    override suspend fun rename(id: Long, name: String) = dao.rename(id, name.trim())
+    override suspend fun update(id: Long, name: String, budgetLimitInCents: Long?) =
+        dao.update(id = id, name = name.trim(), budgetLimitInCents = budgetLimitInCents)
 
     override suspend fun setActive(id: Long, isActive: Boolean) = dao.setActive(id, isActive)
 
