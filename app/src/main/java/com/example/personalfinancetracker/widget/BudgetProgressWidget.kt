@@ -13,6 +13,7 @@ import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.LocalSize
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -53,6 +54,7 @@ class BudgetProgressWidget : GlanceAppWidget() {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
+                .cornerRadius(24.dp)
                 .background(theme.background)
                 .clickable(actionStartActivity(openFinanceApp(context)))
                 .padding(horizontal = 14.dp),
@@ -100,10 +102,10 @@ class BudgetProgressWidget : GlanceAppWidget() {
                     maxLines = 1,
                 )
             }
-                    Spacer(GlanceModifier.width(10.dp))
+            Spacer(GlanceModifier.width(10.dp))
             WidgetProgressBar(
                 fraction = ratio,
-                totalWidth = THIN_BAR_WIDTH,
+                totalWidth = LocalSize.current.width * THIN_BAR_FRACTION,
                 fillColor = if (overspent) theme.accent else theme.primary,
                 trackColor = theme.track,
                 barHeight = 7,
@@ -131,16 +133,28 @@ class BudgetProgressWidget : GlanceAppWidget() {
     ) {
         Row(GlanceModifier.fillMaxWidth()) {
             Column(GlanceModifier.defaultWeight()) {
-                Text(
-                    text = context.getString(R.string.widget_available),
-                    style = TextStyle(color = theme.secondaryText, fontSize = 9.sp),
-                    maxLines = 1,
-                )
+                Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                    WidgetIcon(iconRes = R.drawable.ic_w_gauge, tint = theme.secondaryText, size = 11.dp)
+                    Spacer(GlanceModifier.width(5.dp))
+                    Text(
+                        text = context.getString(R.string.widget_available),
+                        style = TextStyle(color = theme.secondaryText, fontSize = 9.sp),
+                        maxLines = 1,
+                    )
+                }
                 Text(
                     text = MoneyFormatter.format(snapshot.availableInCents),
-                    style = TextStyle(color = theme.primaryText, fontSize = 18.sp, fontWeight = FontWeight.Bold),
+                    style = TextStyle(color = theme.primaryText, fontSize = 19.sp, fontWeight = FontWeight.Bold),
                     maxLines = 1,
                 )
+                if (overspent) {
+                    Spacer(GlanceModifier.height(2.dp))
+                    Text(
+                        text = context.getString(R.string.widget_budget_overspent),
+                        style = TextStyle(color = theme.accent, fontSize = 10.sp, fontWeight = FontWeight.Medium),
+                        maxLines = 1,
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
@@ -165,14 +179,33 @@ class BudgetProgressWidget : GlanceAppWidget() {
             barHeight = 9,
         )
         Spacer(GlanceModifier.height(6.dp))
+        Row(GlanceModifier.fillMaxWidth()) {
+            Text(
+                text = context.getString(
+                    R.string.widget_spent_of,
+                    MoneyFormatter.format(snapshot.expenseInCents),
+                    MoneyFormatter.format(snapshot.budget?.amountInCents ?: 0L),
+                ),
+                style = TextStyle(color = theme.secondaryText, fontSize = 10.sp),
+                maxLines = 1,
+                modifier = GlanceModifier.defaultWeight(),
+            )
+            DailyPaceText(context, snapshot, theme)
+        }
+    }
+
+    @Composable
+    private fun DailyPaceText(context: Context, snapshot: WidgetCoreSnapshot, theme: WidgetTheme) {
+        val allowance = snapshot.dailyAllowanceInCents ?: return
+        val label = context.getString(R.string.widget_daily_pace, MoneyFormatter.format(allowance))
         Text(
-            text = context.getString(
-                R.string.widget_spent_of,
-                MoneyFormatter.format(snapshot.expenseInCents),
-                MoneyFormatter.format(snapshot.budget?.amountInCents ?: 0L),
+            text = label,
+            style = TextStyle(
+                color = if (allowance < 0) theme.accent else theme.secondaryText,
+                fontSize = 10.sp,
             ),
-            style = TextStyle(color = theme.secondaryText, fontSize = 10.sp),
             maxLines = 1,
+            modifier = GlanceModifier.padding(start = 8.dp),
         )
     }
 
@@ -190,7 +223,9 @@ class BudgetProgressWidget : GlanceAppWidget() {
     companion object {
         private val THIN_SIZE = DpSize(280.dp, 48.dp)
         private val TALL_SIZE = DpSize(280.dp, 110.dp)
-        private val THIN_BAR_WIDTH = 80.dp
+
+        /** Thin bar takes this share of the widget width so it scales on resize. */
+        private const val THIN_BAR_FRACTION = 0.32f
     }
 }
 

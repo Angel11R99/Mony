@@ -25,6 +25,8 @@
     <string name="widget_configure_budget">Configura tu presupuesto en la app</string>
     <string name="widget_spent_of">Gastado %1$s de %2$s</string>
     <string name="widget_cycle_ends_today">El ciclo cierra hoy</string>
+    <string name="widget_budget_overspent">Presupuesto superado</string>
+    <string name="widget_daily_pace">Ritmo diario %1$s</string>
 
     <!-- Resumen del ciclo -->
     <string name="widget_statistics_name">Resumen estadístico</string>
@@ -91,4 +93,36 @@
     <string name="widget_fixed_empty">No tienes entradas fijas activas.</string>
     <string name="widget_fixed_empty_hint">Programa gastos o ingresos recurrentes desde el módulo Fijos.</string>
     <string name="widget_fixed_top_list">MAYORES COMPROMISOS</string>
+    <string name="widget_fixed_net_impact">IMPACTO NETO</string>
+
+    <!-- Acceso rápido -->
+    <string name="widget_quick_name">Acceso rápido</string>
+    <string name="widget_quick_description">Botones directos para registrar gastos, ingresos y abrir los módulos</string>
+    <string name="widget_quick_expense">Gasto</string>
+    <string name="widget_quick_income">Ingreso</string>
+    <string name="widget_quick_history">Historial</string>
+    <string name="widget_quick_pending">Recordatorios</string>
+
+    <!-- Gasto de hoy -->
+    <string name="widget_today_name">Gasto de hoy</string>
+    <string name="widget_today_description">Cuánto llevas gastado hoy frente a tu ritmo diario disponible</string>
+    <string name="widget_today_title">GASTO DE HOY</string>
+    <string name="widget_today_spent">gastado hoy</string>
+    <string name="widget_daily_allowance">ritmo diario</string>
+    <string name="widget_today_over_pace">Sobre el ritmo</string>
+    <string name="widget_today_cycle_spent">Ciclo: %1$s gastado</string>
+    <string name="widget_today_spent_no_budget">gastado hoy · sin presupuesto</string>
+
+    <!-- Límites por categoría -->
+    <string name="widget_limits_name">Límites por categoría</string>
+    <string name="widget_limits_description">Consumo de los límites de gasto que definiste por categoría</string>
+    <string name="widget_limits_title">LÍMITES POR CATEGORÍA</string>
+    <string name="widget_limits_spent_of_limit">%1$s de %2$s</string>
+    <string name="widget_limits_empty">Sin gastos en este ciclo.</string>
+    <string name="widget_limits_empty_hint">Tus límites por categoría aparecerán aquí.</string>
+    <string name="widget_limits_no_limits_hint">Define límites por categoría desde Ajustes para ver su consumo.</string>
+
+    <!-- Metas de ahorro (totales) -->
+    <string name="widget_savings_total_saved">Ahorrado %1$s</string>
+    <string name="widget_savings_total_target">de %1$s</string>
 </resources>

@@ -13,8 +13,10 @@ import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.LocalSize
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
+import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.ColumnScope
 import androidx.glance.layout.Row
@@ -50,6 +52,7 @@ class FinanceWidget : GlanceAppWidget() {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
+                .cornerRadius(24.dp)
                 .background(theme.background)
                 .clickable(actionStartActivity(openFinanceApp(context)))
                 .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -68,11 +71,15 @@ class FinanceWidget : GlanceAppWidget() {
         snapshot: WidgetCoreSnapshot,
         theme: WidgetTheme,
     ) {
-        Text(
-            text = context.getString(R.string.widget_available),
-            style = TextStyle(color = theme.secondaryText, fontSize = 10.sp),
-            maxLines = 1,
-        )
+        Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+            WidgetIcon(iconRes = R.drawable.ic_w_wallet, tint = theme.secondaryText, size = 11.dp)
+            Spacer(GlanceModifier.width(5.dp))
+            Text(
+                text = context.getString(R.string.widget_available),
+                style = TextStyle(color = theme.secondaryText, fontSize = 10.sp),
+                maxLines = 1,
+            )
+        }
         Spacer(GlanceModifier.height(2.dp))
         Text(
             text = MoneyFormatter.format(snapshot.availableInCents),
@@ -105,34 +112,40 @@ class FinanceWidget : GlanceAppWidget() {
         snapshot: WidgetCoreSnapshot,
         theme: WidgetTheme,
     ) {
-        Row(modifier = GlanceModifier.fillMaxWidth()) {
-            Column(GlanceModifier.defaultWeight()) {
-                Text(
-                    text = context.getString(R.string.widget_available),
-                    style = TextStyle(color = theme.secondaryText, fontSize = 11.sp),
-                    maxLines = 1,
-                )
-                Spacer(GlanceModifier.height(2.dp))
-                Text(
-                    text = MoneyFormatter.format(snapshot.availableInCents),
-                    style = TextStyle(color = theme.primaryText, fontSize = 21.sp, fontWeight = FontWeight.Bold),
-                    maxLines = 1,
-                )
-            }
-            Spacer(GlanceModifier.width(12.dp))
-            Column(GlanceModifier.defaultWeight()) {
-                Text(
-                    text = context.getString(R.string.widget_latest_expense),
-                    style = TextStyle(color = theme.secondaryText, fontSize = 11.sp),
-                    maxLines = 1,
-                )
-                Spacer(GlanceModifier.height(2.dp))
-                Text(
-                    text = snapshot.latestExpense?.let { "−${MoneyFormatter.format(it.amountInCents)}" } ?: "—",
-                    style = TextStyle(color = theme.accent, fontSize = 21.sp, fontWeight = FontWeight.Bold),
-                    maxLines = 1,
-                )
-            }
+        Text(
+            text = MoneyFormatter.format(snapshot.availableInCents),
+            style = TextStyle(color = theme.primaryText, fontSize = 26.sp, fontWeight = FontWeight.Bold),
+            maxLines = 1,
+        )
+        Text(
+            text = context.getString(R.string.widget_available),
+            style = TextStyle(color = theme.secondaryText, fontSize = 10.sp),
+            maxLines = 1,
+        )
+        Spacer(GlanceModifier.height(8.dp))
+        Row(GlanceModifier.fillMaxWidth()) {
+            WidgetValueLabel(
+                value = MoneyFormatter.format(snapshot.incomeInCents),
+                label = context.getString(R.string.widget_income),
+                valueColor = theme.primary,
+                labelColor = theme.secondaryText,
+                modifier = GlanceModifier.defaultWeight(),
+            )
+            WidgetValueLabel(
+                value = "−${MoneyFormatter.format(snapshot.expenseInCents)}",
+                label = context.getString(R.string.widget_expense),
+                valueColor = theme.accent,
+                labelColor = theme.secondaryText,
+                modifier = GlanceModifier.defaultWeight(),
+            )
+            WidgetValueLabel(
+                value = snapshot.latestExpense
+                    ?.let { "−${MoneyFormatter.format(it.amountInCents)}" } ?: "—",
+                label = context.getString(R.string.widget_latest_expense),
+                valueColor = theme.primaryText,
+                labelColor = theme.secondaryText,
+                alignment = Alignment.End,
+            )
         }
         Spacer(GlanceModifier.defaultWeight())
         Row(GlanceModifier.fillMaxWidth()) {
@@ -160,17 +173,26 @@ class FinanceWidget : GlanceAppWidget() {
         snapshot: WidgetCoreSnapshot,
         theme: WidgetTheme,
     ) {
-        Text(
-            text = context.getString(R.string.widget_available),
-            style = TextStyle(color = theme.secondaryText, fontSize = 11.sp),
-            maxLines = 1,
-        )
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Vertical.CenterVertically,
+        ) {
+            WidgetHeader(
+                text = context.getString(R.string.widget_available),
+                iconRes = R.drawable.ic_w_wallet,
+                tint = theme.secondaryText,
+                modifier = GlanceModifier.defaultWeight(),
+            )
+            DaysLeftChip(context, snapshot, theme)
+        }
         Text(
             text = MoneyFormatter.format(snapshot.availableInCents),
-            style = TextStyle(color = theme.primaryText, fontSize = 24.sp, fontWeight = FontWeight.Bold),
+            style = TextStyle(color = theme.primaryText, fontSize = 26.sp, fontWeight = FontWeight.Bold),
             maxLines = 1,
         )
-        Spacer(GlanceModifier.height(12.dp))
+        Spacer(GlanceModifier.height(8.dp))
+        BudgetUsageLine(context, snapshot, theme)
+        Spacer(GlanceModifier.height(10.dp))
         Row(GlanceModifier.fillMaxWidth()) {
             WidgetMetric(
                 label = context.getString(R.string.widget_period_income),
@@ -188,7 +210,8 @@ class FinanceWidget : GlanceAppWidget() {
             )
             WidgetMetric(
                 label = context.getString(R.string.widget_latest_expense),
-                value = snapshot.latestExpense?.let { "−${MoneyFormatter.format(it.amountInCents)}" } ?: "—",
+                value = snapshot.latestExpense
+                    ?.let { "−${MoneyFormatter.format(it.amountInCents)}" } ?: "—",
                 valueColor = theme.primaryText,
                 labelColor = theme.secondaryText,
                 modifier = GlanceModifier.defaultWeight(),
@@ -219,6 +242,45 @@ class FinanceWidget : GlanceAppWidget() {
         private val MEDIUM_SIZE = DpSize(280.dp, 130.dp)
         private val LARGE_SIZE = DpSize(320.dp, 220.dp)
     }
+}
+
+@Composable
+internal fun DaysLeftChip(context: Context, snapshot: WidgetCoreSnapshot, theme: WidgetTheme) {
+    val daysLeft = cycleDaysLeft(snapshot.period, snapshot.today)
+    val label = if (daysLeft == 0) {
+        context.getString(R.string.widget_cycle_ends_today)
+    } else {
+        context.resources.getQuantityString(R.plurals.widget_days_left, daysLeft, daysLeft)
+    }
+    WidgetChip(text = label, containerColor = theme.chipSurface, contentColor = theme.secondaryText)
+}
+
+/**
+ * Budget consumption line: bar + "gastado X de Y". Hidden without a budget.
+ */
+@Composable
+internal fun BudgetUsageLine(context: Context, snapshot: WidgetCoreSnapshot, theme: WidgetTheme) {
+    val budget = snapshot.budget?.amountInCents ?: return
+    if (budget <= 0L) return
+    val ratio = snapshot.expenseInCents.toFloat() / budget
+    val overspent = ratio > 1f
+    WidgetProgressBar(
+        fraction = ratio,
+        totalWidth = LocalSize.current.width - 28.dp,
+        fillColor = if (overspent) theme.accent else theme.primary,
+        trackColor = theme.track,
+        barHeight = 6,
+    )
+    Spacer(GlanceModifier.height(3.dp))
+    Text(
+        text = context.getString(
+            R.string.widget_spent_of,
+            MoneyFormatter.format(snapshot.expenseInCents),
+            MoneyFormatter.format(budget),
+        ),
+        style = TextStyle(color = theme.secondaryText, fontSize = 9.sp),
+        maxLines = 1,
+    )
 }
 
 class FinanceWidgetReceiver : GlanceAppWidgetReceiver() {

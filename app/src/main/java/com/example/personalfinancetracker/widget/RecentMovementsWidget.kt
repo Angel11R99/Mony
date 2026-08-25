@@ -7,12 +7,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.LocalSize
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -30,8 +31,8 @@ import androidx.glance.text.TextStyle
 import com.example.personalfinancetracker.R
 
 /**
- * "Últimos movimientos": list of the most recent transactions with quick access
- * to the history module.
+ * "Últimos movimientos": list of the most recent transactions. Each row opens
+ * the movement in the editor; the widget itself opens the history module.
  */
 class RecentMovementsWidget : GlanceAppWidget() {
 
@@ -48,6 +49,7 @@ class RecentMovementsWidget : GlanceAppWidget() {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
+                .cornerRadius(24.dp)
                 .background(theme.background)
                 .clickable(actionStartActivity(openDestinationIntent(context, "history")))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -56,9 +58,10 @@ class RecentMovementsWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Vertical.CenterVertically,
             ) {
-                WidgetSectionLabel(
+                WidgetHeader(
                     text = context.getString(R.string.widget_recent_title),
-                    color = theme.secondaryText,
+                    iconRes = R.drawable.ic_w_receipt,
+                    tint = theme.secondaryText,
                     modifier = GlanceModifier.defaultWeight(),
                 )
                 Text(
@@ -80,7 +83,7 @@ class RecentMovementsWidget : GlanceAppWidget() {
                 val items = if (LocalSize.current == MEDIUM_SIZE) {
                     snapshot.recent.take(3)
                 } else {
-                    snapshot.recent.take(5)
+                    snapshot.recent.take(6)
                 }
                 items.forEachIndexed { index, movement ->
                     MovementRow(context, movement, theme)
@@ -96,7 +99,16 @@ class RecentMovementsWidget : GlanceAppWidget() {
 
     @Composable
     private fun MovementRow(context: Context, movement: MovementLine, theme: WidgetTheme) {
-        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+        Row(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .clickable(
+                    actionStartActivity(
+                        editTransactionIntent(context, movement.id, movement.isIncome),
+                    ),
+                ),
+            verticalAlignment = Alignment.Vertical.CenterVertically,
+        ) {
             WidgetDot(color = if (movement.isIncome) theme.primary else theme.accent)
             Spacer(GlanceModifier.width(8.dp))
             Column(GlanceModifier.defaultWeight()) {

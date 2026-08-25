@@ -1,10 +1,13 @@
 package com.example.personalfinancetracker.widget
 
+import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.cornerRadius
@@ -34,6 +37,43 @@ fun WidgetSectionLabel(text: String, color: ColorProvider, modifier: GlanceModif
         style = TextStyle(color = color, fontSize = 10.sp, fontWeight = FontWeight.Medium),
         maxLines = 1,
         modifier = modifier,
+    )
+}
+
+/**
+ * Section header with a small tinted icon followed by the uppercase label,
+ * mirroring the in-app screen headers.
+ */
+@Composable
+fun WidgetHeader(
+    text: String,
+    @DrawableRes iconRes: Int,
+    tint: ColorProvider,
+    modifier: GlanceModifier = GlanceModifier,
+) {
+    Row(modifier = modifier, verticalAlignment = Alignment.Vertical.CenterVertically) {
+        WidgetIcon(iconRes = iconRes, tint = tint)
+        Spacer(GlanceModifier.width(5.dp))
+        Text(
+            text = text,
+            style = TextStyle(color = tint, fontSize = 10.sp, fontWeight = FontWeight.Medium),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+fun WidgetIcon(
+    @DrawableRes iconRes: Int,
+    tint: ColorProvider,
+    size: Dp = 13.dp,
+    modifier: GlanceModifier = GlanceModifier,
+) {
+    Image(
+        provider = ImageProvider(iconRes),
+        contentDescription = null,
+        colorFilter = androidx.glance.ColorFilter.tint(tint),
+        modifier = modifier.width(size).height(size),
     )
 }
 
@@ -79,6 +119,7 @@ fun WidgetProgressBar(
         modifier = modifier
             .width(totalWidth)
             .height(barHeight.dp)
+            .cornerRadius((barHeight / 2).dp)
             .background(trackColor),
         contentAlignment = Alignment.CenterStart,
     ) {
@@ -86,6 +127,7 @@ fun WidgetProgressBar(
             GlanceModifier
                 .width(totalWidth * bounded)
                 .height(barHeight.dp)
+                .cornerRadius((barHeight / 2).dp)
                 .background(fillColor),
         )
     }
@@ -106,6 +148,7 @@ fun WidgetPillButton(
     Row(
         modifier = modifier
             .height(buttonHeight.dp)
+            .cornerRadius((buttonHeight / 2).dp)
             .background(containerColor)
             .clickable(action),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -170,4 +213,137 @@ fun WidgetListRowSeparator(color: ColorProvider) {
             .height(1.dp)
             .background(color),
     )
+}
+
+/**
+ * Rounded chip for short contextual labels (trend, days left, states).
+ */
+@Composable
+fun WidgetChip(
+    text: String,
+    containerColor: ColorProvider,
+    contentColor: ColorProvider,
+    modifier: GlanceModifier = GlanceModifier,
+) {
+    Row(
+        modifier = modifier
+            .cornerRadius(10.dp)
+            .background(containerColor)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.Vertical.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = TextStyle(color = contentColor, fontSize = 10.sp, fontWeight = FontWeight.Medium),
+            maxLines = 1,
+        )
+    }
+}
+
+/**
+ * Large tappable tile used by action-grid widgets: icon on top, label below.
+ * With [iconOnly] the label is omitted for very narrow layouts.
+ */
+@Composable
+fun WidgetActionTile(
+    label: String,
+    @DrawableRes iconRes: Int,
+    iconTint: ColorProvider,
+    labelColor: ColorProvider,
+    surfaceColor: ColorProvider,
+    action: Action,
+    modifier: GlanceModifier = GlanceModifier,
+    iconOnly: Boolean = false,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .cornerRadius(16.dp)
+            .background(surfaceColor)
+            .clickable(action)
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        WidgetIcon(iconRes = iconRes, tint = iconTint, size = 20.dp)
+        if (!iconOnly) {
+            Spacer(GlanceModifier.height(6.dp))
+            Text(
+                text = label,
+                style = TextStyle(color = labelColor, fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/**
+ * Metric block with the value above a small uppercase label.
+ */
+@Composable
+fun WidgetValueLabel(
+    value: String,
+    label: String,
+    valueColor: ColorProvider,
+    labelColor: ColorProvider,
+    modifier: GlanceModifier = GlanceModifier,
+    valueSize: Int = 15,
+    alignment: Alignment.Horizontal = Alignment.Start,
+) {
+    Column(modifier, horizontalAlignment = alignment) {
+        Text(
+            text = value,
+            style = TextStyle(color = valueColor, fontSize = valueSize.sp, fontWeight = FontWeight.Bold),
+            maxLines = 1,
+        )
+        Spacer(GlanceModifier.height(2.dp))
+        Text(
+            text = label,
+            style = TextStyle(color = labelColor, fontSize = 9.sp),
+            maxLines = 1,
+        )
+    }
+}
+
+/**
+ * List row usage bar: name + amount on top, thin progress line below.
+ * [barWidth] must be derived from LocalSize by the caller so it adapts on
+ * resize (Glance has no fractional widths).
+ */
+@Composable
+fun WidgetUsageRow(
+    title: String,
+    endText: String,
+    fraction: Float,
+    barWidth: Dp,
+    fillColor: ColorProvider,
+    trackColor: ColorProvider,
+    titleColor: ColorProvider,
+    endTextColor: ColorProvider,
+    modifier: GlanceModifier = GlanceModifier,
+) {
+    Column(modifier.fillMaxWidth()) {
+        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+            Text(
+                text = title,
+                style = TextStyle(color = titleColor, fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                maxLines = 1,
+                modifier = GlanceModifier.defaultWeight(),
+            )
+            Spacer(GlanceModifier.width(8.dp))
+            Text(
+                text = endText,
+                style = TextStyle(color = endTextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                maxLines = 1,
+            )
+        }
+        Spacer(GlanceModifier.height(4.dp))
+        WidgetProgressBar(
+            fraction = fraction,
+            totalWidth = barWidth,
+            fillColor = fillColor,
+            trackColor = trackColor,
+            barHeight = 5,
+        )
+    }
 }

@@ -48,8 +48,17 @@ data class WidgetCoreSnapshot(
     val recent: List<MovementLine>,
     val topExpenseCategories: List<CategorySlice>,
     val previousCycleExpenseInCents: Long?,
+    val todayExpenseInCents: Long = 0L,
 ) {
     val balanceInCents: Long get() = incomeInCents - expenseInCents
+
+    /** Remaining daily allowance; null when no budget is configured. */
+    val dailyAllowanceInCents: Long?
+        get() = dailyAllowanceInCents(
+            budgetInCents = budget?.amountInCents,
+            spentInCycleInCents = expenseInCents,
+            daysLeft = cycleDaysLeft(period, today),
+        )
 
     companion object {
         fun empty(today: LocalDate = LocalDate.now()) = WidgetCoreSnapshot(
@@ -82,6 +91,8 @@ data class CategorySlice(
     val amountInCents: Long,
     /** 0f..1f share of total cycle expenses. */
     val fraction: Float,
+    /** Configured category spending limit; null when the category has none. */
+    val limitInCents: Long? = null,
 )
 
 data class PendingWidgetSnapshot(
@@ -108,6 +119,8 @@ data class SavingsWidgetSnapshot(
     val goals: List<SavingsGoalProgress>,
 ) {
     val isEmpty: Boolean get() = goals.isEmpty()
+    val totalSavedInCents: Long get() = goals.sumOf(SavingsGoalProgress::savedInCents)
+    val totalTargetInCents: Long get() = goals.sumOf { it.goal.targetAmountInCents }
 
     companion object {
         fun empty() = SavingsWidgetSnapshot(emptyList())
@@ -171,6 +184,7 @@ internal suspend fun loadCoreSnapshot(context: Context): WidgetCoreSnapshot {
                 name = category.name,
                 amountInCents = items.sumOf(FinanceTransaction::amountInCents),
                 fraction = 0f,
+                limitInCents = category.budgetLimitInCents?.takeIf { it > 0L },
             )
         }
         .sortedByDescending(CategorySlice::amountInCents)
@@ -195,6 +209,11 @@ internal suspend fun loadCoreSnapshot(context: Context): WidgetCoreSnapshot {
             )
         },
         previousCycleExpenseInCents = previousCycleExpense,
+        todayExpenseInCents = transactions
+            .filter {
+                it.type == TransactionType.EXPENSE && it.date == today
+            }
+            .sumOf(FinanceTransaction::amountInCents),
     )
 }
 
@@ -291,6 +310,16 @@ internal fun addTransactionIntent(context: Context, type: TransactionType) =
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
 
+internal fun editTransactionIntent(context: Context, transactionId: Long, isIncome: Boolean) =
+    Intent(context, MainActivity::class.java).apply {
+        putExtra(MainActivity.EXTRA_EDIT_TRANSACTION_ID, transactionId)
+        putExtra(
+            MainActivity.EXTRA_TRANSACTION_TYPE,
+            (if (isIncome) TransactionType.INCOME else TransactionType.EXPENSE).name,
+        )
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    }
+
 // ---------------------------------------------------------------------------
 // Central refresh
 // ---------------------------------------------------------------------------
@@ -304,6 +333,9 @@ suspend fun updateAllFinanceWidgets(context: Context) {
     PendingRemindersWidget().updateAll(context)
     SavingsGoalsWidget().updateAll(context)
     FixedCommitmentsWidget().updateAll(context)
+    QuickAccessWidget().updateAll(context)
+    DailySpendingWidget().updateAll(context)
+    CategoryLimitsWidget().updateAll(context)
 }
 
 private const val RECENT_MOVEMENTS_LIMIT = 6

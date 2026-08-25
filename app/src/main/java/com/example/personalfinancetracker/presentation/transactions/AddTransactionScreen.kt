@@ -1,6 +1,5 @@
 package com.example.personalfinancetracker.presentation.transactions
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,27 +8,29 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -44,12 +45,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
@@ -162,22 +162,11 @@ fun AddTransactionScreen(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Categoría", style = MaterialTheme.typography.titleMedium)
-                    categories.chunked(2).forEach { rowCategories ->
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            rowCategories.forEach { category ->
-                                CategoryOption(
-                                    name = category.name,
-                                    selected = category.id == categoryId,
-                                    onClick = { categoryId = category.id },
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                            if (rowCategories.size == 1) Spacer(Modifier.weight(1f))
-                        }
-                    }
+                    CategorySearchSelect(
+                        categories = categories,
+                        selectedCategoryId = categoryId,
+                        onCategoryChange = { categoryId = it },
+                    )
                 }
             }
             item { Text("Detalles", style = MaterialTheme.typography.titleMedium) }
@@ -260,48 +249,95 @@ fun AddTransactionScreen(
 
 private const val MILLIS_PER_DAY = 86_400_000L
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CategoryOption(
-    name: String,
-    selected: Boolean,
-    onClick: () -> Unit,
+private fun CategorySearchSelect(
+    categories: List<Category>,
+    selectedCategoryId: Long?,
+    onCategoryChange: (Long?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val contentColor = if (selected) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
+    var expanded by remember { mutableStateOf(false) }
+    // Null while untouched so the field mirrors the current selection;
+    // typing takes over the text until a new category is picked.
+    var draftQuery by remember { mutableStateOf<String?>(null) }
+    val selectedName = categories.firstOrNull { it.id == selectedCategoryId }?.name.orEmpty()
+    val query = draftQuery ?: selectedName
+    val matchingCategories = remember(categories, query) {
+        searchCategories(categories, query)
     }
-    Surface(
-        modifier = modifier
-            .heightIn(min = 50.dp)
-            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton),
-        shape = MaterialTheme.shapes.small,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = contentColor,
-        border = BorderStroke(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-        ),
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        FinanceTextField(
+            value = query,
+            onValueChange = { value ->
+                draftQuery = value
+                if (selectedCategoryId != null) onCategoryChange(null)
+                expanded = true
+            },
+            label = "Buscar o seleccionar categoría",
+            placeholder = "Nombre de la categoría",
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+            trailingIcon = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (query.isNotBlank()) {
+                        IconButton(
+                            onClick = {
+                                draftQuery = ""
+                                onCategoryChange(null)
+                                expanded = true
+                            },
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Limpiar categoría",
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded)
+                }
+            },
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = {
+                expanded = false
+                draftQuery = null
+            },
         ) {
-            Icon(
-                imageVector = if (selected) Icons.Outlined.CheckCircle else Icons.Outlined.Circle,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            matchingCategories.forEach { category ->
+                DropdownMenuItem(
+                    text = { Text(category.name) },
+                    trailingIcon = if (category.id == selectedCategoryId) {
+                        {
+                            Icon(
+                                Icons.Outlined.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    } else null,
+                    onClick = {
+                        draftQuery = null
+                        onCategoryChange(category.id)
+                        expanded = false
+                    },
+                )
+            }
+            if (matchingCategories.isEmpty()) {
+                DropdownMenuItem(
+                    text = { Text("No se encontraron categorías") },
+                    onClick = {},
+                    enabled = false,
+                )
+            }
         }
     }
 }

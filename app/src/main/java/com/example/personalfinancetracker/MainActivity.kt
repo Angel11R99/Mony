@@ -56,9 +56,18 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val initialType = intent.getStringExtra(EXTRA_TRANSACTION_TYPE)
                         ?.let { runCatching { TransactionType.valueOf(it) }.getOrNull() }
+                    val initialEditId = intent.getLongExtra(EXTRA_EDIT_TRANSACTION_ID, -1L)
+                        .takeIf { it >= 0L }
                     FinanceApp(
-                        initialType = initialType,
+                        // When an edit was requested the type extra only selects
+                        // the editor route; the add flow must not trigger too.
+                        initialType = if (initialEditId == null) initialType else null,
                         initialDestination = intent.getStringExtra(EXTRA_DESTINATION),
+                        initialEdit = if (initialEditId != null && initialType != null) {
+                            initialEditId to initialType
+                        } else {
+                            null
+                        },
                         appearance = appearance,
                         automaticCycleClose = automaticCycleClose,
                         automaticCloseTime = automaticCloseTime,
@@ -94,5 +103,6 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_TRANSACTION_TYPE = "transaction_type"
         const val EXTRA_DESTINATION = "destination"
+        const val EXTRA_EDIT_TRANSACTION_ID = "edit_transaction_id"
     }
 }

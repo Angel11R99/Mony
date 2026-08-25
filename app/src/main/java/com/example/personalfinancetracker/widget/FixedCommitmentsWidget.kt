@@ -7,12 +7,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.LocalSize
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -50,6 +51,7 @@ class FixedCommitmentsWidget : GlanceAppWidget() {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
+                .cornerRadius(24.dp)
                 .background(theme.background)
                 .clickable(actionStartActivity(openDestinationIntent(context, "fixed")))
                 .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -76,14 +78,19 @@ class FixedCommitmentsWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.Vertical.CenterVertically,
         ) {
             Column(GlanceModifier.defaultWeight()) {
-                WidgetSectionLabel(
-                    text = context.getString(R.string.widget_fixed_title),
-                    color = theme.secondaryText,
-                )
-                Spacer(GlanceModifier.height(3.dp))
+                Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                    WidgetIcon(iconRes = R.drawable.ic_w_repeat, tint = theme.secondaryText)
+                    Spacer(GlanceModifier.width(5.dp))
+                    Text(
+                        text = context.getString(R.string.widget_fixed_title),
+                        style = TextStyle(color = theme.secondaryText, fontSize = 10.sp, fontWeight = FontWeight.Medium),
+                        maxLines = 1,
+                    )
+                }
+                Spacer(GlanceModifier.height(4.dp))
                 Text(
                     text = MoneyFormatter.format(snapshot.expenseTotalInCents),
-                    style = TextStyle(color = theme.accent, fontSize = 20.sp, fontWeight = FontWeight.Bold),
+                    style = TextStyle(color = theme.accent, fontSize = 21.sp, fontWeight = FontWeight.Bold),
                     maxLines = 1,
                 )
                 Text(
@@ -118,15 +125,16 @@ class FixedCommitmentsWidget : GlanceAppWidget() {
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.Vertical.CenterVertically,
         ) {
-            WidgetSectionLabel(
+            WidgetHeader(
                 text = context.getString(R.string.widget_fixed_title),
-                color = theme.secondaryText,
+                iconRes = R.drawable.ic_w_repeat,
+                tint = theme.secondaryText,
                 modifier = GlanceModifier.defaultWeight(),
             )
-            Text(
-                text = context.getString(R.string.widget_fixed_entries_count, snapshot.activeCount),
-                style = TextStyle(color = theme.secondaryText, fontSize = 9.sp),
-                maxLines = 1,
+            WidgetChip(
+                text = nextRunLabel(context, snapshot),
+                containerColor = theme.chipSurface,
+                contentColor = theme.secondaryText,
             )
         }
         Spacer(GlanceModifier.height(7.dp))
@@ -145,22 +153,34 @@ class FixedCommitmentsWidget : GlanceAppWidget() {
                 labelColor = theme.secondaryText,
                 modifier = GlanceModifier.defaultWeight(),
             )
+            val netImpact = snapshot.incomeTotalInCents - snapshot.expenseTotalInCents
             WidgetMetric(
-                label = context.getString(R.string.widget_fixed_next_run_title),
-                value = nextRunLabel(context, snapshot),
-                valueColor = theme.primaryText,
+                label = context.getString(R.string.widget_fixed_net_impact),
+                value = signedAmountLabel(isIncome = netImpact >= 0L, amountInCents = kotlin.math.abs(netImpact)),
+                valueColor = if (netImpact >= 0L) theme.primary else theme.accent,
                 labelColor = theme.secondaryText,
-                modifier = GlanceModifier.defaultWeight().padding(start = 8.dp),
+                modifier = GlanceModifier.defaultWeight(),
             )
         }
         Spacer(GlanceModifier.height(10.dp))
         WidgetListRowSeparator(theme.track)
         Spacer(GlanceModifier.height(8.dp))
-        Text(
-            text = context.getString(R.string.widget_fixed_top_list),
-            style = TextStyle(color = theme.secondaryText, fontSize = 9.sp),
-            maxLines = 1,
-        )
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Vertical.CenterVertically,
+        ) {
+            Text(
+                text = context.getString(R.string.widget_fixed_top_list),
+                style = TextStyle(color = theme.secondaryText, fontSize = 9.sp),
+                maxLines = 1,
+                modifier = GlanceModifier.defaultWeight(),
+            )
+            Text(
+                text = context.getString(R.string.widget_fixed_entries_count, snapshot.activeCount),
+                style = TextStyle(color = theme.secondaryText, fontSize = 9.sp),
+                maxLines = 1,
+            )
+        }
         Spacer(GlanceModifier.height(5.dp))
         snapshot.topEntries.forEach { entry ->
             Row(

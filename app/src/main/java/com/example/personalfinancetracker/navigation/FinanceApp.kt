@@ -35,6 +35,7 @@ import java.time.LocalTime
 fun FinanceApp(
     initialType: TransactionType? = null,
     initialDestination: String? = null,
+    initialEdit: Pair<Long, TransactionType>? = null,
     appearance: AppAppearance,
     automaticCycleClose: Boolean,
     automaticCloseTime: LocalTime,
@@ -49,6 +50,8 @@ fun FinanceApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val systemBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // The floating module bar is hidden on Settings; do not reserve its space there.
+    val showModuleBar = currentRoute != "settings"
 
     fun navigateToModule(route: String) {
         navController.navigate(route) {
@@ -63,16 +66,22 @@ fun FinanceApp(
     }
 
     LaunchedEffect(initialDestination) {
-        if (initialDestination in setOf("home", "history", "statistics", "fixed", "pending", "savings")) {
+        if (initialDestination in setOf("home", "history", "statistics", "fixed", "pending", "savings", "settings")) {
             navigateToModule(initialDestination!!)
         }
+    }
+
+    LaunchedEffect(initialEdit) {
+        initialEdit?.let { (id, type) -> navigateToModule("edit/${type.name}/$id") }
     }
 
     Box(Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
             startDestination = "home",
-            modifier = Modifier.fillMaxSize().padding(bottom = systemBottomPadding + 84.dp),
+            modifier = Modifier.fillMaxSize().padding(
+                bottom = systemBottomPadding + if (showModuleBar) 84.dp else 0.dp,
+            ),
         ) {
             composable("home") {
                 HomeScreen(
@@ -142,7 +151,7 @@ fun FinanceApp(
             }
         }
 
-        if (currentRoute != "settings") {
+        if (showModuleBar) {
             FloatingModuleBar(
                 selectedRoute = currentRoute,
                 onNavigate = ::navigateToModule,
