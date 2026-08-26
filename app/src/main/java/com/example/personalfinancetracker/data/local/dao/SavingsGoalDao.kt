@@ -38,6 +38,9 @@ interface SavingsGoalDao {
     @Query("UPDATE savings_goals SET completedAtEpochMillis = :completedAtEpochMillis WHERE id = :id")
     suspend fun complete(id: Long, completedAtEpochMillis: Long)
 
+    @Query("UPDATE savings_goals SET completedAtEpochMillis = NULL WHERE id = :id")
+    suspend fun reopen(id: Long)
+
     @Query("UPDATE transactions SET savingsGoalId = NULL WHERE savingsGoalId = :goalId")
     suspend fun unlinkTransactions(goalId: Long)
 

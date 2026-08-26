@@ -63,6 +63,9 @@ class SavingsViewModel @Inject constructor(
     val pendingCompleteGoal = MutableStateFlow<SavingsGoalProgress?>(null)
     val pendingComplete: StateFlow<SavingsGoalProgress?> = pendingCompleteGoal
 
+    private val pendingReopenGoal = MutableStateFlow<SavingsGoalProgress?>(null)
+    val pendingReopen: StateFlow<SavingsGoalProgress?> = pendingReopenGoal
+
     val selectedGoal = MutableStateFlow<SavingsGoalProgress?>(null)
 
     val contributions: StateFlow<List<FinanceTransaction>> = selectedGoal
@@ -120,6 +123,24 @@ class SavingsViewModel @Inject constructor(
                 }
                 .onFailure { message.value = "No se pudo completar la meta" }
             pendingCompleteGoal.value = null
+        }
+    }
+
+    fun requestReopen(goal: SavingsGoalProgress) {
+        pendingReopenGoal.value = goal
+    }
+
+    fun cancelReopen() {
+        pendingReopenGoal.value = null
+    }
+
+    fun confirmReopen() {
+        val goal = pendingReopenGoal.value ?: return
+        viewModelScope.launch {
+            runCatching { savings.reopen(goal.goal.id) }
+                .onSuccess { message.value = "Meta reabierta." }
+                .onFailure { message.value = "No se pudo reabrir la meta" }
+            pendingReopenGoal.value = null
         }
     }
 

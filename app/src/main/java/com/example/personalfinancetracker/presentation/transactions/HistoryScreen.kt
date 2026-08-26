@@ -3,6 +3,11 @@ package com.example.personalfinancetracker.presentation.transactions
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -88,7 +93,9 @@ import com.example.personalfinancetracker.presentation.components.SecondaryButto
 import com.example.personalfinancetracker.presentation.components.TransactionRow
 import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
+import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
+import com.example.personalfinancetracker.presentation.components.TransactionSkeleton
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -131,6 +138,10 @@ fun HistoryScreen(
     val restorePreview by viewModel.restorePreview.collectAsStateWithLifecycle()
     val isRestoring by viewModel.isRestoring.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var dataLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(state.transactions) {
+        if (!dataLoaded) dataLoaded = true
+    }
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv")
     ) { uri -> uri?.let(viewModel::exportTo) }
@@ -251,7 +262,19 @@ fun HistoryScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
+        AnimatedContent(
+            targetState = dataLoaded,
+            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+            label = "historyContent",
+        ) { loaded ->
+            if (!loaded) {
+                ModuleListSkeleton(
+                    modifier = Modifier.padding(padding),
+                    cardCount = 5,
+                    cardContent = { TransactionSkeleton() },
+                )
+            } else {
+                LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
             contentPadding = PaddingValues(bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -319,6 +342,8 @@ fun HistoryScreen(
                     }
                 }
             }
+        }
+        }
         }
     }
 

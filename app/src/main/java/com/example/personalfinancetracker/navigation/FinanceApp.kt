@@ -26,7 +26,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.personalfinancetracker.domain.model.TransactionType
-import com.example.personalfinancetracker.presentation.components.ShimmerScreen
 import com.example.personalfinancetracker.presentation.home.HomeScreen
 import com.example.personalfinancetracker.presentation.statistics.StatisticsScreen
 import com.example.personalfinancetracker.presentation.fixed.FixedEntriesScreen
@@ -39,22 +38,23 @@ import com.example.personalfinancetracker.ui.theme.AppAppearance
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
 import java.time.LocalTime
 
-private const val TRANSITION_DURATION = 220
+private const val MODULE_TRANSITION_DURATION = 350
+private const val DETAIL_TRANSITION_DURATION = 250
 
-private val fadeSlideEnter: EnterTransition =
-    fadeIn(tween(TRANSITION_DURATION)) + slideInVertically(
-        initialOffsetY = { it / 40 },
-        animationSpec = tween(TRANSITION_DURATION),
+private val moduleEnter: EnterTransition =
+    fadeIn(tween(MODULE_TRANSITION_DURATION)) + slideInVertically(
+        initialOffsetY = { it / 7 },
+        animationSpec = tween(MODULE_TRANSITION_DURATION),
     )
 
-private val fadeSlideExit: ExitTransition =
-    fadeOut(tween(TRANSITION_DURATION)) + slideOutVertically(
-        targetOffsetY = { it / 40 },
-        animationSpec = tween(TRANSITION_DURATION),
+private val moduleExit: ExitTransition =
+    fadeOut(tween(MODULE_TRANSITION_DURATION)) + slideOutVertically(
+        targetOffsetY = { it / 10 },
+        animationSpec = tween(MODULE_TRANSITION_DURATION),
     )
 
-private val fadeEnter: EnterTransition = fadeIn(tween(TRANSITION_DURATION))
-private val fadeExit: ExitTransition = fadeOut(tween(TRANSITION_DURATION))
+private val detailEnter: EnterTransition = fadeIn(tween(DETAIL_TRANSITION_DURATION))
+private val detailExit: ExitTransition = fadeOut(tween(DETAIL_TRANSITION_DURATION))
 
 @Composable
 fun FinanceApp(
@@ -80,7 +80,6 @@ fun FinanceApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val systemBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    // The floating module bar is hidden on Settings; do not reserve its space there.
     val showModuleBar = currentRoute != "settings"
 
     fun navigateToModule(route: String) {
@@ -115,35 +114,31 @@ fun FinanceApp(
         ) {
             composable(
                 "home",
-                enterTransition = { fadeSlideEnter },
-                exitTransition = { fadeSlideExit },
-                popEnterTransition = { fadeSlideEnter },
-                popExitTransition = { fadeSlideExit },
+                enterTransition = { moduleEnter },
+                exitTransition = { moduleExit },
+                popEnterTransition = { moduleEnter },
+                popExitTransition = { moduleExit },
             ) {
-                ShimmerScreen {
-                    HomeScreen(
-                        automaticCycleClose = automaticCycleClose,
-                        automaticCloseTime = automaticCloseTime,
-                        onAdd = { navigateToModule("add/${it.name}") },
-                        onHistory = { navigateToModule("history") },
-                        onSettings = { navController.navigate("settings") },
-                    )
-                }
+                HomeScreen(
+                    automaticCycleClose = automaticCycleClose,
+                    automaticCloseTime = automaticCloseTime,
+                    onAdd = { navigateToModule("add/${it.name}") },
+                    onHistory = { navigateToModule("history") },
+                    onSettings = { navController.navigate("settings") },
+                )
             }
             composable(
                 route = "add/{type}",
                 arguments = listOf(navArgument("type") { type = NavType.StringType }),
-                enterTransition = { fadeEnter },
-                exitTransition = { fadeExit },
-                popEnterTransition = { fadeEnter },
-                popExitTransition = { fadeExit },
+                enterTransition = { detailEnter },
+                exitTransition = { detailExit },
+                popEnterTransition = { detailEnter },
+                popExitTransition = { detailExit },
             ) {
-                ShimmerScreen {
-                    AddTransactionScreen(
-                        onBack = { if (!navController.popBackStack()) navigateToModule("home") },
-                        onSettings = { navController.navigate("settings") },
-                    )
-                }
+                AddTransactionScreen(
+                    onBack = { if (!navController.popBackStack()) navigateToModule("home") },
+                    onSettings = { navController.navigate("settings") },
+                )
             }
             composable(
                 route = "edit/{type}/{transactionId}",
@@ -151,106 +146,92 @@ fun FinanceApp(
                     navArgument("type") { type = NavType.StringType },
                     navArgument("transactionId") { type = NavType.LongType },
                 ),
-                enterTransition = { fadeEnter },
-                exitTransition = { fadeExit },
-                popEnterTransition = { fadeEnter },
-                popExitTransition = { fadeExit },
+                enterTransition = { detailEnter },
+                exitTransition = { detailExit },
+                popEnterTransition = { detailEnter },
+                popExitTransition = { detailExit },
             ) {
-                ShimmerScreen {
-                    AddTransactionScreen(
-                        onBack = { if (!navController.popBackStack()) navigateToModule("history") },
-                        onSettings = { navController.navigate("settings") },
-                    )
-                }
+                AddTransactionScreen(
+                    onBack = { if (!navController.popBackStack()) navigateToModule("history") },
+                    onSettings = { navController.navigate("settings") },
+                )
             }
             composable(
                 "history",
-                enterTransition = { fadeSlideEnter },
-                exitTransition = { fadeSlideExit },
-                popEnterTransition = { fadeSlideEnter },
-                popExitTransition = { fadeSlideExit },
+                enterTransition = { moduleEnter },
+                exitTransition = { moduleExit },
+                popEnterTransition = { moduleEnter },
+                popExitTransition = { moduleExit },
             ) {
-                ShimmerScreen {
-                    HistoryScreen(
-                        onEdit = { id, type ->
-                            navController.navigate("edit/${type.name}/$id")
-                        },
-                        onSettings = { navController.navigate("settings") },
-                    )
-                }
+                HistoryScreen(
+                    onEdit = { id, type ->
+                        navController.navigate("edit/${type.name}/$id")
+                    },
+                    onSettings = { navController.navigate("settings") },
+                )
             }
             composable(
                 "statistics",
-                enterTransition = { fadeSlideEnter },
-                exitTransition = { fadeSlideExit },
-                popEnterTransition = { fadeSlideEnter },
-                popExitTransition = { fadeSlideExit },
+                enterTransition = { moduleEnter },
+                exitTransition = { moduleExit },
+                popEnterTransition = { moduleEnter },
+                popExitTransition = { moduleExit },
             ) {
-                ShimmerScreen {
-                    StatisticsScreen(onSettings = { navController.navigate("settings") })
-                }
+                StatisticsScreen(onSettings = { navController.navigate("settings") })
             }
             composable(
                 "fixed",
-                enterTransition = { fadeSlideEnter },
-                exitTransition = { fadeSlideExit },
-                popEnterTransition = { fadeSlideEnter },
-                popExitTransition = { fadeSlideExit },
+                enterTransition = { moduleEnter },
+                exitTransition = { moduleExit },
+                popEnterTransition = { moduleEnter },
+                popExitTransition = { moduleExit },
             ) {
-                ShimmerScreen {
-                    FixedEntriesScreen(onSettings = { navController.navigate("settings") })
-                }
+                FixedEntriesScreen(onSettings = { navController.navigate("settings") })
             }
             composable(
                 "pending",
-                enterTransition = { fadeSlideEnter },
-                exitTransition = { fadeSlideExit },
-                popEnterTransition = { fadeSlideEnter },
-                popExitTransition = { fadeSlideExit },
+                enterTransition = { moduleEnter },
+                exitTransition = { moduleExit },
+                popEnterTransition = { moduleEnter },
+                popExitTransition = { moduleExit },
             ) {
-                ShimmerScreen {
-                    PendingEntriesScreen(onSettings = { navController.navigate("settings") })
-                }
+                PendingEntriesScreen(onSettings = { navController.navigate("settings") })
             }
             composable(
                 "settings",
-                enterTransition = { fadeEnter },
-                exitTransition = { fadeExit },
-                popEnterTransition = { fadeEnter },
-                popExitTransition = { fadeExit },
+                enterTransition = { detailEnter },
+                exitTransition = { detailExit },
+                popEnterTransition = { detailEnter },
+                popExitTransition = { detailExit },
             ) {
-                ShimmerScreen {
-                    SettingsScreen(
-                        appearance = appearance,
-                        isDarkTheme = isDarkTheme,
-                        moduleBarConfig = moduleBarConfig,
-                        automaticCycleClose = automaticCycleClose,
-                        automaticCloseTime = automaticCloseTime,
-                        onBack = { navController.popBackStack() },
-                        onThemeChange = onThemeChange,
-                        onPrimaryChange = onPrimaryChange,
-                        onAccentChange = onAccentChange,
-                        onReset = onResetAppearance,
-                        onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
-                        onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
-                        onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
-                        onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
-                        onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
-                    )
-                }
+                SettingsScreen(
+                    appearance = appearance,
+                    isDarkTheme = isDarkTheme,
+                    moduleBarConfig = moduleBarConfig,
+                    automaticCycleClose = automaticCycleClose,
+                    automaticCloseTime = automaticCloseTime,
+                    onBack = { navController.popBackStack() },
+                    onThemeChange = onThemeChange,
+                    onPrimaryChange = onPrimaryChange,
+                    onAccentChange = onAccentChange,
+                    onReset = onResetAppearance,
+                    onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
+                    onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
+                    onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
+                    onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
+                    onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
+                )
             }
             composable(
                 "savings",
-                enterTransition = { fadeSlideEnter },
-                exitTransition = { fadeSlideExit },
-                popEnterTransition = { fadeSlideEnter },
-                popExitTransition = { fadeSlideExit },
+                enterTransition = { moduleEnter },
+                exitTransition = { moduleExit },
+                popEnterTransition = { moduleEnter },
+                popExitTransition = { moduleExit },
             ) {
-                ShimmerScreen {
-                    SavingsScreen(
-                        onSettings = { navController.navigate("settings") },
-                    )
-                }
+                SavingsScreen(
+                    onSettings = { navController.navigate("settings") },
+                )
             }
         }
 

@@ -5,6 +5,11 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -103,6 +108,8 @@ import com.example.personalfinancetracker.presentation.components.FinanceTextFie
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
+import com.example.personalfinancetracker.presentation.components.CardSkeleton
+import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
@@ -121,6 +128,10 @@ fun PendingEntriesScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var dataLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(state.entries) {
+        if (!dataLoaded) dataLoaded = true
+    }
     var notificationsGranted by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -191,11 +202,23 @@ fun PendingEntriesScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        AnimatedContent(
+            targetState = dataLoaded,
+            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+            label = "pendingContent",
+        ) { loaded ->
+            if (!loaded) {
+                ModuleListSkeleton(
+                    modifier = Modifier.padding(padding),
+                    cardCount = 3,
+                    cardContent = { CardSkeleton(showProgress = false) },
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PendingTypeChip(PendingType.PAYMENT, selectedType, { selectedType = it }, Modifier.weight(1f))
@@ -292,6 +315,8 @@ fun PendingEntriesScreen(
                     onSelect = { selectedEntry = entry },
                 )
             }
+        }
+        }
         }
     }
 

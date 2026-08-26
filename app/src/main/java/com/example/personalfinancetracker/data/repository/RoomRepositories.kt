@@ -252,6 +252,9 @@ class RoomSavingsRepository @Inject constructor(
     override suspend fun complete(id: Long) =
         dao.complete(id, System.currentTimeMillis())
 
+    override suspend fun reopen(id: Long) =
+        dao.reopen(id)
+
     override suspend fun delete(id: Long) {
         database.withTransaction {
             dao.unlinkTransactions(id)

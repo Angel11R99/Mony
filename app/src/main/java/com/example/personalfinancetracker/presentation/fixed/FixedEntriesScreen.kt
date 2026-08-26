@@ -1,5 +1,10 @@
 package com.example.personalfinancetracker.presentation.fixed
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -93,6 +98,8 @@ import com.example.personalfinancetracker.presentation.components.SecondaryButto
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
+import com.example.personalfinancetracker.presentation.components.CardSkeleton
+import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.ZoneId
 import java.time.LocalDate
@@ -112,6 +119,10 @@ fun FixedEntriesScreen(
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
     var query by remember { mutableStateOf("") }
     val cardSize by viewModel.cardSize.collectAsStateWithLifecycle()
+    var dataLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(state.entries) {
+        if (!dataLoaded) dataLoaded = true
+    }
     var editorEntry by remember { mutableStateOf<FixedEntry?>(null) }
     var showEditor by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<FixedEntry?>(null) }
@@ -152,11 +163,23 @@ fun FixedEntriesScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        AnimatedContent(
+            targetState = dataLoaded,
+            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+            label = "fixedContent",
+        ) { loaded ->
+            if (!loaded) {
+                ModuleListSkeleton(
+                    modifier = Modifier.padding(padding),
+                    cardCount = 3,
+                    cardContent = { CardSkeleton(showProgress = false) },
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TypeChip(TransactionType.EXPENSE, selectedType, { selectedType = it }, Modifier.weight(1f))
@@ -243,6 +266,8 @@ fun FixedEntriesScreen(
                     onDelete = { pendingDelete = entry },
                 )
             }
+        }
+        }
         }
     }
 

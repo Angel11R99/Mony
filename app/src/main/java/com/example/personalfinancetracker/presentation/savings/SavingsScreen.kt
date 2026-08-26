@@ -1,5 +1,10 @@
 package com.example.personalfinancetracker.presentation.savings
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +78,8 @@ import com.example.personalfinancetracker.presentation.components.FinanceTextFie
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
+import com.example.personalfinancetracker.presentation.components.CardSkeleton
+import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
@@ -91,6 +98,7 @@ fun SavingsScreen(
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
     val pendingDelete by viewModel.pendingDelete.collectAsStateWithLifecycle()
     val pendingComplete by viewModel.pendingComplete.collectAsStateWithLifecycle()
+    val pendingReopen by viewModel.pendingReopen.collectAsStateWithLifecycle()
     val selectedGoal by viewModel.selectedGoal.collectAsStateWithLifecycle()
     val contributions by viewModel.contributions.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -100,6 +108,10 @@ fun SavingsScreen(
     var showCompleted by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     val cardSize by viewModel.cardSize.collectAsStateWithLifecycle()
+    var dataLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(state.goals) {
+        if (!dataLoaded) dataLoaded = true
+    }
 
     val displayedGoals = remember(state.activeGoals, state.completedGoals, showCompleted, query) {
         val goals = if (showCompleted) state.completedGoals else state.activeGoals
@@ -142,11 +154,23 @@ fun SavingsScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-            contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        AnimatedContent(
+            targetState = dataLoaded,
+            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+            label = "savingsContent",
+        ) { loaded ->
+            if (!loaded) {
+                ModuleListSkeleton(
+                    modifier = Modifier.padding(padding),
+                    cardCount = 3,
+                    cardContent = { CardSkeleton(showProgress = true) },
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+                    contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
             item {
                 Row(
                     Modifier.fillMaxWidth(),
@@ -248,6 +272,7 @@ fun SavingsScreen(
                     onOpen = { viewModel.openContributions(goal) },
                     onContribute = { contributingGoal = goal },
                     onComplete = { viewModel.requestComplete(goal) },
+                    onReopen = { viewModel.requestReopen(goal) },
                     onEdit = {
                         editingGoal = goal
                         showEditor = true
@@ -255,6 +280,8 @@ fun SavingsScreen(
                     onDelete = { viewModel.requestDelete(goal) },
                 )
             }
+        }
+        }
         }
     }
 
@@ -335,6 +362,31 @@ fun SavingsScreen(
             shape = MaterialTheme.shapes.medium,
         )
     }
+
+    pendingReopen?.let { goal ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelReopen,
+            icon = {
+                Icon(
+                    Icons.Outlined.Savings,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary,
+                )
+            },
+            title = { Text("¿Reabrir esta meta?") },
+            text = {
+                Text("La meta \"${goal.goal.name}\" volverá a Activas.")
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmReopen) {
+                    Text("Reabrir")
+                }
+            },
+            dismissButton = { TextButton(onClick = viewModel::cancelReopen) { Text("Cancelar") } },
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.medium,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -345,17 +397,18 @@ private fun SavingsGoalCard(
     onOpen: () -> Unit,
     onContribute: () -> Unit,
     onComplete: () -> Unit,
+    onReopen: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     FinanceCard(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
         when (size) {
             EntryCardSize.COMPACT ->
-                SavingsCompactCardContent(progress, onOpen, onContribute, onComplete, onEdit, onDelete)
+                SavingsCompactCardContent(progress, onOpen, onContribute, onComplete, onReopen, onEdit, onDelete)
             EntryCardSize.NORMAL ->
-                SavingsNormalCardContent(progress, onOpen, onContribute, onComplete, onEdit, onDelete)
+                SavingsNormalCardContent(progress, onOpen, onContribute, onComplete, onReopen, onEdit, onDelete)
             EntryCardSize.DETAILED ->
-                SavingsDetailedCardContent(progress, onOpen, onContribute, onComplete, onEdit, onDelete)
+                SavingsDetailedCardContent(progress, onOpen, onContribute, onComplete, onReopen, onEdit, onDelete)
         }
     }
 }
@@ -366,6 +419,7 @@ private fun SavingsCompactCardContent(
     onOpen: () -> Unit,
     onContribute: () -> Unit,
     onComplete: () -> Unit,
+    onReopen: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -401,6 +455,11 @@ private fun SavingsCompactCardContent(
                     Icon(Icons.Outlined.Check, contentDescription = "Finalizar", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 }
             }
+            if (progress.goal.completedAt != null) {
+                IconButton(onClick = onReopen, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Outlined.Savings, contentDescription = "Reabrir", tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
+                }
+            }
             if (progress.isActive) {
                 IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Outlined.Edit, "Editar", modifier = Modifier.size(20.dp))
@@ -420,6 +479,7 @@ private fun SavingsNormalCardContent(
     onOpen: () -> Unit,
     onContribute: () -> Unit,
     onComplete: () -> Unit,
+    onReopen: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -452,6 +512,11 @@ private fun SavingsNormalCardContent(
             if (progress.canComplete) {
                 IconButton(onClick = onComplete, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Outlined.Check, "Finalizar ${progress.goal.name}", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                }
+            }
+            if (progress.goal.completedAt != null) {
+                IconButton(onClick = onReopen, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Outlined.Savings, contentDescription = "Reabrir ${progress.goal.name}", tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
                 }
             }
             if (progress.isActive) {
@@ -496,6 +561,7 @@ private fun SavingsDetailedCardContent(
     onOpen: () -> Unit,
     onContribute: () -> Unit,
     onComplete: () -> Unit,
+    onReopen: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -530,6 +596,11 @@ private fun SavingsDetailedCardContent(
             if (progress.canComplete) {
                 IconButton(onClick = onComplete, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Outlined.Check, "Finalizar ${progress.goal.name}", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                }
+            }
+            if (progress.goal.completedAt != null) {
+                IconButton(onClick = onReopen, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Outlined.Savings, contentDescription = "Reabrir ${progress.goal.name}", tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
                 }
             }
         }
