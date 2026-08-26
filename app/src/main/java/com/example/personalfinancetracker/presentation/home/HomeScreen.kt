@@ -70,9 +70,6 @@ import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
-import com.example.personalfinancetracker.presentation.components.ModuleLoadingContent
-import com.example.personalfinancetracker.presentation.components.ShimmerBar
-import com.example.personalfinancetracker.presentation.components.ShimmerBox
 import com.example.personalfinancetracker.presentation.components.TransactionRow
 import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
@@ -98,7 +95,6 @@ fun HomeScreen(
     var editingBudget by remember { mutableStateOf(false) }
     var confirmingClose by remember { mutableStateOf(false) }
     var showingHistory by remember { mutableStateOf(false) }
-    var dataLoaded by remember { mutableStateOf(false) }
     var selectedTransaction by remember { mutableStateOf<com.example.personalfinancetracker.domain.model.FinanceTransaction?>(null) }
 
     LaunchedEffect(
@@ -111,10 +107,6 @@ fun HomeScreen(
         if (automaticCycleClose && shouldAutomaticallyCloseBudgetCycle(state.budget, LocalDateTime.now(), automaticCloseTime)) {
             viewModel.closeCurrentCycle {}
         }
-    }
-
-    LaunchedEffect(state) {
-        if (!dataLoaded) dataLoaded = true
     }
 
     Scaffold(
@@ -132,128 +124,122 @@ fun HomeScreen(
             )
         },
     ) { padding ->
-        ModuleLoadingContent(
-            isLoading = !dataLoaded,
-            modifier = Modifier.padding(padding),
-            skeleton = { HomeScreenSkeleton() },
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                item {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        RegisterActionChip("Registrar gasto", { onAdd(TransactionType.EXPENSE) }, Modifier.weight(1f))
-                        RegisterActionChip("Registrar ingreso", { onAdd(TransactionType.INCOME) }, Modifier.weight(1f))
-                    }
+            item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    RegisterActionChip("Registrar gasto", { onAdd(TransactionType.EXPENSE) }, Modifier.weight(1f))
+                    RegisterActionChip("Registrar ingreso", { onAdd(TransactionType.INCOME) }, Modifier.weight(1f))
                 }
-                item {
-                    FinanceCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                SectionLabel(
-                                    when {
-                                        state.budget?.period == BudgetPeriod.MONTHLY && state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMO MES"
-                                        state.budget?.period == BudgetPeriod.MONTHLY -> "MES ACTUAL"
-                                        state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMA QUINCENA"
-                                        else -> "QUINCENA ACTUAL"
-                                    },
-                                )
-                                Spacer(Modifier.weight(1f))
-                                IconButton(onClick = { editingBudget = true }) { Icon(Icons.Outlined.Edit, "Editar presupuesto") }
-                            }
-                            PeriodViewSelector(
-                                currentPeriod = state.currentPeriod,
-                                nextPeriod = state.nextPeriod,
-                                selected = state.selectedPeriodView,
-                                pinned = state.pinnedPeriodView,
-                                onSelect = viewModel::selectPeriodView,
-                                onPin = viewModel::pinPeriodView,
+            }
+            item {
+                FinanceCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            SectionLabel(
+                                when {
+                                    state.budget?.period == BudgetPeriod.MONTHLY && state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMO MES"
+                                    state.budget?.period == BudgetPeriod.MONTHLY -> "MES ACTUAL"
+                                    state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMA QUINCENA"
+                                    else -> "QUINCENA ACTUAL"
+                                },
                             )
-                            if (state.budget == null) {
+                            Spacer(Modifier.weight(1f))
+                            IconButton(onClick = { editingBudget = true }) { Icon(Icons.Outlined.Edit, "Editar presupuesto") }
+                        }
+                        PeriodViewSelector(
+                            currentPeriod = state.currentPeriod,
+                            nextPeriod = state.nextPeriod,
+                            selected = state.selectedPeriodView,
+                            pinned = state.pinnedPeriodView,
+                            onSelect = viewModel::selectPeriodView,
+                            onPin = viewModel::pinPeriodView,
+                        )
+                        if (state.budget == null) {
+                            Text(
+                                "Define cuánto quieres administrar durante este periodo.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            PrimaryButton("Agregar presupuesto", { editingBudget = true }, Modifier.fillMaxWidth())
+                        } else {
+                            Text("PRESUPUESTO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(MoneyFormatter.format(state.budget!!.amountInCents), style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Metric("INGRESOS", state.periodIncomeInCents, Modifier.weight(1f))
+                                Metric("GASTOS", state.periodExpenseInCents, Modifier.weight(1f), true)
+                                Metric("RESTANTE", state.budget!!.amountInCents - state.periodExpenseInCents, Modifier.weight(1f))
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                SecondaryButton(
+                                    text = "Historial",
+                                    onClick = { showingHistory = true },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                CloseCycleButton(
+                                    closing = closingCycle,
+                                    available = !automaticCycleClose && manualCloseAvailable,
+                                    onClick = { confirmingClose = true },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (automaticCycleClose) {
                                 Text(
-                                    "Define cuánto quieres administrar durante este periodo.",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    "El cierre automático está activo.",
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                PrimaryButton("Agregar presupuesto", { editingBudget = true }, Modifier.fillMaxWidth())
-                            } else {
-                                Text("PRESUPUESTO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(MoneyFormatter.format(state.budget!!.amountInCents), style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Metric("INGRESOS", state.periodIncomeInCents, Modifier.weight(1f))
-                                    Metric("GASTOS", state.periodExpenseInCents, Modifier.weight(1f), true)
-                                    Metric("RESTANTE", state.budget!!.amountInCents - state.periodExpenseInCents, Modifier.weight(1f))
-                                }
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    SecondaryButton(
-                                        text = "Historial",
-                                        onClick = { showingHistory = true },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    CloseCycleButton(
-                                        closing = closingCycle,
-                                        available = !automaticCycleClose && manualCloseAvailable,
-                                        onClick = { confirmingClose = true },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                                if (automaticCycleClose) {
-                                    Text(
-                                        "El cierre automático está activo.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                } else if (!manualCloseAvailable) {
-                                    Text(
-                                        "El cierre estará disponible el ${state.currentPeriod.endInclusive.format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO")))}.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+                            } else if (!manualCloseAvailable) {
+                                Text(
+                                    "El cierre estará disponible el ${state.currentPeriod.endInclusive.format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO")))}.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     }
                 }
-                if (state.spending.isNotEmpty()) {
-                    item { EditorialHeading("GASTOS POR CATEGORÍA") }
-                    items(state.spending.take(5), key = { "spending-category-${it.category.id}" }) { spending ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(spending.category.name.uppercase(), style = MaterialTheme.typography.labelLarge)
-                            Text(MoneyFormatter.format(spending.amountInCents), style = MaterialTheme.typography.titleSmall)
-                        }
-                    }
-                }
-                item {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        EditorialHeading("Últimos movimientos", Modifier.weight(1f))
-                        TextButton(onClick = onHistory) {
-                            Text("Ver todos", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
-                        }
-                    }
-                }
-                if (state.recent.isEmpty()) item {
-                    Text(
-                        "No hay movimientos en el período seleccionado.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                items(state.recent, key = { "recent-transaction-${it.id}" }) { transaction ->
-                    TransactionRow(
-                        transaction = transaction,
-                        category = state.categories[transaction.categoryId],
-                        onClick = { selectedTransaction = transaction },
-                    )
-                }
-                item { Spacer(Modifier.height(24.dp)) }
             }
+            if (state.spending.isNotEmpty()) {
+                item { EditorialHeading("GASTOS POR CATEGORÍA") }
+                items(state.spending.take(5), key = { "spending-category-${it.category.id}" }) { spending ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(spending.category.name.uppercase(), style = MaterialTheme.typography.labelLarge)
+                        Text(MoneyFormatter.format(spending.amountInCents), style = MaterialTheme.typography.titleSmall)
+                    }
+                }
+            }
+            item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    EditorialHeading("Últimos movimientos", Modifier.weight(1f))
+                    TextButton(onClick = onHistory) {
+                        Text("Ver todos", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
+                    }
+                }
+            }
+            if (state.recent.isEmpty()) item {
+                Text(
+                    "No hay movimientos en el período seleccionado.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            items(state.recent, key = { "recent-transaction-${it.id}" }) { transaction ->
+                TransactionRow(
+                    transaction = transaction,
+                    category = state.categories[transaction.categoryId],
+                    onClick = { selectedTransaction = transaction },
+                )
+            }
+            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 
@@ -651,83 +637,4 @@ private fun BudgetDialog(
         },
         dismissButton = { SecondaryButton("Cancelar", onDismiss) },
     )
-}
-
-@Composable
-private fun HomeScreenSkeleton() {
-    androidx.compose.foundation.lazy.LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ShimmerBox(Modifier.weight(1f).height(40.dp), MaterialTheme.shapes.small)
-                ShimmerBox(Modifier.weight(1f).height(40.dp), MaterialTheme.shapes.small)
-            }
-        }
-        item {
-            FinanceCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ShimmerBar(height = 12, widthFraction = 0.35f)
-                    ShimmerBar(height = 10, widthFraction = 0.5f)
-                    Spacer(Modifier.height(2.dp))
-                    ShimmerBar(height = 32, widthFraction = 0.55f)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            ShimmerBar(height = 10, widthFraction = 0.6f)
-                            ShimmerBar(height = 14, widthFraction = 0.8f)
-                        }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            ShimmerBar(height = 10, widthFraction = 0.6f)
-                            ShimmerBar(height = 14, widthFraction = 0.8f)
-                        }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            ShimmerBar(height = 10, widthFraction = 0.6f)
-                            ShimmerBar(height = 14, widthFraction = 0.8f)
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ShimmerBox(Modifier.weight(1f).height(40.dp), MaterialTheme.shapes.small)
-                        ShimmerBox(Modifier.weight(1f).height(40.dp), MaterialTheme.shapes.small)
-                    }
-                }
-            }
-        }
-        item { ShimmerBar(height = 12, widthFraction = 0.55f) }
-        items(3) {
-            FinanceCard(Modifier.fillMaxWidth()) {
-                Row(
-                    Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    ShimmerBox(Modifier.fillMaxWidth().height(16.dp))
-                }
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                ShimmerBar(height = 18, widthFraction = 0.45f, modifier = Modifier.weight(1f))
-            }
-        }
-        items(3) {
-            FinanceCard(Modifier.fillMaxWidth()) {
-                Row(
-                    Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    ShimmerBox(Modifier.size(42.dp), androidx.compose.foundation.shape.CircleShape)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        ShimmerBar(height = 14, widthFraction = 0.55f)
-                        ShimmerBar(height = 11, widthFraction = 0.3f)
-                    }
-                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ShimmerBar(height = 14, widthFraction = 0.25f)
-                        ShimmerBar(height = 10, widthFraction = 0.18f)
-                    }
-                }
-            }
-        }
-    }
 }

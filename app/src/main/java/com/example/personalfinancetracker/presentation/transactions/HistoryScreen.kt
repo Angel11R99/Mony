@@ -3,6 +3,11 @@ package com.example.personalfinancetracker.presentation.transactions
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -88,7 +93,6 @@ import com.example.personalfinancetracker.presentation.components.SecondaryButto
 import com.example.personalfinancetracker.presentation.components.TransactionRow
 import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
-import com.example.personalfinancetracker.presentation.components.ModuleLoadingContent
 import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.TransactionSkeleton
@@ -258,85 +262,88 @@ fun HistoryScreen(
             )
         },
     ) { padding ->
-        ModuleLoadingContent(
-            isLoading = !dataLoaded,
-            modifier = Modifier.padding(padding),
-            skeleton = {
+        AnimatedContent(
+            targetState = dataLoaded,
+            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+            label = "historyContent",
+        ) { loaded ->
+            if (!loaded) {
                 ModuleListSkeleton(
+                    modifier = Modifier.padding(padding),
                     cardCount = 5,
                     cardContent = { TransactionSkeleton() },
                 )
-            },
+            } else {
+                LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+            contentPadding = PaddingValues(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-                contentPadding = PaddingValues(bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
+            item {
+                HistoryFilters(
+                    query = query,
+                    onQueryChange = { query = it },
+                    typeFilter = typeFilter,
+                    onTypeChange = { typeFilter = it },
+                    categories = availableCategories,
+                    categoryId = categoryId,
+                    onCategoryChange = { categoryId = it },
+                    startDate = startDate,
+                    onStartDateChange = { selected ->
+                        startDate = selected
+                        if (endDate != null && selected != null && endDate!!.isBefore(selected)) endDate = selected
+                    },
+                    endDate = endDate,
+                    onEndDateChange = { selected ->
+                        endDate = selected
+                        if (startDate != null && selected != null && startDate!!.isAfter(selected)) startDate = selected
+                    },
+                    sort = sort,
+                    onSortChange = { sort = it },
+                    onClear = {
+                        typeFilter = HistoryTypeFilter.ALL
+                        categoryId = null
+                        startDate = null
+                        endDate = null
+                    },
+                )
+            }
+            item {
+                FilterSummary(
+                    count = filtered.size,
+                    income = incomeTotal,
+                    expense = expenseTotal,
+                )
+            }
+            if (sorted.isEmpty()) {
                 item {
-                    HistoryFilters(
-                        query = query,
-                        onQueryChange = { query = it },
-                        typeFilter = typeFilter,
-                        onTypeChange = { typeFilter = it },
-                        categories = availableCategories,
-                        categoryId = categoryId,
-                        onCategoryChange = { categoryId = it },
-                        startDate = startDate,
-                        onStartDateChange = { selected ->
-                            startDate = selected
-                            if (endDate != null && selected != null && endDate!!.isBefore(selected)) endDate = selected
-                        },
-                        endDate = endDate,
-                        onEndDateChange = { selected ->
-                            endDate = selected
-                            if (startDate != null && selected != null && startDate!!.isAfter(selected)) startDate = selected
-                        },
-                        sort = sort,
-                        onSortChange = { sort = it },
-                        onClear = {
-                            typeFilter = HistoryTypeFilter.ALL
-                            categoryId = null
-                            startDate = null
-                            endDate = null
-                        },
+                    Text(
+                        "No hay movimientos para este filtro.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                item {
-                    FilterSummary(
-                        count = filtered.size,
-                        income = incomeTotal,
-                        expense = expenseTotal,
+            }
+            items(sorted, key = FinanceTransaction::id) { transaction ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TransactionRow(
+                        transaction,
+                        state.categories[transaction.categoryId],
+                        Modifier.weight(1f),
+                        onClick = { selectedTransaction = transaction },
                     )
-                }
-                if (sorted.isEmpty()) {
-                    item {
-                        Text(
-                            "No hay movimientos para este filtro.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    IconButton(onClick = { onEdit(transaction.id, transaction.type) }) {
+                        Icon(Icons.Outlined.Edit, "Editar")
                     }
-                }
-                items(sorted, key = FinanceTransaction::id) { transaction ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TransactionRow(
-                            transaction,
-                            state.categories[transaction.categoryId],
-                            Modifier.weight(1f),
-                            onClick = { selectedTransaction = transaction },
-                        )
-                        IconButton(onClick = { onEdit(transaction.id, transaction.type) }) {
-                            Icon(Icons.Outlined.Edit, "Editar")
-                        }
-                        IconButton(onClick = { pendingDuplicate = transaction }) {
-                            Icon(Icons.Outlined.ContentCopy, "Duplicar")
-                        }
-                        IconButton(onClick = { pendingDelete = transaction }) {
-                            Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
-                        }
+                    IconButton(onClick = { pendingDuplicate = transaction }) {
+                        Icon(Icons.Outlined.ContentCopy, "Duplicar")
+                    }
+                    IconButton(onClick = { pendingDelete = transaction }) {
+                        Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
+        }
+        }
         }
     }
 

@@ -84,10 +84,7 @@ import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
-import com.example.personalfinancetracker.presentation.components.ModuleLoadingContent
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
-import com.example.personalfinancetracker.presentation.components.ShimmerBar
-import com.example.personalfinancetracker.presentation.components.ShimmerBox
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -107,7 +104,6 @@ fun StatisticsScreen(
     var draftCategoryId by remember { mutableStateOf(categoryId) }
     var draftCustomStart by remember { mutableStateOf(customStart) }
     var draftCustomEnd by remember { mutableStateOf(customEnd) }
-    var dataLoaded by remember { mutableStateOf(false) }
     val cycleSchedules = state.budget?.cycleSchedules.orEmpty()
     val selectedCycle = cycleIndex?.let(cycleSchedules::getOrNull)
     val periodLabel = when {
@@ -176,10 +172,6 @@ fun StatisticsScreen(
         report.expenseInCents
     }
 
-    LaunchedEffect(state) {
-        if (!dataLoaded) dataLoaded = true
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -196,77 +188,71 @@ fun StatisticsScreen(
             )
         },
     ) { padding ->
-        ModuleLoadingContent(
-            isLoading = !dataLoaded,
-            modifier = Modifier.padding(padding),
-            skeleton = { StatisticsScreenSkeleton() },
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
-                contentPadding = PaddingValues(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
+            item {
+                StatisticsFilterButton(
+                    period = periodLabel,
+                    category = selectedCategory?.name ?: "Todas las categorías",
+                    onClick = {
+                        draftRange = range
+                        draftCycleIndex = cycleIndex
+                        draftCategoryId = categoryId
+                        draftCustomStart = customStart
+                        draftCustomEnd = customEnd
+                        showFilters = true
+                    },
+                )
+            }
+            item { BalanceCard(report) }
+            item { IncomeExpenseChart(report) }
+            item { ActivityCard(report) }
+            val comparisonPeriod = previousPeriod
+            val comparisonReport = previousReport
+            if (comparisonPeriod != null && comparisonReport != null) {
+                item { TrendComparisonCard(current = report, previous = comparisonReport, previousPeriod = comparisonPeriod) }
+            }
+            if (selectedCategory != null) {
                 item {
-                    StatisticsFilterButton(
-                        period = periodLabel,
-                        category = selectedCategory?.name ?: "Todas las categorías",
-                        onClick = {
-                            draftRange = range
-                            draftCycleIndex = cycleIndex
-                            draftCategoryId = categoryId
-                            draftCustomStart = customStart
-                            draftCustomEnd = customEnd
-                            showFilters = true
-                        },
+                    CategoryFocusCard(
+                        category = selectedCategory,
+                        amountInCents = selectedStatistic?.amountInCents ?: 0,
+                        comparisonAmountInCents = categoryFocusLimit ?: comparisonAmount,
+                        periodLabel = periodLabel,
                     )
                 }
-                item { BalanceCard(report) }
-                item { IncomeExpenseChart(report) }
-                item { ActivityCard(report) }
-                val comparisonPeriod = previousPeriod
-                val comparisonReport = previousReport
-                if (comparisonPeriod != null && comparisonReport != null) {
-                    item { TrendComparisonCard(current = report, previous = comparisonReport, previousPeriod = comparisonPeriod) }
-                }
-                if (selectedCategory != null) {
-                    item {
-                        CategoryFocusCard(
-                            category = selectedCategory,
-                            amountInCents = selectedStatistic?.amountInCents ?: 0,
-                            comparisonAmountInCents = categoryFocusLimit ?: comparisonAmount,
-                            periodLabel = periodLabel,
-                        )
-                    }
-                }
+            }
+            item {
+                Text(
+                    if (selectedCategory == null) "GASTOS POR CATEGORÍA" else "DETALLE DE CATEGORÍA",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.8.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            val visibleStatistics = if (categoryId == null) {
+                report.expenseByCategory
+            } else {
+                report.expenseByCategory.filter { it.category.id == categoryId }
+            }
+            if (visibleStatistics.isEmpty()) {
                 item {
                     Text(
-                        if (selectedCategory == null) "GASTOS POR CATEGORÍA" else "DETALLE DE CATEGORÍA",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.8.sp,
+                        if (selectedCategory == null) "No hay gastos registrados en este periodo."
+                        else "No hay gastos de ${selectedCategory.name} en este periodo.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                val visibleStatistics = if (categoryId == null) {
-                    report.expenseByCategory
-                } else {
-                    report.expenseByCategory.filter { it.category.id == categoryId }
-                }
-                if (visibleStatistics.isEmpty()) {
-                    item {
-                        Text(
-                            if (selectedCategory == null) "No hay gastos registrados en este periodo."
-                            else "No hay gastos de ${selectedCategory.name} en este periodo.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                items(visibleStatistics, key = { it.category.id }) { statistic ->
-                    CategoryBar(
-                        statistic = statistic,
-                        comparisonAmount = comparisonAmount,
-                    )
-                }
+            }
+            items(visibleStatistics, key = { it.category.id }) { statistic ->
+                CategoryBar(
+                    statistic = statistic,
+                    comparisonAmount = comparisonAmount,
+                )
             }
         }
     }
@@ -751,82 +737,6 @@ private fun IncomeExpenseChart(report: StatisticsReport) {
                         color = expenseColor,
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatisticsScreenSkeleton() {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
-        contentPadding = PaddingValues(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        item {
-            ShimmerBox(
-                Modifier.fillMaxWidth().height(40.dp),
-                MaterialTheme.shapes.small,
-            )
-        }
-        item {
-            FinanceCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ShimmerBar(height = 12, widthFraction = 0.45f)
-                    ShimmerBar(height = 28, widthFraction = 0.35f)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            ShimmerBar(height = 10, widthFraction = 0.7f)
-                            ShimmerBar(height = 14, widthFraction = 0.85f)
-                        }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            ShimmerBar(height = 10, widthFraction = 0.7f)
-                            ShimmerBar(height = 14, widthFraction = 0.85f)
-                        }
-                    }
-                }
-            }
-        }
-        item {
-            FinanceCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ShimmerBar(height = 12, widthFraction = 0.4f)
-                    ShimmerBar(height = 10, widthFraction = 0.55f)
-                    ShimmerBox(
-                        Modifier.fillMaxWidth().height(140.dp),
-                        MaterialTheme.shapes.medium,
-                    )
-                }
-            }
-        }
-        item {
-            FinanceCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ShimmerBar(height = 12, widthFraction = 0.5f)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            ShimmerBar(height = 10, widthFraction = 0.65f)
-                            ShimmerBar(height = 14, widthFraction = 0.8f)
-                        }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            ShimmerBar(height = 10, widthFraction = 0.65f)
-                            ShimmerBar(height = 14, widthFraction = 0.8f)
-                        }
-                    }
-                }
-            }
-        }
-        item { ShimmerBar(height = 12, widthFraction = 0.6f) }
-        items(4) {
-            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    ShimmerBar(height = 12, widthFraction = 0.35f)
-                    ShimmerBar(height = 12, widthFraction = 0.45f)
-                }
-                ShimmerBox(
-                    Modifier.fillMaxWidth().height(7.dp),
-                    MaterialTheme.shapes.extraSmall,
-                )
             }
         }
     }
