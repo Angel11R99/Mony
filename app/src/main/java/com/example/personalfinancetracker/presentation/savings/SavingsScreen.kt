@@ -1,10 +1,5 @@
 package com.example.personalfinancetracker.presentation.savings
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +74,7 @@ import com.example.personalfinancetracker.presentation.components.GlobalOutlined
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.CardSkeleton
+import com.example.personalfinancetracker.presentation.components.ModuleLoadingContent
 import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
@@ -154,134 +150,131 @@ fun SavingsScreen(
             )
         },
     ) { padding ->
-        AnimatedContent(
-            targetState = dataLoaded,
-            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-            label = "savingsContent",
-        ) { loaded ->
-            if (!loaded) {
+        ModuleLoadingContent(
+            isLoading = !dataLoaded,
+            modifier = Modifier.padding(padding),
+            skeleton = {
                 ModuleListSkeleton(
-                    modifier = Modifier.padding(padding),
                     cardCount = 3,
                     cardContent = { CardSkeleton(showProgress = true) },
                 )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-                    contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-            item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(
-                        selected = !showCompleted,
-                        onClick = { showCompleted = false },
-                        label = { Text("Activas (${state.activeGoals.size})", maxLines = 1) },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.small,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                    )
-                    FilterChip(
-                        selected = showCompleted,
-                        onClick = { showCompleted = true },
-                        label = { Text("Completadas (${state.completedGoals.size})", maxLines = 1) },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.small,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                    )
-                }
-            }
-            if (state.goals.isNotEmpty()) {
+            },
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+                contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 item {
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        FinanceTextField(
-                            query,
-                            { query = it },
-                            "Buscar",
+                        FilterChip(
+                            selected = !showCompleted,
+                            onClick = { showCompleted = false },
+                            label = { Text("Activas (${state.activeGoals.size})", maxLines = 1) },
                             modifier = Modifier.weight(1f),
-                            placeholder = "Buscar...",
-                            singleLine = true,
-                            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                            trailingIcon = {
-                                if (query.isNotBlank()) {
-                                    IconButton(
-                                        onClick = { query = "" },
-                                        modifier = Modifier.size(32.dp),
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.Close,
-                                            contentDescription = "Limpiar búsqueda",
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    }
-                                }
-                            },
+                            shape = MaterialTheme.shapes.small,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
                         )
-                        SavingsCardSizeMenu(cardSize, viewModel::setCardSize)
+                        FilterChip(
+                            selected = showCompleted,
+                            onClick = { showCompleted = true },
+                            label = { Text("Completadas (${state.completedGoals.size})", maxLines = 1) },
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.small,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        )
                     }
                 }
-            }
-            if (state.goals.isEmpty()) {
-                item {
-                    FinanceCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.Outlined.Savings, null, tint = MaterialTheme.colorScheme.primary)
-                            Text("Todavía no tienes metas de ahorro", style = MaterialTheme.typography.titleLarge)
-                            Text(
-                                "Crea una meta y registra aportes para ver tu avance. Cada aporte se guarda como un gasto en la categoría \"Ahorro\".",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                if (state.goals.isNotEmpty()) {
+                    item {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            FinanceTextField(
+                                query,
+                                { query = it },
+                                "Buscar",
+                                modifier = Modifier.weight(1f),
+                                placeholder = "Buscar...",
+                                singleLine = true,
+                                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                                trailingIcon = {
+                                    if (query.isNotBlank()) {
+                                        IconButton(
+                                            onClick = { query = "" },
+                                            modifier = Modifier.size(32.dp),
+                                        ) {
+                                            Icon(
+                                                Icons.Outlined.Close,
+                                                contentDescription = "Limpiar búsqueda",
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        }
+                                    }
+                                },
                             )
-                            PrimaryButton("Crear la primera", {
-                                editingGoal = null
-                                showEditor = true
-                            }, Modifier.fillMaxWidth())
+                            SavingsCardSizeMenu(cardSize, viewModel::setCardSize)
                         }
                     }
                 }
-            } else if (displayedGoals.isEmpty()) {
-                item {
-                    FinanceCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                if (showCompleted) "No tienes metas completadas aún."
-                                else "No hay metas activas.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                if (state.goals.isEmpty()) {
+                    item {
+                        FinanceCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Icon(Icons.Outlined.Savings, null, tint = MaterialTheme.colorScheme.primary)
+                                Text("Todavía no tienes metas de ahorro", style = MaterialTheme.typography.titleLarge)
+                                Text(
+                                    "Crea una meta y registra aportes para ver tu avance. Cada aporte se guarda como un gasto en la categoría \"Ahorro\".",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                PrimaryButton("Crear la primera", {
+                                    editingGoal = null
+                                    showEditor = true
+                                }, Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                } else if (displayedGoals.isEmpty()) {
+                    item {
+                        FinanceCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    if (showCompleted) "No tienes metas completadas aún."
+                                    else "No hay metas activas.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
+                items(displayedGoals, key = { it.goal.id }) { goal ->
+                    SavingsGoalCard(
+                        progress = goal,
+                        size = cardSize,
+                        onOpen = { viewModel.openContributions(goal) },
+                        onContribute = { contributingGoal = goal },
+                        onComplete = { viewModel.requestComplete(goal) },
+                        onReopen = { viewModel.requestReopen(goal) },
+                        onEdit = {
+                            editingGoal = goal
+                            showEditor = true
+                        },
+                        onDelete = { viewModel.requestDelete(goal) },
+                    )
+                }
             }
-            items(displayedGoals, key = { it.goal.id }) { goal ->
-                SavingsGoalCard(
-                    progress = goal,
-                    size = cardSize,
-                    onOpen = { viewModel.openContributions(goal) },
-                    onContribute = { contributingGoal = goal },
-                    onComplete = { viewModel.requestComplete(goal) },
-                    onReopen = { viewModel.requestReopen(goal) },
-                    onEdit = {
-                        editingGoal = goal
-                        showEditor = true
-                    },
-                    onDelete = { viewModel.requestDelete(goal) },
-                )
-            }
-        }
-        }
         }
     }
 

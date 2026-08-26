@@ -24,38 +24,70 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import android.provider.Settings
+import androidx.compose.runtime.remember
 
-fun Modifier.shimmerEffect(): Modifier = composed {
+@Immutable
+data class ShimmerProgress(val progress: Float)
+
+val LocalShimmerProgress = compositionLocalOf { ShimmerProgress(0f) }
+
+private const val SHIMMER_DURATION_MS = 1300
+
+@Composable
+fun rememberShimmerProgress(): ShimmerProgress {
+    val view = LocalView.current
+    val reducedMotion = remember(view) {
+        Settings.Global.getFloat(
+            view.context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        ) == 0f
+    }
+
+    if (reducedMotion) return ShimmerProgress(0f)
+
     val transition = rememberInfiniteTransition(label = "shimmer")
-    val translateX by transition.animateFloat(
-        initialValue = -500f,
-        targetValue = 1500f,
+    val rawProgress by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1100, easing = LinearEasing),
+            animation = tween(SHIMMER_DURATION_MS, easing = LinearEasing),
             repeatMode = RepeatMode.Restart,
         ),
-        label = "shimmerTranslate",
+        label = "shimmerProgress",
     )
+    return ShimmerProgress(rawProgress)
+}
+
+fun Modifier.shimmerEffect(): Modifier = composed {
+    val shimmerProgress = LocalShimmerProgress.current.progress
+    val offset = shimmerProgress * 2000f - 500f
     val shimmerColors = listOf(
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
     )
-    background(
+    clipToBounds().background(
         Brush.linearGradient(
             colors = shimmerColors,
-            start = Offset(translateX, 0f),
-            end = Offset(translateX + 450f, 0f),
+            start = Offset(offset, 0f),
+            end = Offset(offset + 450f, 0f),
         ),
     )
 }

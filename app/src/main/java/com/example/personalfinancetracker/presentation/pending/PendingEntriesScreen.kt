@@ -5,11 +5,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -109,6 +104,7 @@ import com.example.personalfinancetracker.presentation.components.GlobalOutlined
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.CardSkeleton
+import com.example.personalfinancetracker.presentation.components.ModuleLoadingContent
 import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
@@ -202,121 +198,118 @@ fun PendingEntriesScreen(
             )
         },
     ) { padding ->
-        AnimatedContent(
-            targetState = dataLoaded,
-            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-            label = "pendingContent",
-        ) { loaded ->
-            if (!loaded) {
+        ModuleLoadingContent(
+            isLoading = !dataLoaded,
+            modifier = Modifier.padding(padding),
+            skeleton = {
                 ModuleListSkeleton(
-                    modifier = Modifier.padding(padding),
                     cardCount = 3,
                     cardContent = { CardSkeleton(showProgress = false) },
                 )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PendingTypeChip(PendingType.PAYMENT, selectedType, { selectedType = it }, Modifier.weight(1f))
-                    PendingTypeChip(PendingType.COLLECTION, selectedType, { selectedType = it }, Modifier.weight(1f))
-                }
-            }
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PendingPeriodChip("Quincena", periodFilter == PendingPeriodFilter.FORTNIGHT, { periodFilter = PendingPeriodFilter.FORTNIGHT }, Modifier.weight(1f))
-                    PendingPeriodChip("Mes", periodFilter == PendingPeriodFilter.MONTH, { periodFilter = PendingPeriodFilter.MONTH }, Modifier.weight(1f))
-                    PendingPeriodChip("Todas", periodFilter == PendingPeriodFilter.ALL, { periodFilter = PendingPeriodFilter.ALL }, Modifier.weight(1f))
-                }
-            }
-            item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    FinanceTextField(
-                        query,
-                        { query = it },
-                        "Buscar",
-                        modifier = Modifier.weight(1f),
-                        placeholder = "Buscar...",
-                        singleLine = true,
-                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                        trailingIcon = {
-                            if (query.isNotBlank()) {
-                                IconButton(
-                                    onClick = { query = "" },
-                                    modifier = Modifier.size(32.dp),
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Close,
-                                        contentDescription = "Limpiar búsqueda",
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            }
-                        },
-                    )
-                    EntryCardSizeMenu(cardSize, viewModel::setCardSize)
-                }
-            }
-            item {
-                PendingSummaryCard(
-                    type = selectedType,
-                    filter = periodFilter,
-                    range = periodRange,
-                    total = pendingTotal,
-                    count = visibleEntries.count { !it.isDone },
-                    formatter = formatter,
-                )
-            }
-            if (state.entries.isEmpty()) {
+            },
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 item {
-                    FinanceCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.AutoMirrored.Outlined.PlaylistAdd, null, tint = MaterialTheme.colorScheme.primary)
-                            Text("Todavía no hay recordatorios", style = MaterialTheme.typography.titleLarge)
-                            Text(
-                                "Guarda aquí las cosas que piensas pagar o cobrar y ponles la fecha. Aparecerán en la quincena o el mes que elijas.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            PrimaryButton("Crear el primero", {
-                                editorEntry = null
-                                showEditor = true
-                            }, Modifier.fillMaxWidth())
-                        }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PendingTypeChip(PendingType.PAYMENT, selectedType, { selectedType = it }, Modifier.weight(1f))
+                        PendingTypeChip(PendingType.COLLECTION, selectedType, { selectedType = it }, Modifier.weight(1f))
                     }
                 }
-            } else if (visibleEntries.isEmpty()) {
                 item {
-                    Text(
-                        "No encontramos recordatorios que coincidan con tu búsqueda.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp),
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PendingPeriodChip("Quincena", periodFilter == PendingPeriodFilter.FORTNIGHT, { periodFilter = PendingPeriodFilter.FORTNIGHT }, Modifier.weight(1f))
+                        PendingPeriodChip("Mes", periodFilter == PendingPeriodFilter.MONTH, { periodFilter = PendingPeriodFilter.MONTH }, Modifier.weight(1f))
+                        PendingPeriodChip("Todas", periodFilter == PendingPeriodFilter.ALL, { periodFilter = PendingPeriodFilter.ALL }, Modifier.weight(1f))
+                    }
+                }
+                item {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        FinanceTextField(
+                            query,
+                            { query = it },
+                            "Buscar",
+                            modifier = Modifier.weight(1f),
+                            placeholder = "Buscar...",
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                            trailingIcon = {
+                                if (query.isNotBlank()) {
+                                    IconButton(
+                                        onClick = { query = "" },
+                                        modifier = Modifier.size(32.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Close,
+                                            contentDescription = "Limpiar búsqueda",
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                }
+                            },
+                        )
+                        EntryCardSizeMenu(cardSize, viewModel::setCardSize)
+                    }
+                }
+                item {
+                    PendingSummaryCard(
+                        type = selectedType,
+                        filter = periodFilter,
+                        range = periodRange,
+                        total = pendingTotal,
+                        count = visibleEntries.count { !it.isDone },
+                        formatter = formatter,
+                    )
+                }
+                if (state.entries.isEmpty()) {
+                    item {
+                        FinanceCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Icon(Icons.AutoMirrored.Outlined.PlaylistAdd, null, tint = MaterialTheme.colorScheme.primary)
+                                Text("Todavía no hay recordatorios", style = MaterialTheme.typography.titleLarge)
+                                Text(
+                                    "Guarda aquí las cosas que piensas pagar o cobrar y ponles la fecha. Aparecerán en la quincena o el mes que elijas.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                PrimaryButton("Crear el primero", {
+                                    editorEntry = null
+                                    showEditor = true
+                                }, Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                } else if (visibleEntries.isEmpty()) {
+                    item {
+                        Text(
+                            "No encontramos recordatorios que coincidan con tu búsqueda.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 16.dp),
+                        )
+                    }
+                }
+                items(visibleEntries, key = PendingEntry::id) { entry ->
+                    PendingEntryCard(
+                        entry = entry,
+                        category = state.categories[entry.categoryId],
+                        size = cardSize,
+                        formatter = formatter,
+                        onToggleDone = { viewModel.toggleDone(entry) },
+                        onEdit = {
+                            editorEntry = entry
+                            showEditor = true
+                        },
+                        onDelete = { pendingDelete = entry },
+                        onSelect = { selectedEntry = entry },
                     )
                 }
             }
-            items(visibleEntries, key = PendingEntry::id) { entry ->
-                PendingEntryCard(
-                    entry = entry,
-                    category = state.categories[entry.categoryId],
-                    size = cardSize,
-                    formatter = formatter,
-                    onToggleDone = { viewModel.toggleDone(entry) },
-                    onEdit = {
-                        editorEntry = entry
-                        showEditor = true
-                    },
-                    onDelete = { pendingDelete = entry },
-                    onSelect = { selectedEntry = entry },
-                )
-            }
-        }
-        }
         }
     }
 

@@ -5,8 +5,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,20 +36,10 @@ import com.example.personalfinancetracker.ui.theme.AppAppearance
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
 import java.time.LocalTime
 
-private const val MODULE_TRANSITION_DURATION = 350
 private const val DETAIL_TRANSITION_DURATION = 250
 
-private val moduleEnter: EnterTransition =
-    fadeIn(tween(MODULE_TRANSITION_DURATION)) + slideInVertically(
-        initialOffsetY = { it / 7 },
-        animationSpec = tween(MODULE_TRANSITION_DURATION),
-    )
-
-private val moduleExit: ExitTransition =
-    fadeOut(tween(MODULE_TRANSITION_DURATION)) + slideOutVertically(
-        targetOffsetY = { it / 10 },
-        animationSpec = tween(MODULE_TRANSITION_DURATION),
-    )
+private val noTransition: EnterTransition = EnterTransition.None
+private val noExitTransition: ExitTransition = ExitTransition.None
 
 private val detailEnter: EnterTransition = fadeIn(tween(DETAIL_TRANSITION_DURATION))
 private val detailExit: ExitTransition = fadeOut(tween(DETAIL_TRANSITION_DURATION))
@@ -114,10 +102,10 @@ fun FinanceApp(
         ) {
             composable(
                 "home",
-                enterTransition = { moduleEnter },
-                exitTransition = { moduleExit },
-                popEnterTransition = { moduleEnter },
-                popExitTransition = { moduleExit },
+                enterTransition = { noTransition },
+                exitTransition = { noExitTransition },
+                popEnterTransition = { noTransition },
+                popExitTransition = { noExitTransition },
             ) {
                 HomeScreen(
                     automaticCycleClose = automaticCycleClose,
@@ -158,10 +146,10 @@ fun FinanceApp(
             }
             composable(
                 "history",
-                enterTransition = { moduleEnter },
-                exitTransition = { moduleExit },
-                popEnterTransition = { moduleEnter },
-                popExitTransition = { moduleExit },
+                enterTransition = { noTransition },
+                exitTransition = { noExitTransition },
+                popEnterTransition = { noTransition },
+                popExitTransition = { noExitTransition },
             ) {
                 HistoryScreen(
                     onEdit = { id, type ->
@@ -172,28 +160,28 @@ fun FinanceApp(
             }
             composable(
                 "statistics",
-                enterTransition = { moduleEnter },
-                exitTransition = { moduleExit },
-                popEnterTransition = { moduleEnter },
-                popExitTransition = { moduleExit },
+                enterTransition = { noTransition },
+                exitTransition = { noExitTransition },
+                popEnterTransition = { noTransition },
+                popExitTransition = { noExitTransition },
             ) {
                 StatisticsScreen(onSettings = { navController.navigate("settings") })
             }
             composable(
                 "fixed",
-                enterTransition = { moduleEnter },
-                exitTransition = { moduleExit },
-                popEnterTransition = { moduleEnter },
-                popExitTransition = { moduleExit },
+                enterTransition = { noTransition },
+                exitTransition = { noExitTransition },
+                popEnterTransition = { noTransition },
+                popExitTransition = { noExitTransition },
             ) {
                 FixedEntriesScreen(onSettings = { navController.navigate("settings") })
             }
             composable(
                 "pending",
-                enterTransition = { moduleEnter },
-                exitTransition = { moduleExit },
-                popEnterTransition = { moduleEnter },
-                popExitTransition = { moduleExit },
+                enterTransition = { noTransition },
+                exitTransition = { noExitTransition },
+                popEnterTransition = { noTransition },
+                popExitTransition = { noExitTransition },
             ) {
                 PendingEntriesScreen(onSettings = { navController.navigate("settings") })
             }
@@ -224,10 +212,10 @@ fun FinanceApp(
             }
             composable(
                 "savings",
-                enterTransition = { moduleEnter },
-                exitTransition = { moduleExit },
-                popEnterTransition = { moduleEnter },
-                popExitTransition = { moduleExit },
+                enterTransition = { noTransition },
+                exitTransition = { noExitTransition },
+                popEnterTransition = { noTransition },
+                popExitTransition = { noExitTransition },
             ) {
                 SavingsScreen(
                     onSettings = { navController.navigate("settings") },
