@@ -3,7 +3,9 @@ package com.example.personalfinancetracker.presentation.savings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.personalfinancetracker.core.EntryDisplayPreferences
 import com.example.personalfinancetracker.core.MoneyFormatter
+import com.example.personalfinancetracker.domain.model.EntryCardSize
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.SavingsGoalProgress
 import com.example.personalfinancetracker.domain.model.TransactionType
@@ -40,6 +42,8 @@ class SavingsViewModel @Inject constructor(
     categories: CategoryRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
+    private val displayPreferences = EntryDisplayPreferences(context)
+
     val state = combine(
         savings.observeGoals(),
         categories.observeActive(TransactionType.EXPENSE),
@@ -47,6 +51,9 @@ class SavingsViewModel @Inject constructor(
         val ahorro = expenseCategories.firstOrNull { it.name.equals(SAVINGS_CATEGORY, ignoreCase = true) }
         SavingsUiState(goals, ahorro?.id)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SavingsUiState())
+
+    val cardSize: StateFlow<EntryCardSize> = displayPreferences.savingsCardSize
+    fun setCardSize(size: EntryCardSize) = displayPreferences.setSavingsCardSize(size)
 
     val message = MutableStateFlow<String?>(null)
     val isSaving = MutableStateFlow(false)

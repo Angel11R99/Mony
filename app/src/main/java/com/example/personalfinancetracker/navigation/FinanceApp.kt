@@ -26,6 +26,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.personalfinancetracker.domain.model.TransactionType
+import com.example.personalfinancetracker.presentation.components.ShimmerScreen
 import com.example.personalfinancetracker.presentation.home.HomeScreen
 import com.example.personalfinancetracker.presentation.statistics.StatisticsScreen
 import com.example.personalfinancetracker.presentation.fixed.FixedEntriesScreen
@@ -119,13 +120,15 @@ fun FinanceApp(
                 popEnterTransition = { fadeSlideEnter },
                 popExitTransition = { fadeSlideExit },
             ) {
-                HomeScreen(
-                    automaticCycleClose = automaticCycleClose,
-                    automaticCloseTime = automaticCloseTime,
-                    onAdd = { navigateToModule("add/${it.name}") },
-                    onHistory = { navigateToModule("history") },
-                    onSettings = { navController.navigate("settings") },
-                )
+                ShimmerScreen {
+                    HomeScreen(
+                        automaticCycleClose = automaticCycleClose,
+                        automaticCloseTime = automaticCloseTime,
+                        onAdd = { navigateToModule("add/${it.name}") },
+                        onHistory = { navigateToModule("history") },
+                        onSettings = { navController.navigate("settings") },
+                    )
+                }
             }
             composable(
                 route = "add/{type}",
@@ -135,10 +138,12 @@ fun FinanceApp(
                 popEnterTransition = { fadeEnter },
                 popExitTransition = { fadeExit },
             ) {
-                AddTransactionScreen(
-                    onBack = { if (!navController.popBackStack()) navigateToModule("home") },
-                    onSettings = { navController.navigate("settings") },
-                )
+                ShimmerScreen {
+                    AddTransactionScreen(
+                        onBack = { if (!navController.popBackStack()) navigateToModule("home") },
+                        onSettings = { navController.navigate("settings") },
+                    )
+                }
             }
             composable(
                 route = "edit/{type}/{transactionId}",
@@ -151,10 +156,12 @@ fun FinanceApp(
                 popEnterTransition = { fadeEnter },
                 popExitTransition = { fadeExit },
             ) {
-                AddTransactionScreen(
-                    onBack = { if (!navController.popBackStack()) navigateToModule("history") },
-                    onSettings = { navController.navigate("settings") },
-                )
+                ShimmerScreen {
+                    AddTransactionScreen(
+                        onBack = { if (!navController.popBackStack()) navigateToModule("history") },
+                        onSettings = { navController.navigate("settings") },
+                    )
+                }
             }
             composable(
                 "history",
@@ -163,12 +170,14 @@ fun FinanceApp(
                 popEnterTransition = { fadeSlideEnter },
                 popExitTransition = { fadeSlideExit },
             ) {
-                HistoryScreen(
-                    onEdit = { id, type ->
-                        navController.navigate("edit/${type.name}/$id")
-                    },
-                    onSettings = { navController.navigate("settings") },
-                )
+                ShimmerScreen {
+                    HistoryScreen(
+                        onEdit = { id, type ->
+                            navController.navigate("edit/${type.name}/$id")
+                        },
+                        onSettings = { navController.navigate("settings") },
+                    )
+                }
             }
             composable(
                 "statistics",
@@ -177,7 +186,9 @@ fun FinanceApp(
                 popEnterTransition = { fadeSlideEnter },
                 popExitTransition = { fadeSlideExit },
             ) {
-                StatisticsScreen(onSettings = { navController.navigate("settings") })
+                ShimmerScreen {
+                    StatisticsScreen(onSettings = { navController.navigate("settings") })
+                }
             }
             composable(
                 "fixed",
@@ -186,7 +197,9 @@ fun FinanceApp(
                 popEnterTransition = { fadeSlideEnter },
                 popExitTransition = { fadeSlideExit },
             ) {
-                FixedEntriesScreen(onSettings = { navController.navigate("settings") })
+                ShimmerScreen {
+                    FixedEntriesScreen(onSettings = { navController.navigate("settings") })
+                }
             }
             composable(
                 "pending",
@@ -195,7 +208,9 @@ fun FinanceApp(
                 popEnterTransition = { fadeSlideEnter },
                 popExitTransition = { fadeSlideExit },
             ) {
-                PendingEntriesScreen(onSettings = { navController.navigate("settings") })
+                ShimmerScreen {
+                    PendingEntriesScreen(onSettings = { navController.navigate("settings") })
+                }
             }
             composable(
                 "settings",
@@ -204,23 +219,25 @@ fun FinanceApp(
                 popEnterTransition = { fadeEnter },
                 popExitTransition = { fadeExit },
             ) {
-                SettingsScreen(
-                    appearance = appearance,
-                    isDarkTheme = isDarkTheme,
-                    moduleBarConfig = moduleBarConfig,
-                    automaticCycleClose = automaticCycleClose,
-                    automaticCloseTime = automaticCloseTime,
-                    onBack = { navController.popBackStack() },
-                    onThemeChange = onThemeChange,
-                    onPrimaryChange = onPrimaryChange,
-                    onAccentChange = onAccentChange,
-                    onReset = onResetAppearance,
-                    onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
-                    onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
-                    onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
-                    onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
-                    onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
-                )
+                ShimmerScreen {
+                    SettingsScreen(
+                        appearance = appearance,
+                        isDarkTheme = isDarkTheme,
+                        moduleBarConfig = moduleBarConfig,
+                        automaticCycleClose = automaticCycleClose,
+                        automaticCloseTime = automaticCloseTime,
+                        onBack = { navController.popBackStack() },
+                        onThemeChange = onThemeChange,
+                        onPrimaryChange = onPrimaryChange,
+                        onAccentChange = onAccentChange,
+                        onReset = onResetAppearance,
+                        onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
+                        onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
+                        onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
+                        onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
+                        onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
+                    )
+                }
             }
             composable(
                 "savings",
@@ -229,9 +246,11 @@ fun FinanceApp(
                 popEnterTransition = { fadeSlideEnter },
                 popExitTransition = { fadeSlideExit },
             ) {
-                SavingsScreen(
-                    onSettings = { navController.navigate("settings") },
-                )
+                ShimmerScreen {
+                    SavingsScreen(
+                        onSettings = { navController.navigate("settings") },
+                    )
+                }
             }
         }
 

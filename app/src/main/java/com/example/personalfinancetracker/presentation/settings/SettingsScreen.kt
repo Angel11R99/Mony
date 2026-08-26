@@ -746,6 +746,10 @@ private fun ColorPickerDialog(
             if (isDarkTheme) luminance < 0.18f else luminance > 0.65f
         }.toSet()
     }
+    val isCustomColorIncompatible = remember(selectedArgb, isDarkTheme) {
+        val luminance = Color(selectedArgb).luminance()
+        if (isDarkTheme) luminance < 0.18f else luminance > 0.65f
+    }
 
     fun selectPreset(argb: Int) {
         if (argb in incompatiblePresets) return
@@ -837,10 +841,20 @@ private fun ColorPickerDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                if (isCustomColorIncompatible) {
+                    Text(
+                        "Este color no es compatible con el tema actual por bajo contraste.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSelect(selectedArgb) }) { Text("Aplicar") }
+            TextButton(
+                onClick = { onSelect(selectedArgb) },
+                enabled = !isCustomColorIncompatible,
+            ) { Text("Aplicar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -939,8 +953,10 @@ private val AppThemeMode.label: String
 private val primaryPresets = listOf(
     0xFF7C3AED.toInt(), 0xFF2563EB.toInt(), 0xFF0891B2.toInt(), 0xFF059669.toInt(),
     0xFFCA8A04.toInt(), 0xFFEA580C.toInt(), 0xFFDB2777.toInt(), 0xFF52525B.toInt(),
+    0xFFFFFFFF.toInt(), 0xFF78350F.toInt(),
 )
 private val accentPresets = listOf(
     0xFFFF6B73.toInt(), 0xFFDC2626.toInt(), 0xFFF97316.toInt(), 0xFFDB2777.toInt(),
     0xFF9333EA.toInt(), 0xFF2563EB.toInt(), 0xFF0D9488.toInt(), 0xFF52525B.toInt(),
+    0xFFFFFFFF.toInt(), 0xFF65A30D.toInt(),
 )
