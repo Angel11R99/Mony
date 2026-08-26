@@ -84,7 +84,14 @@ import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
+import com.example.personalfinancetracker.presentation.components.LoadingContent
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
+import com.example.personalfinancetracker.presentation.components.SkeletonBox
+import com.example.personalfinancetracker.presentation.components.SkeletonCard
+import com.example.personalfinancetracker.presentation.components.SkeletonCircle
+import com.example.personalfinancetracker.presentation.components.SkeletonHost
+import com.example.personalfinancetracker.presentation.components.SkeletonLine
+import com.example.personalfinancetracker.presentation.components.SkeletonTone
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -188,11 +195,17 @@ fun StatisticsScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+        SkeletonHost(isLoading = !state.isReady) {
+            LoadingContent(
+                isLoading = !state.isReady,
+                modifier = Modifier.padding(padding),
+                skeleton = { StatisticsSkeleton() },
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
             item {
                 StatisticsFilterButton(
                     period = periodLabel,
@@ -253,6 +266,8 @@ fun StatisticsScreen(
                     statistic = statistic,
                     comparisonAmount = comparisonAmount,
                 )
+            }
+                }
             }
         }
     }
@@ -865,6 +880,91 @@ private fun CategoryBar(statistic: CategoryStatistic, comparisonAmount: Long) {
                         MaterialTheme.shapes.extraSmall,
                     ),
             )
+        }
+    }
+}
+
+@Composable
+private fun StatisticsSkeleton() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item {
+            SkeletonBox(Modifier.fillMaxWidth().height(52.dp), MaterialTheme.shapes.small)
+        }
+        item {
+            SkeletonCard(contentPadding = PaddingValues(16.dp)) {
+                SkeletonLine(Modifier.width(150.dp), height = 11.dp, tone = SkeletonTone.Accent)
+                SkeletonLine(Modifier.fillMaxWidth(0.5f), height = 36.dp, tone = SkeletonTone.Accent)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    repeat(2) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            SkeletonLine(Modifier.fillMaxWidth(0.7f), height = 10.dp, tone = SkeletonTone.Accent)
+                            SkeletonLine(Modifier.fillMaxWidth(), height = 20.dp, tone = SkeletonTone.Accent)
+                        }
+                    }
+                }
+                SkeletonLine(Modifier.fillMaxWidth(0.6f), height = 11.dp, tone = SkeletonTone.Accent)
+                SkeletonLine(Modifier.fillMaxWidth(), height = 8.dp, tone = SkeletonTone.Accent)
+            }
+        }
+        item {
+            SkeletonCard(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SkeletonLine(Modifier.width(140.dp), height = 11.dp, tone = SkeletonTone.Accent)
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SkeletonCircle(132.dp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        repeat(2) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                            ) {
+                                SkeletonBox(Modifier.size(10.dp), MaterialTheme.shapes.extraSmall)
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    SkeletonLine(Modifier.fillMaxWidth(0.6f), height = 12.dp, tone = SkeletonTone.Accent)
+                                    SkeletonLine(Modifier.fillMaxWidth(0.45f), height = 12.dp, tone = SkeletonTone.Accent)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            SkeletonCard(contentPadding = PaddingValues(16.dp)) {
+                Row(Modifier.fillMaxWidth()) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        SkeletonLine(Modifier.width(90.dp), height = 10.dp, tone = SkeletonTone.Accent)
+                        SkeletonLine(Modifier.width(56.dp), height = 26.dp, tone = SkeletonTone.Accent)
+                    }
+                    Column(
+                        Modifier.weight(1f),
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        SkeletonLine(Modifier.width(100.dp), height = 10.dp, tone = SkeletonTone.Accent)
+                        SkeletonLine(Modifier.width(72.dp), height = 22.dp, tone = SkeletonTone.Accent)
+                    }
+                }
+            }
+        }
+        item {
+            SkeletonLine(Modifier.width(170.dp), height = 13.dp, tone = SkeletonTone.Base)
+        }
+        items(4) {
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    SkeletonLine(Modifier.width(110.dp), height = 14.dp)
+                    SkeletonLine(Modifier.width(130.dp), height = 14.dp)
+                }
+                SkeletonLine(Modifier.fillMaxWidth(), height = 7.dp, tone = SkeletonTone.Accent)
+            }
         }
     }
 }

@@ -30,6 +30,7 @@ import javax.inject.Inject
 data class FixedEntriesUiState(
     val entries: List<FixedEntry> = emptyList(),
     val categories: Map<Long, Category> = emptyMap(),
+    val isReady: Boolean = false,
 )
 
 @HiltViewModel
@@ -39,7 +40,11 @@ class FixedEntriesViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val state = combine(fixedEntries.observeAll(), categories.observeAll()) { entries, categoryList ->
-        FixedEntriesUiState(entries, categoryList.associateBy(Category::id))
+        FixedEntriesUiState(
+            entries = entries,
+            categories = categoryList.associateBy(Category::id),
+            isReady = true,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FixedEntriesUiState())
 
     val message = MutableStateFlow<String?>(null)

@@ -5,11 +5,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -108,8 +103,13 @@ import com.example.personalfinancetracker.presentation.components.FinanceTextFie
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
-import com.example.personalfinancetracker.presentation.components.CardSkeleton
-import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
+import com.example.personalfinancetracker.presentation.components.LoadingContent
+import com.example.personalfinancetracker.presentation.components.SkeletonCard
+import com.example.personalfinancetracker.presentation.components.SkeletonChip
+import com.example.personalfinancetracker.presentation.components.SkeletonEntryCard
+import com.example.personalfinancetracker.presentation.components.SkeletonHost
+import com.example.personalfinancetracker.presentation.components.SkeletonLine
+import com.example.personalfinancetracker.presentation.components.SkeletonTextField
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
@@ -128,10 +128,6 @@ fun PendingEntriesScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var dataLoaded by remember { mutableStateOf(false) }
-    LaunchedEffect(state.entries) {
-        if (!dataLoaded) dataLoaded = true
-    }
     var notificationsGranted by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -202,20 +198,14 @@ fun PendingEntriesScreen(
             )
         },
     ) { padding ->
-        AnimatedContent(
-            targetState = dataLoaded,
-            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-            label = "pendingContent",
-        ) { loaded ->
-            if (!loaded) {
-                ModuleListSkeleton(
-                    modifier = Modifier.padding(padding),
-                    cardCount = 3,
-                    cardContent = { CardSkeleton(showProgress = false) },
-                )
-            } else {
+        SkeletonHost(isLoading = !state.isReady) {
+            LoadingContent(
+                isLoading = !state.isReady,
+                modifier = Modifier.padding(padding),
+                skeleton = { PendingEntriesSkeleton() },
+            ) {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
                     contentPadding = PaddingValues(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -311,12 +301,12 @@ fun PendingEntriesScreen(
                         editorEntry = entry
                         showEditor = true
                     },
-                    onDelete = { pendingDelete = entry },
-                    onSelect = { selectedEntry = entry },
-                )
+                     onDelete = { pendingDelete = entry },
+                     onSelect = { selectedEntry = entry },
+                 )
+             }
+                }
             }
-        }
-        }
         }
     }
 
@@ -373,6 +363,39 @@ fun PendingEntriesScreen(
             formatter = formatter,
             onDismiss = { selectedEntry = null },
         )
+    }
+}
+
+@Composable
+private fun PendingEntriesSkeleton() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SkeletonChip(Modifier.weight(1f))
+                SkeletonChip(Modifier.weight(1f))
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SkeletonChip(Modifier.weight(1f))
+                SkeletonChip(Modifier.weight(1f))
+                SkeletonChip(Modifier.weight(1f))
+            }
+        }
+        item { SkeletonTextField() }
+        item {
+            SkeletonCard(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SkeletonLine(Modifier.width(120.dp), height = 11.dp)
+                SkeletonLine(Modifier.width(90.dp), height = 15.dp)
+                SkeletonLine(Modifier.width(130.dp), height = 26.dp)
+                SkeletonLine(Modifier.fillMaxWidth(0.65f), height = 11.dp)
+            }
+        }
+        items(3) { SkeletonEntryCard(showProgress = false) }
     }
 }
 

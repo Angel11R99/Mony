@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -72,6 +73,15 @@ import com.example.personalfinancetracker.presentation.components.GlobalSettings
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.TransactionRow
 import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
+import com.example.personalfinancetracker.presentation.components.LoadingContent
+import com.example.personalfinancetracker.presentation.components.SkeletonBox
+import com.example.personalfinancetracker.presentation.components.SkeletonCard
+import com.example.personalfinancetracker.presentation.components.SkeletonChip
+import com.example.personalfinancetracker.presentation.components.SkeletonCircle
+import com.example.personalfinancetracker.presentation.components.SkeletonHost
+import com.example.personalfinancetracker.presentation.components.SkeletonLine
+import com.example.personalfinancetracker.presentation.components.SkeletonTransactionRow
+import com.example.personalfinancetracker.presentation.components.SkeletonTone
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
@@ -124,13 +134,18 @@ fun HomeScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
+        SkeletonHost(isLoading = !state.isReady) {
+            LoadingContent(
+                isLoading = !state.isReady,
+                modifier = Modifier.padding(padding),
+                skeleton = { HomeSkeleton() },
+            ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
             item {
                 Row(
                     Modifier.fillMaxWidth(),
@@ -240,6 +255,8 @@ fun HomeScreen(
                 )
             }
             item { Spacer(Modifier.height(24.dp)) }
+                }
+            }
         }
     }
 
@@ -279,6 +296,71 @@ fun HomeScreen(
         )
     }
 }
+
+@Composable
+private fun HomeSkeleton() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SkeletonChip(Modifier.weight(1f))
+                SkeletonChip(Modifier.weight(1f))
+            }
+        }
+        item {
+            SkeletonCard(
+                contentPadding = PaddingValues(18.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    SkeletonLine(Modifier.width(120.dp), height = 11.dp)
+                    Spacer(Modifier.weight(1f))
+                    SkeletonCircle(40.dp)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SkeletonBox(Modifier.weight(1f).height(56.dp), MaterialTheme.shapes.small)
+                    SkeletonBox(Modifier.weight(1f).height(56.dp), MaterialTheme.shapes.small)
+                }
+                SkeletonLine(Modifier.width(110.dp), height = 11.dp, tone = SkeletonTone.Accent)
+                SkeletonLine(Modifier.fillMaxWidth(0.45f), height = 34.dp, tone = SkeletonTone.Accent)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    repeat(3) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            SkeletonLine(Modifier.fillMaxWidth(0.8f), height = 10.dp)
+                            SkeletonLine(Modifier.fillMaxWidth(), height = 14.dp)
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SkeletonBox(Modifier.weight(1f).height(54.dp), MaterialTheme.shapes.small)
+                    SkeletonBox(Modifier.weight(1f).height(54.dp), MaterialTheme.shapes.small)
+                }
+            }
+        }
+        item { SkeletonLine(Modifier.fillMaxWidth(0.4f), height = 22.dp, tone = SkeletonTone.Base) }
+        items(3) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SkeletonLine(Modifier.width(120.dp), height = 14.dp)
+                SkeletonLine(Modifier.width(80.dp), height = 14.dp)
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                SkeletonLine(Modifier.weight(1f), height = 24.dp)
+                Spacer(Modifier.width(12.dp))
+                SkeletonLine(Modifier.width(64.dp), height = 16.dp)
+            }
+        }
+        items(3) { SkeletonTransactionRow() }
+    }
+}
+
 @Composable
 private fun PeriodViewSelector(
     currentPeriod: DateRange,

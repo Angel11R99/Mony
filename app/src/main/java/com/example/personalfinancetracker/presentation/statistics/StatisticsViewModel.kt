@@ -27,6 +27,7 @@ data class StatisticsUiState(
     val transactions: List<FinanceTransaction> = emptyList(),
     val categories: Map<Long, Category> = emptyMap(),
     val budget: BudgetConfig? = null,
+    val isReady: Boolean = false,
 )
 
 data class CategoryStatistic(
@@ -144,6 +145,7 @@ class StatisticsViewModel @Inject constructor(
             transactions = items,
             categories = categoryList.associateBy(Category::id),
             budget = budgetConfig,
+            isReady = true,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatisticsUiState())
 }

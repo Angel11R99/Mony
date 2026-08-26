@@ -1,10 +1,5 @@
 package com.example.personalfinancetracker.presentation.fixed
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -98,8 +93,14 @@ import com.example.personalfinancetracker.presentation.components.SecondaryButto
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
-import com.example.personalfinancetracker.presentation.components.CardSkeleton
-import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
+import com.example.personalfinancetracker.presentation.components.LoadingContent
+import com.example.personalfinancetracker.presentation.components.SkeletonBox
+import com.example.personalfinancetracker.presentation.components.SkeletonChip
+import com.example.personalfinancetracker.presentation.components.SkeletonEntryCard
+import com.example.personalfinancetracker.presentation.components.SkeletonHost
+import com.example.personalfinancetracker.presentation.components.SkeletonLine
+import com.example.personalfinancetracker.presentation.components.SkeletonTone
+import com.example.personalfinancetracker.presentation.components.SkeletonTextField
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
 import java.time.ZoneId
 import java.time.LocalDate
@@ -119,10 +120,6 @@ fun FixedEntriesScreen(
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
     var query by remember { mutableStateOf("") }
     val cardSize by viewModel.cardSize.collectAsStateWithLifecycle()
-    var dataLoaded by remember { mutableStateOf(false) }
-    LaunchedEffect(state.entries) {
-        if (!dataLoaded) dataLoaded = true
-    }
     var editorEntry by remember { mutableStateOf<FixedEntry?>(null) }
     var showEditor by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<FixedEntry?>(null) }
@@ -163,20 +160,14 @@ fun FixedEntriesScreen(
             )
         },
     ) { padding ->
-        AnimatedContent(
-            targetState = dataLoaded,
-            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-            label = "fixedContent",
-        ) { loaded ->
-            if (!loaded) {
-                ModuleListSkeleton(
-                    modifier = Modifier.padding(padding),
-                    cardCount = 3,
-                    cardContent = { CardSkeleton(showProgress = false) },
-                )
-            } else {
+        SkeletonHost(isLoading = !state.isReady) {
+            LoadingContent(
+                isLoading = !state.isReady,
+                modifier = Modifier.padding(padding),
+                skeleton = { FixedEntriesSkeleton() },
+            ) {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
                     contentPadding = PaddingValues(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -266,8 +257,8 @@ fun FixedEntriesScreen(
                     onDelete = { pendingDelete = entry },
                 )
             }
-        }
-        }
+                }
+            }
         }
     }
 
@@ -1081,4 +1072,37 @@ private fun FixedEntryDialog(
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.medium,
     )
+}
+
+@Composable
+private fun FixedEntriesSkeleton() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SkeletonChip(Modifier.weight(1f))
+                SkeletonChip(Modifier.weight(1f))
+            }
+        }
+        item {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SkeletonTextField(Modifier.weight(1f))
+                SkeletonBox(
+                    Modifier.size(width = 56.dp, height = 56.dp),
+                    MaterialTheme.shapes.small,
+                )
+            }
+        }
+        item {
+            SkeletonLine(Modifier.width(150.dp), height = 11.dp, tone = SkeletonTone.Accent)
+        }
+        items(4) { SkeletonEntryCard(showProgress = false) }
+    }
 }

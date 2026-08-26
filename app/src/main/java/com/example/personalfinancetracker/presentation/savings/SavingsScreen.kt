@@ -1,10 +1,5 @@
 package com.example.personalfinancetracker.presentation.savings
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -78,8 +73,11 @@ import com.example.personalfinancetracker.presentation.components.FinanceTextFie
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
-import com.example.personalfinancetracker.presentation.components.CardSkeleton
-import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
+import com.example.personalfinancetracker.presentation.components.LoadingContent
+import com.example.personalfinancetracker.presentation.components.SkeletonChip
+import com.example.personalfinancetracker.presentation.components.SkeletonGoalCard
+import com.example.personalfinancetracker.presentation.components.SkeletonHost
+import com.example.personalfinancetracker.presentation.components.SkeletonTextField
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
@@ -108,10 +106,6 @@ fun SavingsScreen(
     var showCompleted by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     val cardSize by viewModel.cardSize.collectAsStateWithLifecycle()
-    var dataLoaded by remember { mutableStateOf(false) }
-    LaunchedEffect(state.goals) {
-        if (!dataLoaded) dataLoaded = true
-    }
 
     val displayedGoals = remember(state.activeGoals, state.completedGoals, showCompleted, query) {
         val goals = if (showCompleted) state.completedGoals else state.activeGoals
@@ -154,20 +148,14 @@ fun SavingsScreen(
             )
         },
     ) { padding ->
-        AnimatedContent(
-            targetState = dataLoaded,
-            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-            label = "savingsContent",
-        ) { loaded ->
-            if (!loaded) {
-                ModuleListSkeleton(
-                    modifier = Modifier.padding(padding),
-                    cardCount = 3,
-                    cardContent = { CardSkeleton(showProgress = true) },
-                )
-            } else {
+        SkeletonHost(isLoading = !state.isReady) {
+            LoadingContent(
+                isLoading = !state.isReady,
+                modifier = Modifier.padding(padding),
+                skeleton = { SavingsSkeleton() },
+            ) {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
                     contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -277,11 +265,11 @@ fun SavingsScreen(
                         editingGoal = goal
                         showEditor = true
                     },
-                    onDelete = { viewModel.requestDelete(goal) },
-                )
+                     onDelete = { viewModel.requestDelete(goal) },
+                 )
+             }
+                }
             }
-        }
-        }
         }
     }
 
@@ -386,6 +374,24 @@ fun SavingsScreen(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             shape = MaterialTheme.shapes.medium,
         )
+    }
+}
+
+@Composable
+private fun SavingsSkeleton() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SkeletonChip(Modifier.weight(1f))
+                SkeletonChip(Modifier.weight(1f))
+            }
+        }
+        item { SkeletonTextField() }
+        items(4) { SkeletonGoalCard() }
     }
 }
 

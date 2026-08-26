@@ -3,11 +3,6 @@ package com.example.personalfinancetracker.presentation.transactions
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -93,9 +88,14 @@ import com.example.personalfinancetracker.presentation.components.SecondaryButto
 import com.example.personalfinancetracker.presentation.components.TransactionRow
 import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
-import com.example.personalfinancetracker.presentation.components.ModuleListSkeleton
+import com.example.personalfinancetracker.presentation.components.LoadingContent
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
-import com.example.personalfinancetracker.presentation.components.TransactionSkeleton
+import com.example.personalfinancetracker.presentation.components.SkeletonCard
+import com.example.personalfinancetracker.presentation.components.SkeletonChip
+import com.example.personalfinancetracker.presentation.components.SkeletonLine
+import com.example.personalfinancetracker.presentation.components.SkeletonTextField
+import com.example.personalfinancetracker.presentation.components.SkeletonTransactionRow
+import com.example.personalfinancetracker.presentation.components.SkeletonHost
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -138,10 +138,6 @@ fun HistoryScreen(
     val restorePreview by viewModel.restorePreview.collectAsStateWithLifecycle()
     val isRestoring by viewModel.isRestoring.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var dataLoaded by remember { mutableStateOf(false) }
-    LaunchedEffect(state.transactions) {
-        if (!dataLoaded) dataLoaded = true
-    }
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv")
     ) { uri -> uri?.let(viewModel::exportTo) }
@@ -262,23 +258,17 @@ fun HistoryScreen(
             )
         },
     ) { padding ->
-        AnimatedContent(
-            targetState = dataLoaded,
-            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-            label = "historyContent",
-        ) { loaded ->
-            if (!loaded) {
-                ModuleListSkeleton(
-                    modifier = Modifier.padding(padding),
-                    cardCount = 5,
-                    cardContent = { TransactionSkeleton() },
-                )
-            } else {
+        SkeletonHost(isLoading = !state.isReady) {
+            LoadingContent(
+                isLoading = !state.isReady,
+                modifier = Modifier.padding(padding),
+                skeleton = { HistorySkeleton() },
+            ) {
                 LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-            contentPadding = PaddingValues(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                    contentPadding = PaddingValues(bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
             item {
                 HistoryFilters(
                     query = query,
@@ -342,8 +332,8 @@ fun HistoryScreen(
                     }
                 }
             }
-        }
-        }
+                }
+            }
         }
     }
 
@@ -968,3 +958,41 @@ internal fun sortTransactions(
 }
 
 private const val MILLIS_PER_DAY = 86_400_000L
+
+@Composable
+private fun HistorySkeleton() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item { SkeletonTextField() }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SkeletonChip(Modifier.weight(1f))
+                SkeletonChip(Modifier.weight(1f))
+                SkeletonChip(Modifier.weight(1f))
+            }
+        }
+        item {
+            SkeletonCard(
+                contentPadding = PaddingValues(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    SkeletonLine(Modifier.width(96.dp), height = 12.dp)
+                    SkeletonLine(Modifier.width(64.dp), height = 12.dp)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    SkeletonLine(Modifier.width(72.dp), height = 12.dp)
+                    SkeletonLine(Modifier.width(72.dp), height = 12.dp)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    SkeletonLine(Modifier.width(56.dp), height = 12.dp)
+                    SkeletonLine(Modifier.width(88.dp), height = 12.dp)
+                }
+            }
+        }
+        items(6) { SkeletonTransactionRow() }
+    }
+}

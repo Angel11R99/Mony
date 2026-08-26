@@ -29,6 +29,7 @@ import javax.inject.Inject
 data class SavingsUiState(
     val goals: List<SavingsGoalProgress> = emptyList(),
     val savingsCategoryId: Long? = null,
+    val isReady: Boolean = false,
 ) {
     val activeGoals: List<SavingsGoalProgress> get() = goals.filter { it.isActive }
     val completedGoals: List<SavingsGoalProgress> get() = goals.filter { !it.isActive }
@@ -49,7 +50,11 @@ class SavingsViewModel @Inject constructor(
         categories.observeActive(TransactionType.EXPENSE),
     ) { goals, expenseCategories ->
         val ahorro = expenseCategories.firstOrNull { it.name.equals(SAVINGS_CATEGORY, ignoreCase = true) }
-        SavingsUiState(goals, ahorro?.id)
+        SavingsUiState(
+            goals = goals,
+            savingsCategoryId = ahorro?.id,
+            isReady = true,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SavingsUiState())
 
     val cardSize: StateFlow<EntryCardSize> = displayPreferences.savingsCardSize

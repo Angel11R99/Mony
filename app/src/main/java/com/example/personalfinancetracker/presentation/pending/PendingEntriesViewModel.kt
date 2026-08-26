@@ -33,6 +33,7 @@ import javax.inject.Inject
 data class PendingEntriesUiState(
     val entries: List<PendingEntry> = emptyList(),
     val categories: Map<Long, Category> = emptyMap(),
+    val isReady: Boolean = false,
 )
 
 @HiltViewModel
@@ -42,7 +43,11 @@ class PendingEntriesViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val state = combine(pendingEntries.observeAll(), categories.observeAll()) { entries, categoryList ->
-        PendingEntriesUiState(entries, categoryList.associateBy(Category::id))
+        PendingEntriesUiState(
+            entries = entries,
+            categories = categoryList.associateBy(Category::id),
+            isReady = true,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PendingEntriesUiState())
 
     val message = MutableStateFlow<String?>(null)

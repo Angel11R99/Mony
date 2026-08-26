@@ -24,6 +24,7 @@ import javax.inject.Inject
 data class HistoryUiState(
     val transactions: List<FinanceTransaction> = emptyList(),
     val categories: Map<Long, Category> = emptyMap(),
+    val isReady: Boolean = false,
 )
 
 data class RestorePreview(
@@ -45,7 +46,11 @@ class HistoryViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val state = combine(transactionsRepository.observeAll(), categories.observeAll()) { items, cats ->
-        HistoryUiState(items, cats.associateBy(Category::id))
+        HistoryUiState(
+            transactions = items,
+            categories = cats.associateBy(Category::id),
+            isReady = true,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
 
     val message = MutableStateFlow<String?>(null)

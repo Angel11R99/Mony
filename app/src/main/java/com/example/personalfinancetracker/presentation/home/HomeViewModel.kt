@@ -58,6 +58,7 @@ data class HomeUiState(
     val pinnedPeriodView: BudgetPeriodView = BudgetPeriodView.CURRENT,
     val budget: BudgetConfig? = null,
     val cycleHistory: List<BudgetCycle> = emptyList(),
+    val isReady: Boolean = false,
 )
 
 @HiltViewModel
@@ -115,6 +116,7 @@ class HomeViewModel @Inject constructor(
             pinnedPeriodView = pinnedView,
             budget = budget,
             cycleHistory = history,
+            isReady = true,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
