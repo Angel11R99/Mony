@@ -7,6 +7,7 @@ data class SavingsGoal(
     val name: String,
     val targetAmountInCents: Long,
     val createdAt: Instant,
+    val completedAt: Instant? = null,
 )
 
 data class SavingsGoalProgress(
@@ -14,8 +15,16 @@ data class SavingsGoalProgress(
     val savedInCents: Long,
 ) {
     val percent: Int get() = savingsProgressPercent(savedInCents, goal.targetAmountInCents)
-    val isCompleted: Boolean get() =
-        goal.targetAmountInCents > 0 && savedInCents >= goal.targetAmountInCents
+    val isActive: Boolean get() = goal.completedAt == null
+    val isCompleted: Boolean get() = goal.completedAt != null ||
+        (goal.targetAmountInCents > 0 && savedInCents >= goal.targetAmountInCents)
+    val canComplete: Boolean get() =
+        goal.completedAt == null && goal.targetAmountInCents > 0 && savedInCents >= goal.targetAmountInCents
+    val excessInCents: Long get() =
+        if (goal.targetAmountInCents > 0 && savedInCents > goal.targetAmountInCents)
+            savedInCents - goal.targetAmountInCents else 0
+    val savedForGoalInCents: Long get() =
+        if (goal.targetAmountInCents > 0) savedInCents.coerceAtMost(goal.targetAmountInCents) else savedInCents
 }
 
 fun savingsProgressPercent(savedInCents: Long, targetInCents: Long): Int {

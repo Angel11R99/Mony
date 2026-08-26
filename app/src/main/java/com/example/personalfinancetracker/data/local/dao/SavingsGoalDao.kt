@@ -11,6 +11,7 @@ data class SavingsGoalWithSaved(
     val name: String,
     val targetAmountInCents: Long,
     val createdAtEpochMillis: Long,
+    val completedAtEpochMillis: Long?,
     val savedInCents: Long,
 )
 
@@ -19,11 +20,12 @@ interface SavingsGoalDao {
     @Query(
         """SELECT g.id AS id, g.name AS name, g.targetAmountInCents AS targetAmountInCents,
             g.createdAtEpochMillis AS createdAtEpochMillis,
+            g.completedAtEpochMillis AS completedAtEpochMillis,
             COALESCE(SUM(t.amountInCents), 0) AS savedInCents
             FROM savings_goals g
             LEFT JOIN transactions t ON t.savingsGoalId = g.id
             GROUP BY g.id
-            ORDER BY g.createdAtEpochMillis DESC"""
+            ORDER BY g.completedAtEpochMillis IS NULL DESC, g.createdAtEpochMillis DESC"""
     )
     fun observeAllWithSaved(): Flow<List<SavingsGoalWithSaved>>
 
@@ -32,6 +34,9 @@ interface SavingsGoalDao {
 
     @Query("UPDATE savings_goals SET name = :name, targetAmountInCents = :targetAmountInCents WHERE id = :id")
     suspend fun update(id: Long, name: String, targetAmountInCents: Long)
+
+    @Query("UPDATE savings_goals SET completedAtEpochMillis = :completedAtEpochMillis WHERE id = :id")
+    suspend fun complete(id: Long, completedAtEpochMillis: Long)
 
     @Query("UPDATE transactions SET savingsGoalId = NULL WHERE savingsGoalId = :goalId")
     suspend fun unlinkTransactions(goalId: Long)

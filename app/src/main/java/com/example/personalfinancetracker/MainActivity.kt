@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.core.CyclePreferences
 import com.example.personalfinancetracker.navigation.FinanceApp
+import com.example.personalfinancetracker.navigation.FloatingModuleBarPreferences
 import com.example.personalfinancetracker.ui.theme.PersonalFinanceTrackerTheme
 import com.example.personalfinancetracker.ui.theme.AppearancePreferences
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
@@ -33,9 +34,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appearancePreferences = remember { AppearancePreferences(applicationContext) }
             val cyclePreferences = remember { CyclePreferences(applicationContext) }
+            val moduleBarPreferences = remember { FloatingModuleBarPreferences(applicationContext) }
             val appearance by appearancePreferences.settings.collectAsStateWithLifecycle()
             val automaticCycleClose by cyclePreferences.automaticClose.collectAsStateWithLifecycle()
             val automaticCloseTime by cyclePreferences.automaticCloseTime.collectAsStateWithLifecycle()
+            val moduleBarConfig by moduleBarPreferences.config.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
             val useDarkTheme = when (appearance.themeMode) {
                 AppThemeMode.SYSTEM -> systemDark
@@ -59,6 +62,8 @@ class MainActivity : ComponentActivity() {
                     val initialEditId = intent.getLongExtra(EXTRA_EDIT_TRANSACTION_ID, -1L)
                         .takeIf { it >= 0L }
                     FinanceApp(
+                        isDarkTheme = useDarkTheme,
+                        moduleBarConfig = moduleBarConfig,
                         // When an edit was requested the type extra only selects
                         // the editor route; the add flow must not trigger too.
                         initialType = if (initialEditId == null) initialType else null,
@@ -89,6 +94,9 @@ class MainActivity : ComponentActivity() {
                         },
                         onAutomaticCycleCloseChange = cyclePreferences::setAutomaticClose,
                         onAutomaticCloseTimeChange = cyclePreferences::setAutomaticCloseTime,
+                        onModuleBarVisibleRoutesChange = moduleBarPreferences::setVisibleRoutes,
+                        onModuleBarShowLabelsChange = moduleBarPreferences::setShowLabels,
+                        onModuleBarLabelTextSizeChange = moduleBarPreferences::setLabelTextSize,
                     )
                 }
             }

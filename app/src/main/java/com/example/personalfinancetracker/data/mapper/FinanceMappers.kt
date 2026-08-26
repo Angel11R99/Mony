@@ -28,6 +28,7 @@ fun SavingsGoalWithSaved.toDomain() = SavingsGoalProgress(
         name = name,
         targetAmountInCents = targetAmountInCents,
         createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+        completedAt = completedAtEpochMillis?.let(Instant::ofEpochMilli),
     ),
     savedInCents = savedInCents,
 )

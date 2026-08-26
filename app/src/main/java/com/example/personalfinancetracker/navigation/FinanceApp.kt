@@ -1,5 +1,12 @@
 package com.example.personalfinancetracker.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,8 +38,27 @@ import com.example.personalfinancetracker.ui.theme.AppAppearance
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
 import java.time.LocalTime
 
+private const val TRANSITION_DURATION = 220
+
+private val fadeSlideEnter: EnterTransition =
+    fadeIn(tween(TRANSITION_DURATION)) + slideInVertically(
+        initialOffsetY = { it / 40 },
+        animationSpec = tween(TRANSITION_DURATION),
+    )
+
+private val fadeSlideExit: ExitTransition =
+    fadeOut(tween(TRANSITION_DURATION)) + slideOutVertically(
+        targetOffsetY = { it / 40 },
+        animationSpec = tween(TRANSITION_DURATION),
+    )
+
+private val fadeEnter: EnterTransition = fadeIn(tween(TRANSITION_DURATION))
+private val fadeExit: ExitTransition = fadeOut(tween(TRANSITION_DURATION))
+
 @Composable
 fun FinanceApp(
+    isDarkTheme: Boolean,
+    moduleBarConfig: FloatingModuleBarConfig,
     initialType: TransactionType? = null,
     initialDestination: String? = null,
     initialEdit: Pair<Long, TransactionType>? = null,
@@ -45,6 +71,9 @@ fun FinanceApp(
     onResetAppearance: () -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onAutomaticCloseTimeChange: (LocalTime) -> Unit,
+    onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
+    onModuleBarShowLabelsChange: (Boolean) -> Unit,
+    onModuleBarLabelTextSizeChange: (Float) -> Unit,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -83,7 +112,13 @@ fun FinanceApp(
                 bottom = systemBottomPadding + if (showModuleBar) 84.dp else 0.dp,
             ),
         ) {
-            composable("home") {
+            composable(
+                "home",
+                enterTransition = { fadeSlideEnter },
+                exitTransition = { fadeSlideExit },
+                popEnterTransition = { fadeSlideEnter },
+                popExitTransition = { fadeSlideExit },
+            ) {
                 HomeScreen(
                     automaticCycleClose = automaticCycleClose,
                     automaticCloseTime = automaticCloseTime,
@@ -95,6 +130,10 @@ fun FinanceApp(
             composable(
                 route = "add/{type}",
                 arguments = listOf(navArgument("type") { type = NavType.StringType }),
+                enterTransition = { fadeEnter },
+                exitTransition = { fadeExit },
+                popEnterTransition = { fadeEnter },
+                popExitTransition = { fadeExit },
             ) {
                 AddTransactionScreen(
                     onBack = { if (!navController.popBackStack()) navigateToModule("home") },
@@ -107,13 +146,23 @@ fun FinanceApp(
                     navArgument("type") { type = NavType.StringType },
                     navArgument("transactionId") { type = NavType.LongType },
                 ),
+                enterTransition = { fadeEnter },
+                exitTransition = { fadeExit },
+                popEnterTransition = { fadeEnter },
+                popExitTransition = { fadeExit },
             ) {
                 AddTransactionScreen(
                     onBack = { if (!navController.popBackStack()) navigateToModule("history") },
                     onSettings = { navController.navigate("settings") },
                 )
             }
-            composable("history") {
+            composable(
+                "history",
+                enterTransition = { fadeSlideEnter },
+                exitTransition = { fadeSlideExit },
+                popEnterTransition = { fadeSlideEnter },
+                popExitTransition = { fadeSlideExit },
+            ) {
                 HistoryScreen(
                     onEdit = { id, type ->
                         navController.navigate("edit/${type.name}/$id")
@@ -121,18 +170,44 @@ fun FinanceApp(
                     onSettings = { navController.navigate("settings") },
                 )
             }
-            composable("statistics") {
+            composable(
+                "statistics",
+                enterTransition = { fadeSlideEnter },
+                exitTransition = { fadeSlideExit },
+                popEnterTransition = { fadeSlideEnter },
+                popExitTransition = { fadeSlideExit },
+            ) {
                 StatisticsScreen(onSettings = { navController.navigate("settings") })
             }
-            composable("fixed") {
+            composable(
+                "fixed",
+                enterTransition = { fadeSlideEnter },
+                exitTransition = { fadeSlideExit },
+                popEnterTransition = { fadeSlideEnter },
+                popExitTransition = { fadeSlideExit },
+            ) {
                 FixedEntriesScreen(onSettings = { navController.navigate("settings") })
             }
-            composable("pending") {
+            composable(
+                "pending",
+                enterTransition = { fadeSlideEnter },
+                exitTransition = { fadeSlideExit },
+                popEnterTransition = { fadeSlideEnter },
+                popExitTransition = { fadeSlideExit },
+            ) {
                 PendingEntriesScreen(onSettings = { navController.navigate("settings") })
             }
-            composable("settings") {
+            composable(
+                "settings",
+                enterTransition = { fadeEnter },
+                exitTransition = { fadeExit },
+                popEnterTransition = { fadeEnter },
+                popExitTransition = { fadeExit },
+            ) {
                 SettingsScreen(
                     appearance = appearance,
+                    isDarkTheme = isDarkTheme,
+                    moduleBarConfig = moduleBarConfig,
                     automaticCycleClose = automaticCycleClose,
                     automaticCloseTime = automaticCloseTime,
                     onBack = { navController.popBackStack() },
@@ -142,9 +217,18 @@ fun FinanceApp(
                     onReset = onResetAppearance,
                     onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
                     onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
+                    onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
+                    onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
+                    onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
                 )
             }
-            composable("savings") {
+            composable(
+                "savings",
+                enterTransition = { fadeSlideEnter },
+                exitTransition = { fadeSlideExit },
+                popEnterTransition = { fadeSlideEnter },
+                popExitTransition = { fadeSlideExit },
+            ) {
                 SavingsScreen(
                     onSettings = { navController.navigate("settings") },
                 )
@@ -154,6 +238,7 @@ fun FinanceApp(
         if (showModuleBar) {
             FloatingModuleBar(
                 selectedRoute = currentRoute,
+                config = moduleBarConfig,
                 onNavigate = ::navigateToModule,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

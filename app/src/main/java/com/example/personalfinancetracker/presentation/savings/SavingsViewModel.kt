@@ -27,7 +27,10 @@ import javax.inject.Inject
 data class SavingsUiState(
     val goals: List<SavingsGoalProgress> = emptyList(),
     val savingsCategoryId: Long? = null,
-)
+) {
+    val activeGoals: List<SavingsGoalProgress> get() = goals.filter { it.isActive }
+    val completedGoals: List<SavingsGoalProgress> get() = goals.filter { !it.isActive }
+}
 
 @HiltViewModel
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -47,8 +50,11 @@ class SavingsViewModel @Inject constructor(
 
     val message = MutableStateFlow<String?>(null)
     val isSaving = MutableStateFlow(false)
-    private val pendingDeleteGoal = MutableStateFlow<SavingsGoalProgress?>(null)
+    private     val pendingDeleteGoal = MutableStateFlow<SavingsGoalProgress?>(null)
     val pendingDelete: StateFlow<SavingsGoalProgress?> = pendingDeleteGoal
+
+    val pendingCompleteGoal = MutableStateFlow<SavingsGoalProgress?>(null)
+    val pendingComplete: StateFlow<SavingsGoalProgress?> = pendingCompleteGoal
 
     val selectedGoal = MutableStateFlow<SavingsGoalProgress?>(null)
 
@@ -87,6 +93,27 @@ class SavingsViewModel @Inject constructor(
 
     fun cancelDelete() {
         pendingDeleteGoal.value = null
+    }
+
+    fun requestComplete(goal: SavingsGoalProgress) {
+        pendingCompleteGoal.value = goal
+    }
+
+    fun cancelComplete() {
+        pendingCompleteGoal.value = null
+    }
+
+    fun confirmComplete() {
+        val goal = pendingCompleteGoal.value ?: return
+        viewModelScope.launch {
+            runCatching { savings.complete(goal.goal.id) }
+                .onSuccess {
+                    message.value = "Meta completada."
+                    if (selectedGoal.value?.goal?.id == goal.goal.id) closeContributions()
+                }
+                .onFailure { message.value = "No se pudo completar la meta" }
+            pendingCompleteGoal.value = null
+        }
     }
 
     fun confirmDelete() {

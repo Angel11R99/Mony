@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -99,6 +100,8 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     appearance: AppAppearance,
+    isDarkTheme: Boolean,
+    moduleBarConfig: com.example.personalfinancetracker.navigation.FloatingModuleBarConfig,
     automaticCycleClose: Boolean,
     automaticCloseTime: LocalTime,
     onBack: () -> Unit,
@@ -108,6 +111,9 @@ fun SettingsScreen(
     onReset: () -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onAutomaticCloseTimeChange: (LocalTime) -> Unit,
+    onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
+    onModuleBarShowLabelsChange: (Boolean) -> Unit,
+    onModuleBarLabelTextSizeChange: (Float) -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     var editingColor by remember { mutableStateOf<ColorRole?>(null) }
@@ -149,33 +155,31 @@ fun SettingsScreen(
         Column(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            Surface(
+            Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(5.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    SettingsTab.entries.forEach { tab ->
-                        SettingsTabItem(
-                            tab = tab,
-                            selected = selectedTab == tab,
-                            onClick = { selectedTab = tab },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                SettingsTab.entries.forEach { tab ->
+                    SettingsTabItem(
+                        tab = tab,
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
             when (selectedTab) {
                 SettingsTab.APPEARANCE -> AppearanceTab(
                     appearance = appearance,
+                    isDarkTheme = isDarkTheme,
+                    moduleBarConfig = moduleBarConfig,
                     onThemeChange = onThemeChange,
                     onEditPrimary = { editingColor = ColorRole.PRIMARY },
                     onEditAccent = { editingColor = ColorRole.ACCENT },
                     onReset = onReset,
+                    onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
+                    onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
+                    onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
                 )
                 SettingsTab.CYCLES -> CyclesTab(
                     automaticCycleClose = automaticCycleClose,
@@ -199,6 +203,7 @@ fun SettingsScreen(
             title = if (role == ColorRole.PRIMARY) "Color principal" else "Color secundario",
             currentArgb = if (role == ColorRole.PRIMARY) appearance.primaryArgb else appearance.accentArgb,
             presets = if (role == ColorRole.PRIMARY) primaryPresets else accentPresets,
+            isDarkTheme = isDarkTheme,
             onDismiss = { editingColor = null },
             onSelect = {
                 if (role == ColorRole.PRIMARY) onPrimaryChange(it) else onAccentChange(it)
@@ -284,10 +289,15 @@ private fun SettingsTabItem(
 @Composable
 private fun AppearanceTab(
     appearance: AppAppearance,
+    isDarkTheme: Boolean,
+    moduleBarConfig: com.example.personalfinancetracker.navigation.FloatingModuleBarConfig,
     onThemeChange: (AppThemeMode) -> Unit,
     onEditPrimary: () -> Unit,
     onEditAccent: () -> Unit,
     onReset: () -> Unit,
+    onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
+    onModuleBarShowLabelsChange: (Boolean) -> Unit,
+    onModuleBarLabelTextSizeChange: (Float) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -354,6 +364,94 @@ private fun AppearanceTab(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Ingreso", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Text("−RD$2,000.00", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        item { SectionTitle("BARRA DE MÓDULOS", "Personaliza la barra de navegación inferior.") }
+        item {
+            FinanceCard(Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text("MÓDULOS VISIBLES", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                    com.example.personalfinancetracker.navigation.moduleDestinations.forEach { dest ->
+                        val isVisible = dest.route in moduleBarConfig.visibleRoutes
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(dest.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Text(dest.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            Switch(
+                                checked = isVisible,
+                                onCheckedChange = { enabled ->
+                                    val newRoutes = if (enabled) {
+                                        moduleBarConfig.visibleRoutes + dest.route
+                                    } else {
+                                        moduleBarConfig.visibleRoutes - dest.route
+                                    }
+                                    if (newRoutes.isNotEmpty()) onModuleBarVisibleRoutesChange(newRoutes)
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            FinanceCard(Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("Mostrar nombres", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Muestra el nombre del módulo debajo del icono.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = moduleBarConfig.showLabels,
+                            onCheckedChange = onModuleBarShowLabelsChange,
+                        )
+                    }
+                    if (moduleBarConfig.showLabels) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Tamaño del texto", style = MaterialTheme.typography.bodyMedium)
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                listOf(
+                                    "Pequeño" to com.example.personalfinancetracker.navigation.FloatingModuleBarPreferences.MIN_TEXT_SIZE,
+                                    "Normal" to 10f,
+                                    "Grande" to com.example.personalfinancetracker.navigation.FloatingModuleBarPreferences.MAX_TEXT_SIZE,
+                                ).forEach { (label, size) ->
+                                    FilterChip(
+                                        selected = moduleBarConfig.labelTextSize == size,
+                                        onClick = { onModuleBarLabelTextSizeChange(size) },
+                                        label = { Text(label) },
+                                        modifier = Modifier.weight(1f),
+                                        shape = MaterialTheme.shapes.small,
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                        ),
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -629,6 +727,7 @@ private fun ColorPickerDialog(
     title: String,
     currentArgb: Int,
     presets: List<Int>,
+    isDarkTheme: Boolean,
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
 ) {
@@ -641,7 +740,15 @@ private fun ColorPickerDialog(
     }
     val selectedArgb = selectedColor.toArgb()
 
+    val incompatiblePresets = remember(presets, isDarkTheme) {
+        presets.filter { presetArgb ->
+            val luminance = Color(presetArgb).luminance()
+            if (isDarkTheme) luminance < 0.18f else luminance > 0.65f
+        }.toSet()
+    }
+
     fun selectPreset(argb: Int) {
+        if (argb in incompatiblePresets) return
         val hsv = argb.toHsv()
         hue = hsv[0]
         saturation = hsv[1]
@@ -688,11 +795,22 @@ private fun ColorPickerDialog(
                 ) {
                     presets.forEach { argb ->
                         val selected = selectedArgb == argb
+                        val incompatible = argb in incompatiblePresets
                         Surface(
-                            modifier = Modifier.size(42.dp).clickable { selectPreset(argb) },
-                            color = Color(argb),
+                            modifier = Modifier
+                                .size(42.dp)
+                                .then(
+                                    if (incompatible) Modifier
+                                    else Modifier.clickable { selectPreset(argb) }
+                                ),
+                            color = Color(argb).copy(alpha = if (incompatible) 0.35f else 1f),
                             shape = CircleShape,
-                            border = BorderStroke(if (selected) 3.dp else 1.dp, if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline),
+                            border = BorderStroke(
+                                if (selected) 3.dp else 1.dp,
+                                if (selected) MaterialTheme.colorScheme.onSurface
+                                else if (incompatible) MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                                else MaterialTheme.colorScheme.outline,
+                            ),
                         ) {
                             if (selected) Box(contentAlignment = Alignment.Center) {
                                 Icon(
@@ -701,8 +819,23 @@ private fun ColorPickerDialog(
                                     tint = if (Color(argb).luminance() > 0.48f) Color.Black else Color.White,
                                 )
                             }
+                            if (incompatible) Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Outlined.Close,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
                         }
                     }
+                }
+                if (incompatiblePresets.isNotEmpty()) {
+                    Text(
+                        "Algunos colores no son compatibles con el tema actual por contraste.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         },

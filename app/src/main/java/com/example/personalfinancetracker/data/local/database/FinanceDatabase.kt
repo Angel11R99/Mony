@@ -19,7 +19,7 @@ import com.example.personalfinancetracker.data.local.entity.SavingsGoalEntity
 
 @Database(
     entities = [CategoryEntity::class, TransactionEntity::class, BudgetConfigEntity::class, BudgetCycleEntity::class, FixedEntryEntity::class, PendingEntryEntity::class, SavingsGoalEntity::class],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 abstract class FinanceDatabase : RoomDatabase() {

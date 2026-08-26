@@ -23,12 +23,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,12 +84,16 @@ fun SavingsScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
     val pendingDelete by viewModel.pendingDelete.collectAsStateWithLifecycle()
+    val pendingComplete by viewModel.pendingComplete.collectAsStateWithLifecycle()
     val selectedGoal by viewModel.selectedGoal.collectAsStateWithLifecycle()
     val contributions by viewModel.contributions.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showEditor by remember { mutableStateOf(false) }
     var editingGoal by remember { mutableStateOf<SavingsGoalProgress?>(null) }
     var contributingGoal by remember { mutableStateOf<SavingsGoalProgress?>(null) }
+    var showCompleted by rememberSaveable { mutableStateOf(false) }
+
+    val displayedGoals = if (showCompleted) state.completedGoals else state.activeGoals
 
     LaunchedEffect(message) {
         message?.let {
@@ -99,15 +107,17 @@ fun SavingsScreen(
             TopAppBar(
                 title = { ModuleTitle("Ahorros") },
                 actions = {
-                    GlobalOutlinedIconButton(
-                        icon = Icons.Outlined.Add,
-                        contentDescription = "Nueva meta",
-                        onClick = {
-                            editingGoal = null
-                            showEditor = true
-                        },
-                    )
-                    Spacer(Modifier.width(8.dp))
+                    if (!showCompleted) {
+                        GlobalOutlinedIconButton(
+                            icon = Icons.Outlined.Add,
+                            contentDescription = "Nueva meta",
+                            onClick = {
+                                editingGoal = null
+                                showEditor = true
+                            },
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
                     GlobalSettingsButton(onClick = onSettings)
                     Spacer(Modifier.width(14.dp))
                 },
@@ -124,6 +134,35 @@ fun SavingsScreen(
             contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = !showCompleted,
+                        onClick = { showCompleted = false },
+                        label = { Text("Activas (${state.activeGoals.size})", maxLines = 1) },
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    )
+                    FilterChip(
+                        selected = showCompleted,
+                        onClick = { showCompleted = true },
+                        label = { Text("Completadas (${state.completedGoals.size})", maxLines = 1) },
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    )
+                }
+            }
             if (state.goals.isEmpty()) {
                 item {
                     FinanceCard(Modifier.fillMaxWidth()) {
@@ -141,12 +180,26 @@ fun SavingsScreen(
                         }
                     }
                 }
+            } else if (displayedGoals.isEmpty()) {
+                item {
+                    FinanceCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                if (showCompleted) "No tienes metas completadas aún."
+                                else "No hay metas activas.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
             }
-            items(state.goals, key = { it.goal.id }) { goal ->
+            items(displayedGoals, key = { it.goal.id }) { goal ->
                 SavingsGoalCard(
                     progress = goal,
                     onOpen = { viewModel.openContributions(goal) },
                     onContribute = { contributingGoal = goal },
+                    onComplete = { viewModel.requestComplete(goal) },
                     onEdit = {
                         editingGoal = goal
                         showEditor = true
@@ -209,6 +262,31 @@ fun SavingsScreen(
             shape = MaterialTheme.shapes.medium,
         )
     }
+
+    pendingComplete?.let { goal ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelComplete,
+            icon = {
+                Icon(
+                    Icons.Outlined.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            },
+            title = { Text("¿Finalizar esta meta?") },
+            text = {
+                Text("La meta \"${goal.goal.name}\" será movida a Completadas.")
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmComplete) {
+                    Text("Finalizar")
+                }
+            },
+            dismissButton = { TextButton(onClick = viewModel::cancelComplete) { Text("Cancelar") } },
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.medium,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -217,12 +295,17 @@ private fun SavingsGoalCard(
     progress: SavingsGoalProgress,
     onOpen: () -> Unit,
     onContribute: () -> Unit,
+    onComplete: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val fraction =
         if (progress.goal.targetAmountInCents <= 0) 0f
         else progress.savedInCents.toFloat() / progress.goal.targetAmountInCents
+    val excessFraction =
+        if (progress.excessInCents > 0 && progress.goal.targetAmountInCents > 0)
+            (progress.excessInCents.toFloat() / progress.goal.targetAmountInCents).coerceAtMost(1f)
+        else 0f
     FinanceCard(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -234,24 +317,37 @@ private fun SavingsGoalCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        if (progress.isCompleted) "¡Meta cumplida!"
+                        if (progress.goal.completedAt != null) "Completada"
+                        else if (progress.isCompleted) "¡Meta cumplida!"
                         else "${progress.percent}% del objetivo",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (progress.isCompleted) MaterialTheme.colorScheme.primary
+                        color = if (progress.goal.completedAt != null || progress.isCompleted) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.secondary,
                     )
                 }
-                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Edit, "Editar ${progress.goal.name}", modifier = Modifier.size(20.dp))
+                if (progress.canComplete) {
+                    IconButton(onClick = onComplete, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Outlined.Check,
+                            contentDescription = "Finalizar ${progress.goal.name}",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Outlined.Delete,
-                        contentDescription = "Eliminar ${progress.goal.name}",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(20.dp),
-                    )
+                if (progress.isActive) {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Outlined.Edit, "Editar ${progress.goal.name}", modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = "Eliminar ${progress.goal.name}",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -266,19 +362,27 @@ private fun SavingsGoalCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (progress.excessInCents > 0) {
+                        Text(
+                            "Excedente: ${MoneyFormatter.format(progress.excessInCents)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
                 }
                 PrimaryButton(
                     text = "Aportar",
                     onClick = onContribute,
                 )
             }
-            GoalProgressBar(fraction.coerceIn(0f, 1f))
+            GoalProgressBar(fraction.coerceAtMost(1f), excessFraction)
         }
     }
 }
 
 @Composable
-private fun GoalProgressBar(ratio: Float) {
+private fun GoalProgressBar(ratio: Float, excessRatio: Float = 0f) {
     Box(
         Modifier.fillMaxWidth().height(8.dp).clip(MaterialTheme.shapes.extraSmall)
             .background(MaterialTheme.colorScheme.surface),
@@ -287,6 +391,12 @@ private fun GoalProgressBar(ratio: Float) {
             Modifier.fillMaxWidth(ratio).height(8.dp)
                 .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.extraSmall),
         )
+        if (excessRatio > 0f) {
+            Box(
+                Modifier.fillMaxWidth(excessRatio).height(8.dp)
+                    .background(MaterialTheme.colorScheme.tertiary, MaterialTheme.shapes.extraSmall),
+            )
+        }
     }
 }
 
@@ -347,6 +457,9 @@ private fun ContributeDialog(
 ) {
     var amount by remember(goal) { mutableStateOf("") }
     var description by remember(goal) { mutableStateOf("") }
+    val cents = MoneyFormatter.parseToCents(amount)
+    val remaining = (goal.goal.targetAmountInCents - goal.savedInCents).coerceAtLeast(0)
+    val showBreakdown = cents != null && cents > 0 && remaining > 0 && cents > remaining
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
         title = { Text("Aportar a ${goal.goal.name}") },
@@ -365,6 +478,21 @@ private fun ContributeDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     visualTransformation = AmountVisualTransformation,
                 )
+                if (showBreakdown) {
+                    FinanceCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Desglose del aporte", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Para la meta", style = MaterialTheme.typography.bodySmall)
+                                Text(MoneyFormatter.format(remaining), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Excedente", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                                Text(MoneyFormatter.format(cents!! - remaining), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+                            }
+                        }
+                    }
+                }
                 FinanceTextField(
                     description,
                     { description = it },
@@ -408,7 +536,14 @@ private fun ContributionsSheet(
                 Column(Modifier.weight(1f)) {
                     Text(goal.goal.name, style = MaterialTheme.typography.titleLarge)
                     Text(
-                        "${MoneyFormatter.format(goal.savedInCents)} aportados · ${contributions.size} " +
+                        "${MoneyFormatter.format(goal.savedForGoalInCents)} en la meta" +
+                            if (goal.excessInCents > 0) " · ${MoneyFormatter.format(goal.excessInCents)} excedente"
+                            else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "${contributions.size} " +
                             if (contributions.size == 1) "aporte" else "aportes",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

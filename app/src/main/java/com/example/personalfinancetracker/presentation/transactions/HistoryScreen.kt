@@ -31,7 +31,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
@@ -225,8 +225,8 @@ fun HistoryScreen(
                     )
                     Spacer(Modifier.width(6.dp))
                     GlobalOutlinedIconButton(
-                        icon = Icons.Outlined.PictureAsPdf,
-                        contentDescription = "Generar PDF del historial",
+                        icon = Icons.Outlined.Share,
+                        contentDescription = "Compartir historial",
                         onClick = {
                             pdfScopeAllHistory = false
                             showPdfScopeDialog = true
@@ -447,7 +447,7 @@ fun HistoryScreen(
             onDismissRequest = { showPdfScopeDialog = false },
             icon = {
                 Icon(
-                    Icons.Outlined.PictureAsPdf,
+                    Icons.Outlined.Share,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                 )

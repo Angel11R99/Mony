@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,7 +34,9 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 internal data class ModuleDestination(
     val label: String,
@@ -53,11 +56,14 @@ internal val moduleDestinations = listOf(
 @Composable
 internal fun FloatingModuleBar(
     selectedRoute: String?,
+    config: FloatingModuleBarConfig,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val visibleDestinations = rememberVisibleDestinations(config.visibleRoutes)
+    val barHeight = if (config.showLabels) 68.dp else 62.dp
     Surface(
-        modifier = modifier.fillMaxWidth().height(62.dp),
+        modifier = modifier.fillMaxWidth().height(barHeight),
         shape = MaterialTheme.shapes.large,
         color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
@@ -66,11 +72,13 @@ internal fun FloatingModuleBar(
             modifier = Modifier.fillMaxSize().padding(horizontal = 5.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            moduleDestinations.forEach { destination ->
+            visibleDestinations.forEach { destination ->
                 val selected = isModuleSelected(destination.route, selectedRoute)
                 ModuleItem(
                     destination = destination,
                     selected = selected,
+                    showLabel = config.showLabels,
+                    labelTextSize = config.labelTextSize,
                     onClick = { onNavigate(destination.route) },
                     modifier = Modifier.weight(1f),
                 )
@@ -78,6 +86,10 @@ internal fun FloatingModuleBar(
         }
     }
 }
+
+@Composable
+private fun rememberVisibleDestinations(visibleRoutes: Set<String>): List<ModuleDestination> =
+    moduleDestinations.filter { it.route in visibleRoutes }
 
 internal fun isModuleSelected(
     moduleRoute: String,
@@ -88,6 +100,8 @@ internal fun isModuleSelected(
 private fun ModuleItem(
     destination: ModuleDestination,
     selected: Boolean,
+    showLabel: Boolean,
+    labelTextSize: Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -120,5 +134,14 @@ private fun ModuleItem(
             modifier = Modifier.size(21.dp).scale(iconScale),
             tint = contentColor,
         )
+        if (showLabel) {
+            Text(
+                text = destination.label,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = labelTextSize.sp),
+                color = contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }

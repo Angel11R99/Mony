@@ -9,4 +9,5 @@ data class SavingsGoalEntity(
     val name: String,
     val targetAmountInCents: Long,
     val createdAtEpochMillis: Long,
+    val completedAtEpochMillis: Long? = null,
 )
