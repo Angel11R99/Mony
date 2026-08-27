@@ -134,6 +134,7 @@ fun ShoppingListScreen(
     var priceTarget by remember { mutableStateOf<ShoppingListItem?>(null) }
     var scanPurpose by remember { mutableStateOf<DocumentScanPurpose?>(null) }
     var priceCandidates by remember { mutableStateOf<List<OcrMoneyCandidate>>(emptyList()) }
+    var ocrExtractedName by remember { mutableStateOf("") }
     var ticketDrafts by remember { mutableStateOf<List<TicketDraftUi>>(emptyList()) }
     var reviewingMissingPrices by remember { mutableStateOf(false) }
     var pendingDeleteItem by remember { mutableStateOf<ShoppingListItem?>(null) }
@@ -151,6 +152,7 @@ fun ShoppingListScreen(
                         when (purpose) {
                             DocumentScanPurpose.PRICE -> {
                                 priceCandidates = ListOcrMoneyParser.extractCandidates(result.text)
+                                ocrExtractedName = extractProductNameFromOcr(result.text)
                                 if (priceCandidates.isEmpty()) notify("No se encontraron precios en la imagen.")
                             }
                             DocumentScanPurpose.TICKET -> {
@@ -381,8 +383,11 @@ fun ShoppingListScreen(
     ) }
     if (priceCandidates.isNotEmpty()) PriceCandidatesDialog(priceCandidates, { priceCandidates = emptyList() }) { candidate ->
         val item = priceTarget
-        if (item != null) itemEditor = ItemEditorData(item, actual = centsInput(candidate.amountInCents))
-        priceCandidates = emptyList(); priceTarget = null
+        if (item != null) {
+            val itemName = item.name.ifBlank { ocrExtractedName }
+            itemEditor = ItemEditorData(item, name = itemName, actual = centsInput(candidate.amountInCents))
+        }
+        priceCandidates = emptyList(); priceTarget = null; ocrExtractedName = ""
     }
     if (ticketDrafts.isNotEmpty()) TicketCandidatesDialog(
         ticketDrafts, { ticketDrafts = it }, { ticketDrafts = emptyList() },
@@ -669,4 +674,19 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
+}
+
+private fun extractProductNameFromOcr(text: String): String {
+    val skipPatterns = listOf(
+        Regex("(?i)^\\s*(RD\\$|\\$)"),
+        Regex("^\\s*\\d+[.,]\\d{2}\\s*$"),
+        Regex("^\\s*\\d+\\s*$"),
+        Regex("(?i)^\\s*(compartir|añadir|carrito|agregar|share|add|cart)\\s*$"),
+        Regex("(?i)^\\s*(producto|product|precio|price|total|subtotal|itbis)\\s*$"),
+    )
+    val meaningfulLines = text.lines()
+        .map { it.trim() }
+        .filter { it.length >= 3 }
+        .filter { line -> skipPatterns.none { it.containsMatchIn(line) } }
+    return meaningfulLines.maxByOrNull { it.length }?.trim().orEmpty()
 }
