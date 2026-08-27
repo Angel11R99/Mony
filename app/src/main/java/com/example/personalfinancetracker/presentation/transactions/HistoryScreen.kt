@@ -28,8 +28,10 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Restore
@@ -136,6 +138,12 @@ fun HistoryScreen(
     var sort by remember { mutableStateOf(HistorySort.NEWEST) }
     var query by remember { mutableStateOf("") }
     var cycleFilter by remember { mutableStateOf<HistoryCycleFilter>(HistoryCycleFilter.All) }
+    var showFilters by remember { mutableStateOf(false) }
+    var draftType by remember { mutableStateOf(typeFilter) }
+    var draftCategoryId by remember { mutableStateOf(categoryId) }
+    var draftStart by remember { mutableStateOf(startDate) }
+    var draftEnd by remember { mutableStateOf(endDate) }
+    var draftCycle by remember { mutableStateOf(cycleFilter) }
     var pendingDelete by remember { mutableStateOf<FinanceTransaction?>(null) }
     var pendingDuplicate by remember { mutableStateOf<FinanceTransaction?>(null) }
     var selectedTransaction by remember { mutableStateOf<FinanceTransaction?>(null) }
@@ -289,37 +297,54 @@ fun HistoryScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
             item {
-                HistoryFilters(
-                    query = query,
-                    onQueryChange = { query = it },
+                HistoryFilterButton(
                     typeFilter = typeFilter,
-                    onTypeChange = { typeFilter = it },
-                    categories = availableCategories,
-                    categoryId = categoryId,
-                    onCategoryChange = { categoryId = it },
-                    startDate = startDate,
-                    onStartDateChange = { selected ->
-                        startDate = selected
-                        if (endDate != null && selected != null && endDate!!.isBefore(selected)) endDate = selected
-                    },
-                    endDate = endDate,
-                    onEndDateChange = { selected ->
-                        endDate = selected
-                        if (startDate != null && selected != null && startDate!!.isAfter(selected)) startDate = selected
-                    },
-                    sort = sort,
-                    onSortChange = { sort = it },
                     cycleFilter = cycleFilter,
-                    onCycleChange = { cycleFilter = it },
-                    cycleOptions = cycleOptions,
-                    onClear = {
-                        typeFilter = HistoryTypeFilter.ALL
-                        categoryId = null
-                        startDate = null
-                        endDate = null
-                        cycleFilter = HistoryCycleFilter.All
+                    categoryId = categoryId,
+                    categories = state.categories,
+                    startDate = startDate,
+                    endDate = endDate,
+                    onClick = {
+                        draftType = typeFilter
+                        draftCycle = cycleFilter
+                        draftCategoryId = categoryId
+                        draftStart = startDate
+                        draftEnd = endDate
+                        showFilters = true
                     },
                 )
+            }
+            item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    FinanceTextField(
+                        query,
+                        { query = it },
+                        "Buscar",
+                        modifier = Modifier.weight(1f),
+                        placeholder = "Buscar movimientos...",
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (query.isNotBlank()) {
+                                IconButton(
+                                    onClick = { query = "" },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Close,
+                                        contentDescription = "Limpiar búsqueda",
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+                        },
+                    )
+                    HistorySortMenu(sort = sort, onSortChange = { sort = it })
+                }
             }
             item {
                 FilterSummary(
@@ -365,6 +390,46 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+
+    if (showFilters) {
+        HistoryFilterSheet(
+            availableCategories = availableCategories,
+            categoryId = draftCategoryId,
+            onCategoryChange = { draftCategoryId = it },
+            startDate = draftStart,
+            onStartDateChange = { selected ->
+                draftStart = selected
+                if (draftEnd != null && selected != null && draftEnd!!.isBefore(selected)) draftEnd = selected
+            },
+            endDate = draftEnd,
+            onEndDateChange = { selected ->
+                draftEnd = selected
+                if (draftStart != null && selected != null && draftStart!!.isAfter(selected)) draftStart = selected
+            },
+            typeFilter = draftType,
+            onTypeChange = { draftType = it },
+            cycleFilter = draftCycle,
+            onCycleChange = { draftCycle = it },
+            cycleOptions = cycleOptions,
+            onClear = {
+                draftType = HistoryTypeFilter.ALL
+                draftCategoryId = null
+                draftStart = null
+                draftEnd = null
+                draftCycle = HistoryCycleFilter.All
+            },
+            onApply = {
+                typeFilter = draftType
+                categoryId = draftCategoryId
+                startDate = draftStart
+                endDate = draftEnd
+                cycleFilter = draftCycle
+                if (categoryId != null && availableCategories.none { it.id == categoryId }) categoryId = null
+                showFilters = false
+            },
+            onDismiss = { showFilters = false },
+        )
     }
 
     pendingDelete?.let { transaction ->
@@ -589,129 +654,73 @@ fun HistoryScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HistoryFilters(
-    query: String,
-    onQueryChange: (String) -> Unit,
+private fun HistoryFilterButton(
     typeFilter: HistoryTypeFilter,
-    onTypeChange: (HistoryTypeFilter) -> Unit,
-    categories: List<Category>,
-    categoryId: Long?,
-    onCategoryChange: (Long?) -> Unit,
-    startDate: LocalDate?,
-    onStartDateChange: (LocalDate?) -> Unit,
-    endDate: LocalDate?,
-    onEndDateChange: (LocalDate?) -> Unit,
-    sort: HistorySort,
-    onSortChange: (HistorySort) -> Unit,
     cycleFilter: HistoryCycleFilter,
-    onCycleChange: (HistoryCycleFilter) -> Unit,
-    cycleOptions: List<HistoryCycleFilter>,
-    onClear: () -> Unit,
+    categoryId: Long?,
+    categories: Map<Long, Category>,
+    startDate: LocalDate?,
+    endDate: LocalDate?,
+    onClick: () -> Unit,
 ) {
-    var showAdvancedFilters by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HistoryTypeFilter.entries.forEach { option ->
-                FilterChip(
-                    selected = typeFilter == option,
-                    onClick = { onTypeChange(option) },
-                    label = { Text(option.label, maxLines = 1) },
-                    modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.shapes.small,
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                )
-            }
-        }
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            FinanceTextField(
-                query,
-                onQueryChange,
-                "Buscar",
-                modifier = Modifier.weight(1f),
-                placeholder = "Buscar movimientos...",
-                singleLine = true,
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (query.isNotBlank()) {
-                        IconButton(
-                            onClick = { onQueryChange("") },
-                            modifier = Modifier.size(32.dp),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Close,
-                                contentDescription = "Limpiar búsqueda",
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
-                },
-            )
-            GlobalOutlinedIconButton(
-                icon = Icons.Outlined.Menu,
-                contentDescription = "Filtros avanzados",
-                onClick = { showAdvancedFilters = true },
-                size = 56.dp,
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            HistorySortMenu(sort = sort, onSortChange = onSortChange)
-            TextButton(onClick = {
-                onQueryChange("")
-                onClear()
-            }) {
-                Text("Limpiar filtros")
-            }
-        }
+    val categoryLabel = categoryId?.let { categories[it]?.name } ?: "Todas categorías"
+    val formatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    val dateLabel = when {
+        startDate != null && endDate != null -> "${startDate.format(formatter)} – ${endDate.format(formatter)}"
+        startDate != null -> "Desde ${startDate.format(formatter)}"
+        endDate != null -> "Hasta ${endDate.format(formatter)}"
+        else -> null
     }
-    if (showAdvancedFilters) {
-        HistoryAdvancedFiltersSheet(
-            categories = categories,
-            categoryId = categoryId,
-            onCategoryChange = onCategoryChange,
-            startDate = startDate,
-            onStartDateChange = onStartDateChange,
-            endDate = endDate,
-            onEndDateChange = onEndDateChange,
-            cycleFilter = cycleFilter,
-            onCycleChange = onCycleChange,
-            cycleOptions = cycleOptions,
-            onDismiss = { showAdvancedFilters = false },
-        )
+    val subtitleParts = buildList {
+        add(typeFilter.label)
+        add(cycleFilter.label)
+        add(categoryLabel)
+        dateLabel?.let { add(it) }
+    }
+    val subtitle = subtitleParts.joinToString(" · ")
+    androidx.compose.material3.OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+        shape = MaterialTheme.shapes.small,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+    ) {
+        Icon(Icons.Outlined.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
+            Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+        }
+        Icon(Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HistoryAdvancedFiltersSheet(
-    categories: List<Category>,
+private fun HistoryFilterSheet(
+    availableCategories: List<Category>,
     categoryId: Long?,
     onCategoryChange: (Long?) -> Unit,
     startDate: LocalDate?,
     onStartDateChange: (LocalDate?) -> Unit,
     endDate: LocalDate?,
     onEndDateChange: (LocalDate?) -> Unit,
+    typeFilter: HistoryTypeFilter,
+    onTypeChange: (HistoryTypeFilter) -> Unit,
     cycleFilter: HistoryCycleFilter,
     onCycleChange: (HistoryCycleFilter) -> Unit,
     cycleOptions: List<HistoryCycleFilter>,
+    onClear: () -> Unit,
+    onApply: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var categoryExpanded by remember { mutableStateOf(false) }
-    var categorySearch by remember { mutableStateOf("") }
-    val matchingCategories = remember(categories, categorySearch) {
-        searchCategories(categories, categorySearch)
+    var categorySearch by remember(categoryId, availableCategories) {
+        mutableStateOf(availableCategories.firstOrNull { it.id == categoryId }?.name.orEmpty())
+    }
+    val matchingCategories = remember(availableCategories, categorySearch, categoryId) {
+        if (categoryId != null) availableCategories
+        else searchCategories(availableCategories, categorySearch)
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -743,11 +752,26 @@ private fun HistoryAdvancedFiltersSheet(
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text("TIPO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HistoryTypeFilter.entries.forEach { option ->
+                    FilterChip(
+                        selected = typeFilter == option,
+                        onClick = { onTypeChange(option) },
+                        label = { Text(option.label) },
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small,
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary, selectedLabelColor = MaterialTheme.colorScheme.onPrimary),
+                    )
+                }
+            }
+            Text("CICLO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             HistoryCycleMenu(
                 selected = cycleFilter,
                 options = cycleOptions,
                 onSelect = onCycleChange,
             )
+            Text("CATEGORÍA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             ExposedDropdownMenuBox(
                 expanded = categoryExpanded,
                 onExpandedChange = { categoryExpanded = it },
@@ -823,6 +847,10 @@ private fun HistoryAdvancedFiltersSheet(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 HistoryDateField("Desde", startDate, onStartDateChange, Modifier.weight(1f))
                 HistoryDateField("Hasta", endDate, onEndDateChange, Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SecondaryButton("Limpiar", onClear, Modifier.weight(1f))
+                PrimaryButton("Aplicar", onApply, Modifier.weight(1f))
             }
         }
     }
