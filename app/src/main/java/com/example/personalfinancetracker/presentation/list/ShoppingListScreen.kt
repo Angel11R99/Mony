@@ -99,7 +99,7 @@ import java.util.Locale
 
 private enum class DocumentScanPurpose { PRICE, TICKET }
 
-private data class ItemEditorData(val item: ShoppingListItem?, val barcode: String = "", val name: String = "", val actual: String = "")
+private data class ItemEditorData(val item: ShoppingListItem?, val barcode: String = "", val name: String = "", val actual: String = "", val editorKey: Long = System.nanoTime())
 
 private data class TicketDraftUi(
     val source: TicketAmountCandidate,
