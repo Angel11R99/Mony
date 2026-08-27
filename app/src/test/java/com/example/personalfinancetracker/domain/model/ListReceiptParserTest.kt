@@ -132,6 +132,19 @@ class ListReceiptParserTest {
         assertEquals("Leche Evaporada Carnation", result.candidates.single().productName)
     }
 
+    @Test fun `joins consecutive description lines above a price`() {
+        val result = ListTicketParser.parse(
+            "Leche Evaporada Carnation Queso\n135ml\n64.95",
+            listOf(
+                TicketOcrLine("Leche Evaporada Carnation Queso", left = 20, top = 100, right = 330, bottom = 125),
+                TicketOcrLine("135ml", left = 20, top = 130, right = 85, bottom = 155),
+                TicketOcrLine("64.95", left = 420, top = 160, right = 500, bottom = 185),
+            ),
+        )
+
+        assertEquals("Leche Evaporada Carnation Queso 135ml", result.candidates.single().productName)
+    }
+
     @Test fun `candidate can be edited immutably without parser assumptions`() {
         val parsed = ListTicketParser.parse("Total 100.00").candidates.single()
         val edited = parsed.copy(amountInCents = 9_900, kind = TicketAmountKind.SUBTOTAL)

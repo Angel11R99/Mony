@@ -78,7 +78,7 @@ object ListTicketParser {
         var pendingLabel: TicketAmountKind? = null
         var pendingLine = ""
         var pendingLineIndex = -1
-        var pendingProductName: String? = null
+        val pendingProductLines = mutableListOf<String>()
 
         for ((index, rawLine) in text.lineSequence().withIndex()) {
             val line = rawLine.trim()
@@ -92,7 +92,7 @@ object ListTicketParser {
 
             if (isLabeledLine) {
                 pendingLabel = null
-                pendingProductName = null
+                pendingProductLines.clear()
                 for (amount in amounts) {
                     labeledCandidates += TicketAmountCandidate(amount.amountInCents, label, line, index)
                 }
@@ -100,23 +100,23 @@ object ListTicketParser {
                 pendingLabel = label
                 pendingLine = line
                 pendingLineIndex = index
-                pendingProductName = null
+                pendingProductLines.clear()
             } else if (isAmountOnlyLine && pendingLabel != null) {
                 for (amount in amounts) {
                     labeledCandidates += TicketAmountCandidate(amount.amountInCents, pendingLabel, pendingLine, pendingLineIndex)
                     labeledCandidates += TicketAmountCandidate(amount.amountInCents, TicketAmountKind.MONTO_DETECTADO, line, index)
                 }
                 pendingLabel = null
-                pendingProductName = null
+                pendingProductLines.clear()
             } else if (isAmountOnlyLine) {
-                val productName = extractProductName(line) ?: pendingProductName
+                val productName = extractProductName(line) ?: pendingProductLines.joinToString(" ").ifBlank { null }
                 for (amount in amounts) {
                     labeledCandidates += TicketAmountCandidate(amount.amountInCents, TicketAmountKind.PRODUCTO, line, index, productName = productName)
                 }
-                pendingProductName = null
+                pendingProductLines.clear()
             } else {
                 pendingLabel = null
-                pendingProductName = line.takeIf(::isProductDescription)
+                line.takeIf(::isProductDescription)?.let(pendingProductLines::add)
             }
         }
 
@@ -165,14 +165,31 @@ object ListTicketParser {
         val matchingSourceLines = priceLines.filter { it.text.trim() == candidate.sourceLine.trim() }
         val priceLine = (matchingSourceLines.ifEmpty { priceLines }).firstOrNull() ?: return null
 
-        return ocrLines
-            .asSequence()
-            .filter { it != priceLine && ListOcrMoneyParser.extractCandidates(it.text).isEmpty() }
-            .filter { isProductDescription(it.text.trim()) }
+        val descriptionLines = ocrLines.filter {
+            it != priceLine &&
+                ListOcrMoneyParser.extractCandidates(it.text).isEmpty() &&
+                isProductDescription(it.text.trim())
+        }
+        val anchor = descriptionLines
             .filter { isOnSameVisualRow(priceLine, it) }
             .minByOrNull { distanceBetween(priceLine, it) }
-            ?.text
-            ?.trim()
+            ?: descriptionLines
+                .filter { it.bottom <= priceLine.top && isCloseAbove(priceLine, it) }
+                .minByOrNull { priceLine.top - it.bottom }
+            ?: return null
+
+        val parts = mutableListOf(anchor.text.trim())
+        var current = anchor
+        while (true) {
+            val previous = descriptionLines
+                .filter { it.bottom <= current.top }
+                .filter { isCloseAbove(current, it) && isInSameDescriptionColumn(current, it) }
+                .minByOrNull { current.top - it.bottom }
+                ?: break
+            parts += previous.text.trim()
+            current = previous
+        }
+        return parts.asReversed().joinToString(" ")
     }
 
     private fun isOnSameVisualRow(first: TicketOcrLine, second: TicketOcrLine): Boolean {
@@ -192,6 +209,15 @@ object ListTicketParser {
         val secondCenter = (second.top + second.bottom) / 2.0
         return horizontalGap + kotlin.math.abs(firstCenter - secondCenter) * 2
     }
+
+    private fun isCloseAbove(lower: TicketOcrLine, upper: TicketOcrLine): Boolean {
+        val largestHeight = maxOf(lower.bottom - lower.top, upper.bottom - upper.top).coerceAtLeast(1)
+        return lower.top - upper.bottom <= largestHeight * 4
+    }
+
+    private fun isInSameDescriptionColumn(first: TicketOcrLine, second: TicketOcrLine): Boolean =
+        first.left <= second.right && second.left <= first.right ||
+            kotlin.math.abs(first.left - second.left) <= maxOf(first.right - first.left, second.right - second.left) / 2
 
     private fun classifyLabelOnly(line: String): TicketAmountKind? {
         val normalized = normalizeProductName(line)
