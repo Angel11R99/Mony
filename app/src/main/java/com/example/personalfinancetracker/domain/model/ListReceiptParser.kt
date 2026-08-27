@@ -145,15 +145,28 @@ object ListTicketParser {
             result = result.replace(candidate.rawValue, "")
         }
         result = result.replace(Regex("(?i)RD\\$|\\$"), "")
+            .replace(Regex("(?i)^\\s*\\d+\\s*(?:x|u|und\\.?)\\s+"), "")
             .replace(Regex("\\s+"), " ")
             .trim()
-        return result.ifBlank { null }
+        return result.takeIf(::isProductDescription)
     }
 
     private fun isProductDescription(line: String): Boolean =
         line.any(Char::isLetter) &&
-            !Regex("(?i)^\\s*(descripcion|descripción|producto|product|cantidad|cant\\.?|precio|price)\\s*$")
-                .matches(line)
+            !ignoredProductText.matches(line.trim()) &&
+            !skuOnlyText.matches(line.trim())
+
+    private val ignoredProductText = Regex(
+        "(?i)^\\s*(" +
+            "descripcion|descripción|producto|product|cantidad|cant\\.?|precio|price|" +
+            "subtotal|total|itbis|impuesto|tax|descuento|discount|rebaja|" +
+            "envio|envío|delivery|shipping|servicio|propina|service|tip|" +
+            "rd\\$|\\$|compartir|share|añadir(?: al)? carrito|agregar(?: al)? carrito|" +
+            "mi carrito|carrito|ayuda|ingresar|inicio|eliminar|remove|add|cart" +
+            ")\\s*$",
+    )
+
+    private val skuOnlyText = Regex("^[A-Z]{2,}\\d{3,}[A-Z0-9-]*$")
 
     private fun findProductNameByPosition(
         candidate: TicketAmountCandidate,
@@ -164,6 +177,7 @@ object ListTicketParser {
         }
         val matchingSourceLines = priceLines.filter { it.text.trim() == candidate.sourceLine.trim() }
         val priceLine = (matchingSourceLines.ifEmpty { priceLines }).firstOrNull() ?: return null
+        extractProductName(priceLine.text)?.let { return it }
 
         val descriptionLines = ocrLines.filter {
             it != priceLine &&

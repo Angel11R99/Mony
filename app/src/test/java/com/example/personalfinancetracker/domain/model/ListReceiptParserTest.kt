@@ -145,6 +145,33 @@ class ListReceiptParserTest {
         assertEquals("Leche Evaporada Carnation Queso 135ml", result.candidates.single().productName)
     }
 
+    @Test fun `joins three description lines and ignores nearby share control`() {
+        val result = ListTicketParser.parse(
+            "Leche Evaporada\nCarnation sabor queso\n135ml\nCompartir\n64.95",
+            listOf(
+                TicketOcrLine("Leche Evaporada", left = 20, top = 100, right = 220, bottom = 125),
+                TicketOcrLine("Carnation sabor queso", left = 20, top = 130, right = 250, bottom = 155),
+                TicketOcrLine("135ml", left = 20, top = 160, right = 85, bottom = 185),
+                TicketOcrLine("Compartir", left = 360, top = 190, right = 450, bottom = 215),
+                TicketOcrLine("64.95", left = 420, top = 220, right = 500, bottom = 245),
+            ),
+        )
+
+        assertEquals("Leche Evaporada Carnation sabor queso 135ml", result.candidates.single().productName)
+    }
+
+    @Test fun `removes quantity prefix from a description on the price line`() {
+        val result = ListTicketParser.parse("2 x Leche Evaporada 64.95")
+
+        assertEquals("Leche Evaporada", result.candidates.single().productName)
+    }
+
+    @Test fun `does not use controls headers or sku as product description`() {
+        val result = ListTicketParser.parse("Producto\nABX12345\nCompartir\n64.95")
+
+        assertEquals(null, result.candidates.single().productName)
+    }
+
     @Test fun `candidate can be edited immutably without parser assumptions`() {
         val parsed = ListTicketParser.parse("Total 100.00").candidates.single()
         val edited = parsed.copy(amountInCents = 9_900, kind = TicketAmountKind.SUBTOTAL)
