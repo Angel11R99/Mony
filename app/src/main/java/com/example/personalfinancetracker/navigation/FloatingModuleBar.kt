@@ -6,14 +6,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -71,12 +70,11 @@ internal fun FloatingModuleBar(
         color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        LazyRow(
+        Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 5.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            items(visibleDestinations.size, key = { visibleDestinations[it].route }) { index ->
-                val destination = visibleDestinations[index]
+            visibleDestinations.forEach { destination ->
                 val selected = isModuleSelected(destination.route, selectedRoute)
                 ModuleItem(
                     destination = destination,
@@ -84,7 +82,7 @@ internal fun FloatingModuleBar(
                     showLabel = config.showLabels,
                     labelTextSize = config.labelTextSize,
                     onClick = { onNavigate(destination.route) },
-                    modifier = Modifier.width(if (config.showLabels) 86.dp else 58.dp),
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
