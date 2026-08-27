@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -17,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.getValue
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.core.CyclePreferences
+import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.navigation.FinanceApp
 import com.example.personalfinancetracker.navigation.FloatingModuleBarPreferences
 import com.example.personalfinancetracker.ui.theme.PersonalFinanceTrackerTheme
@@ -44,6 +46,21 @@ class MainActivity : ComponentActivity() {
                 AppThemeMode.SYSTEM -> systemDark
                 AppThemeMode.LIGHT -> false
                 AppThemeMode.DARK -> true
+            }
+            LaunchedEffect(useDarkTheme) {
+                val result = appearancePreferences.ensureColorsCompatible(useDarkTheme)
+                if (result != null && result.anyChanged) {
+                    runCatching { updateAllFinanceWidgets(applicationContext) }
+                    val message = when {
+                        result.primaryChanged && result.accentChanged ->
+                            "Colores ajustados automáticamente por contraste con el tema."
+                        result.primaryChanged ->
+                            "Color principal ajustado automáticamente por contraste con el tema."
+                        else ->
+                            "Color secundario ajustado automáticamente por contraste con el tema."
+                    }
+                    applicationContext.showToast(message)
+                }
             }
             SideEffect {
                 WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -77,8 +94,24 @@ class MainActivity : ComponentActivity() {
                         automaticCycleClose = automaticCycleClose,
                         automaticCloseTime = automaticCloseTime,
                         onThemeChange = {
-                            appearancePreferences.setThemeMode(it)
+                            val targetDark = when (it) {
+                                AppThemeMode.SYSTEM -> systemDark
+                                AppThemeMode.LIGHT -> false
+                                AppThemeMode.DARK -> true
+                            }
+                            val result = appearancePreferences.setThemeModeWithAutoCorrection(it, targetDark)
                             lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
+                            if (result.anyChanged) {
+                                val message = when {
+                                    result.primaryChanged && result.accentChanged ->
+                                        "Tema cambiado. Colores ajustados automáticamente por contraste."
+                                    result.primaryChanged ->
+                                        "Tema cambiado. Color principal ajustado automáticamente por contraste."
+                                    else ->
+                                        "Tema cambiado. Color secundario ajustado automáticamente por contraste."
+                                }
+                                applicationContext.showToast(message)
+                            }
                         },
                         onPrimaryChange = {
                             appearancePreferences.setPrimaryColor(it)

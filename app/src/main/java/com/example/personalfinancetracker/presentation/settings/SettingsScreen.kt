@@ -92,6 +92,9 @@ import com.example.personalfinancetracker.domain.model.BudgetPeriod
 import com.example.personalfinancetracker.domain.model.defaultCycleSchedules
 import com.example.personalfinancetracker.ui.theme.AppAppearance
 import com.example.personalfinancetracker.ui.theme.AppThemeMode
+import com.example.personalfinancetracker.ui.theme.accentPresets
+import com.example.personalfinancetracker.ui.theme.isColorCompatible
+import com.example.personalfinancetracker.ui.theme.primaryPresets
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -741,14 +744,10 @@ private fun ColorPickerDialog(
     val selectedArgb = selectedColor.toArgb()
 
     val incompatiblePresets = remember(presets, isDarkTheme) {
-        presets.filter { presetArgb ->
-            val luminance = Color(presetArgb).luminance()
-            if (isDarkTheme) luminance < 0.18f else luminance > 0.65f
-        }.toSet()
+        presets.filter { presetArgb -> !isColorCompatible(presetArgb, isDarkTheme) }.toSet()
     }
     val isCustomColorIncompatible = remember(selectedArgb, isDarkTheme) {
-        val luminance = Color(selectedArgb).luminance()
-        if (isDarkTheme) luminance < 0.18f else luminance > 0.65f
+        !isColorCompatible(selectedArgb, isDarkTheme)
     }
 
     fun selectPreset(argb: Int) {
@@ -949,14 +948,3 @@ private val AppThemeMode.label: String
         AppThemeMode.LIGHT -> "Claro"
         AppThemeMode.DARK -> "Oscuro"
     }
-
-private val primaryPresets = listOf(
-    0xFF7C3AED.toInt(), 0xFF2563EB.toInt(), 0xFF0891B2.toInt(), 0xFF059669.toInt(),
-    0xFFCA8A04.toInt(), 0xFFEA580C.toInt(), 0xFFDB2777.toInt(), 0xFF52525B.toInt(),
-    0xFFFFFFFF.toInt(), 0xFF78350F.toInt(),
-)
-private val accentPresets = listOf(
-    0xFFFF6B73.toInt(), 0xFFDC2626.toInt(), 0xFFF97316.toInt(), 0xFFDB2777.toInt(),
-    0xFF9333EA.toInt(), 0xFF2563EB.toInt(), 0xFF0D9488.toInt(), 0xFF52525B.toInt(),
-    0xFFFFFFFF.toInt(), 0xFF65A30D.toInt(),
-)
