@@ -69,6 +69,7 @@ object ListTicketParser {
         var pendingLabel: TicketAmountKind? = null
         var pendingLine = ""
         var pendingLineIndex = -1
+        var pendingProductName: String? = null
 
         for ((index, rawLine) in text.lineSequence().withIndex()) {
             val line = rawLine.trim()
@@ -82,6 +83,7 @@ object ListTicketParser {
 
             if (isLabeledLine) {
                 pendingLabel = null
+                pendingProductName = null
                 for (amount in amounts) {
                     labeledCandidates += TicketAmountCandidate(amount.amountInCents, label, line, index)
                 }
@@ -89,22 +91,23 @@ object ListTicketParser {
                 pendingLabel = label
                 pendingLine = line
                 pendingLineIndex = index
+                pendingProductName = null
             } else if (isAmountOnlyLine && pendingLabel != null) {
                 for (amount in amounts) {
                     labeledCandidates += TicketAmountCandidate(amount.amountInCents, pendingLabel, pendingLine, pendingLineIndex)
                     labeledCandidates += TicketAmountCandidate(amount.amountInCents, TicketAmountKind.MONTO_DETECTADO, line, index)
                 }
                 pendingLabel = null
+                pendingProductName = null
             } else if (isAmountOnlyLine) {
-                val productName = extractProductName(line)
+                val productName = extractProductName(line) ?: pendingProductName
                 for (amount in amounts) {
                     labeledCandidates += TicketAmountCandidate(amount.amountInCents, TicketAmountKind.PRODUCTO, line, index, productName = productName)
                 }
+                pendingProductName = null
             } else {
                 pendingLabel = null
-                for (amount in amounts) {
-                    labeledCandidates += TicketAmountCandidate(amount.amountInCents, TicketAmountKind.MONTO_DETECTADO, line, index)
-                }
+                pendingProductName = line.takeIf(::isProductDescription)
             }
         }
 
@@ -121,6 +124,11 @@ object ListTicketParser {
             .trim()
         return result.ifBlank { null }
     }
+
+    private fun isProductDescription(line: String): Boolean =
+        line.any(Char::isLetter) &&
+            !Regex("(?i)^\\s*(descripcion|descripción|producto|product|cantidad|cant\\.?|precio|price)\\s*$")
+                .matches(line)
 
     private fun classifyLabelOnly(line: String): TicketAmountKind? {
         val normalized = normalizeProductName(line)

@@ -93,6 +93,21 @@ class ListReceiptParserTest {
         assertEquals(TicketAmountKind.PRODUCTO, result.candidates[1].kind)
     }
 
+    @Test fun `uses preceding product description when OCR separates it from price`() {
+        val result = ListTicketParser.parse("Leche Evaporada Carnation Queso 135 ml\n64.95")
+
+        assertEquals(1, result.candidates.size)
+        assertEquals(TicketAmountKind.PRODUCTO, result.candidates.single().kind)
+        assertEquals(6_495L, result.candidates.single().amountInCents)
+        assertEquals("Leche Evaporada Carnation Queso 135 ml", result.candidates.single().productName)
+    }
+
+    @Test fun `does not use ticket column header as product name`() {
+        val result = ListTicketParser.parse("Producto\n64.95")
+
+        assertEquals(null, result.candidates.single().productName)
+    }
+
     @Test fun `candidate can be edited immutably without parser assumptions`() {
         val parsed = ListTicketParser.parse("Total 100.00").candidates.single()
         val edited = parsed.copy(amountInCents = 9_900, kind = TicketAmountKind.SUBTOTAL)
