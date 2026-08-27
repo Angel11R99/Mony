@@ -151,10 +151,15 @@ object ListTicketParser {
         return result.takeIf(::isProductDescription)
     }
 
-    private fun isProductDescription(line: String): Boolean =
-        line.any(Char::isLetter) &&
-            !ignoredProductText.matches(line.trim()) &&
-            !skuOnlyText.matches(line.trim())
+    private fun isProductDescription(line: String): Boolean {
+        val trimmed = line.trim()
+        if (!trimmed.any(Char::isLetter)) return false
+        if (ignoredProductText.matches(trimmed)) return false
+        if (skuOnlyText.matches(trimmed)) return false
+        if (variantNoiseText.matches(trimmed)) return false
+        if (quantityOnlyText.matches(trimmed)) return false
+        return true
+    }
 
     private val ignoredProductText = Regex(
         "(?i)^\\s*(" +
@@ -167,6 +172,11 @@ object ListTicketParser {
     )
 
     private val skuOnlyText = Regex("^[A-Z]{2,}\\d{3,}[A-Z0-9-]*$")
+    // Líneas que son ruido entre nombre y precio (variantes/promos/PLU) — no deben contarse como nombre
+    private val variantNoiseText = Regex(
+        "(?i)^\\s*(oferta.*|promo.*|2\\s*x\\s*1.*|3\\s*x\\s*2.*|plu.*|c[oó]digo.*|barra.*|balanza.*|pesaje.*)\\s*$",
+    )
+    private val quantityOnlyText = Regex("^\\s*\\d+\\s*(?:x|\\*|und\\.?|uds\\.?|unid\\.?|pza\\.?)?\\s*$", RegexOption.IGNORE_CASE)
 
     private fun findProductNameByPosition(
         candidate: TicketAmountCandidate,
@@ -184,26 +194,63 @@ object ListTicketParser {
                 ListOcrMoneyParser.extractCandidates(it.text).isEmpty() &&
                 isProductDescription(it.text.trim())
         }
-        val anchor = descriptionLines
+        if (descriptionLines.isEmpty()) return null
+
+        // 1) Misma fila (izquierda o derecha) — prioridad máxima
+        val sameRowAnchor = descriptionLines
             .filter { isOnSameVisualRow(priceLine, it) }
             .minByOrNull { distanceBetween(priceLine, it) }
-            ?: descriptionLines
-                .filter { it.bottom <= priceLine.top && isCloseAbove(priceLine, it) }
-                .minByOrNull { priceLine.top - it.bottom }
-            ?: return null
-
-        val parts = mutableListOf(anchor.text.trim())
-        var current = anchor
-        while (true) {
-            val previous = descriptionLines
-                .filter { it.bottom <= current.top }
-                .filter { isCloseAbove(current, it) && isInSameDescriptionColumn(current, it) }
-                .minByOrNull { current.top - it.bottom }
-                ?: break
-            parts += previous.text.trim()
-            current = previous
+        if (sameRowAnchor != null) {
+            val parts = mutableListOf(sameRowAnchor.text.trim())
+            var current: TicketOcrLine = sameRowAnchor
+            while (true) {
+                val previous = descriptionLines
+                    .filter { it.bottom <= current.top }
+                    .filter { isCloseAbove(current, it) && isInSameDescriptionColumn(current, it) }
+                    .minByOrNull { current.top - it.bottom }
+                    ?: break
+                parts += previous.text.trim()
+                current = previous
+            }
+            return parts.asReversed().joinToString(" ")
         }
-        return parts.asReversed().joinToString(" ")
+
+        // 2) Buscar arriba — comportamiento original, con tolerancia para imagen sin texto intermedio
+        val aboveAnchor = descriptionLines
+            .filter { it.bottom <= priceLine.top && isCloseAboveOrImage(priceLine, it, descriptionLines) }
+            .minByOrNull { priceLine.top - it.bottom }
+        if (aboveAnchor != null) {
+            val parts = mutableListOf(aboveAnchor.text.trim())
+            var current: TicketOcrLine = aboveAnchor
+            while (true) {
+                val previous = descriptionLines
+                    .filter { it.bottom <= current.top }
+                    .filter { isCloseAbove(current, it) && isInSameDescriptionColumn(current, it) }
+                    .minByOrNull { current.top - it.bottom }
+                    ?: break
+                parts += previous.text.trim()
+                current = previous
+            }
+            return parts.asReversed().joinToString(" ")
+        }
+
+        // 3) Fallback: nombre debajo del precio (etiquetas donde precio arriba). Solo si no hay nada arriba.
+        val belowAnchor = descriptionLines
+            .filter { it.top >= priceLine.bottom && isCloseBelow(priceLine, it) }
+            .minByOrNull { it.top - priceLine.bottom }
+            ?: return null
+        val parts = mutableListOf(belowAnchor.text.trim())
+        var current: TicketOcrLine = belowAnchor
+        while (true) {
+            val next = descriptionLines
+                .filter { it.top >= current.bottom }
+                .filter { isCloseAbove(lower = it, upper = current) && isInSameDescriptionColumn(current, it) }
+                .minByOrNull { it.top - current.bottom }
+                ?: break
+            parts += next.text.trim()
+            current = next
+        }
+        return parts.joinToString(" ")
     }
 
     private fun isOnSameVisualRow(first: TicketOcrLine, second: TicketOcrLine): Boolean {
@@ -227,6 +274,28 @@ object ListTicketParser {
     private fun isCloseAbove(lower: TicketOcrLine, upper: TicketOcrLine): Boolean {
         val largestHeight = maxOf(lower.bottom - lower.top, upper.bottom - upper.top).coerceAtLeast(1)
         return lower.top - upper.bottom <= largestHeight * 4
+    }
+
+    private fun isCloseBelow(upper: TicketOcrLine, lower: TicketOcrLine): Boolean {
+        val largestHeight = maxOf(upper.bottom - upper.top, lower.bottom - lower.top).coerceAtLeast(1)
+        return lower.top - upper.bottom <= largestHeight * 4
+    }
+
+    private fun isCloseAboveOrImage(
+        lower: TicketOcrLine,
+        upper: TicketOcrLine,
+        descriptionLines: List<TicketOcrLine>,
+    ): Boolean {
+        if (isCloseAbove(lower, upper)) return true
+        val largestHeight = maxOf(lower.bottom - lower.top, upper.bottom - upper.top).coerceAtLeast(1)
+        val gap = lower.top - upper.bottom
+        if (gap <= largestHeight * 6) {
+            // Permitir gap grande solo si no hay otro texto descriptivo entre medio (imagen/logo)
+            val hasIntermediate = descriptionLines.any { it !== lower && it !== upper &&
+                it.bottom > upper.bottom && it.top < lower.top }
+            if (!hasIntermediate) return true
+        }
+        return false
     }
 
     private fun isInSameDescriptionColumn(first: TicketOcrLine, second: TicketOcrLine): Boolean =
