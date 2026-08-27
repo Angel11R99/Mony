@@ -46,4 +46,5 @@ interface ShoppingListRepository {
         date: LocalDate,
         allowMissingPrices: Boolean = false,
     ): FinalizePurchaseResult
+    suspend fun reopen(listId: Long): ShoppingMutationResult
 }

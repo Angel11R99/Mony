@@ -12,7 +12,8 @@ enum class TicketAmountKind {
     SHIPPING,
     SERVICE,
     TOTAL,
-    UNCLASSIFIED,
+    PRODUCTO,
+    MONTO_DETECTADO,
 }
 
 data class TicketAmountCandidate(
@@ -20,6 +21,7 @@ data class TicketAmountCandidate(
     val kind: TicketAmountKind,
     val sourceLine: String,
     val lineIndex: Int,
+    val productName: String? = null,
 )
 
 data class TicketParseResult(val candidates: List<TicketAmountCandidate>)
@@ -63,18 +65,64 @@ object ListOcrMoneyParser {
 
 object ListTicketParser {
     fun parse(text: String): TicketParseResult {
-        val candidates = text.lineSequence().mapIndexedNotNull { index, rawLine ->
+        val labeledCandidates = mutableListOf<TicketAmountCandidate>()
+        var pendingLabel: TicketAmountKind? = null
+        var pendingLine = ""
+        var pendingLineIndex = -1
+
+        for ((index, rawLine) in text.lineSequence().withIndex()) {
             val line = rawLine.trim()
-            if (line.isEmpty()) return@mapIndexedNotNull null
-            val kind = classify(line)
-            ListOcrMoneyParser.extractCandidates(line).map { amount ->
-                TicketAmountCandidate(amount.amountInCents, kind, line, index)
-            }.takeIf(List<TicketAmountCandidate>::isNotEmpty)
-        }.flatten().toList()
-        return TicketParseResult(candidates)
+            if (line.isEmpty()) continue
+
+            val amounts = ListOcrMoneyParser.extractCandidates(line)
+            val label = classifyLabelOnly(line)
+            val isLabeledLine = label != null && amounts.isNotEmpty()
+            val isLabelOnlyLine = label != null && amounts.isEmpty()
+            val isAmountOnlyLine = label == null && amounts.isNotEmpty()
+
+            if (isLabeledLine) {
+                pendingLabel = null
+                for (amount in amounts) {
+                    labeledCandidates += TicketAmountCandidate(amount.amountInCents, label, line, index)
+                }
+            } else if (isLabelOnlyLine) {
+                pendingLabel = label
+                pendingLine = line
+                pendingLineIndex = index
+            } else if (isAmountOnlyLine && pendingLabel != null) {
+                for (amount in amounts) {
+                    labeledCandidates += TicketAmountCandidate(amount.amountInCents, pendingLabel, pendingLine, pendingLineIndex)
+                    labeledCandidates += TicketAmountCandidate(amount.amountInCents, TicketAmountKind.MONTO_DETECTADO, line, index)
+                }
+                pendingLabel = null
+            } else if (isAmountOnlyLine) {
+                val productName = extractProductName(line)
+                for (amount in amounts) {
+                    labeledCandidates += TicketAmountCandidate(amount.amountInCents, TicketAmountKind.PRODUCTO, line, index, productName = productName)
+                }
+            } else {
+                pendingLabel = null
+                for (amount in amounts) {
+                    labeledCandidates += TicketAmountCandidate(amount.amountInCents, TicketAmountKind.MONTO_DETECTADO, line, index)
+                }
+            }
+        }
+
+        return TicketParseResult(labeledCandidates)
     }
 
-    private fun classify(line: String): TicketAmountKind {
+    private fun extractProductName(line: String): String? {
+        var result = line
+        for (candidate in ListOcrMoneyParser.extractCandidates(line)) {
+            result = result.replace(candidate.rawValue, "")
+        }
+        result = result.replace(Regex("(?i)RD\\$|\\$"), "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+        return result.ifBlank { null }
+    }
+
+    private fun classifyLabelOnly(line: String): TicketAmountKind? {
         val normalized = normalizeProductName(line)
         return when {
             Regex("\\bsubtotal\\b").containsMatchIn(normalized) -> TicketAmountKind.SUBTOTAL
@@ -83,7 +131,7 @@ object ListTicketParser {
             Regex("\\b(envio|delivery|shipping)\\b").containsMatchIn(normalized) -> TicketAmountKind.SHIPPING
             Regex("\\b(servicio|propina|service|tip)\\b").containsMatchIn(normalized) -> TicketAmountKind.SERVICE
             Regex("\\b(total|importe a pagar|monto a pagar)\\b").containsMatchIn(normalized) -> TicketAmountKind.TOTAL
-            else -> TicketAmountKind.UNCLASSIFIED
+            else -> null
         }
     }
 }

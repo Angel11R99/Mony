@@ -123,6 +123,8 @@ fun ShoppingListScreen(
     val matchedScannedProduct by viewModel.matchedScannedProduct.collectAsStateWithLifecycle()
     val missingPrices by viewModel.missingPriceItemIds.collectAsStateWithLifecycle()
     val purchaseCompleted by viewModel.purchaseCompleted.collectAsStateWithLifecycle()
+    val remoteLookup by viewModel.remoteLookupResult.collectAsStateWithLifecycle()
+    val isLookingUp by viewModel.isLookingUp.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var itemEditor by remember { mutableStateOf<ItemEditorData?>(null) }
     var adjustmentEditor by remember { mutableStateOf<ShoppingAdjustment?>(null) }
@@ -160,7 +162,7 @@ fun ShoppingListScreen(
                                             TicketAmountKind.TAX, TicketAmountKind.DISCOUNT,
                                             TicketAmountKind.SHIPPING, TicketAmountKind.SERVICE,
                                         ),
-                                        name = candidate.kind.spanishLabel(),
+                                        name = candidate.productName ?: candidate.kind.spanishLabel(),
                                         positive = candidate.kind != TicketAmountKind.DISCOUNT,
                                         amount = centsInput(candidate.amountInCents),
                                     )
@@ -268,6 +270,15 @@ fun ShoppingListScreen(
             viewModel.clearMatchedScannedProduct()
         }
     }
+    LaunchedEffect(remoteLookup) {
+        remoteLookup?.let { lookup ->
+            val current = itemEditor
+            if (current != null && current.barcode == lookup.barcode && current.name.isBlank()) {
+                itemEditor = current.copy(name = lookup.name)
+            }
+            viewModel.consumeRemoteLookupResult()
+        }
+    }
 
     val details = state.details
     Scaffold(
@@ -350,7 +361,9 @@ fun ShoppingListScreen(
     if (showListEditor && details != null) ListEditorDialog(details, isSaving, { showListEditor = false }) { name, budget ->
         viewModel.updateList(name, budget) { showListEditor = false }
     }
-    itemEditor?.let { data -> ItemEditorDialog(data, isSaving, { itemEditor = null }) { name, quantity, estimated, actual, barcode, notes, purchased ->
+    itemEditor?.let { data -> ItemEditorDialog(
+        data, isSaving, isLookingUp, viewModel::lookupRemote, { itemEditor = null },
+    ) { name, quantity, estimated, actual, barcode, notes, purchased ->
         viewModel.saveItem(data.item, name, quantity, estimated, actual, barcode, notes, purchased) {
             data.item?.let { viewModel.markMissingPriceReviewed(it.id) }
             itemEditor = null
@@ -530,7 +543,11 @@ fun ShoppingListScreen(
     } }, confirmButton = { TextButton({ save(name, budget) }, enabled = !saving) { Text("Guardar") } }, dismissButton = { TextButton(dismiss) { Text("Cancelar") } })
 }
 
-@Composable private fun ItemEditorDialog(data: ItemEditorData, saving: Boolean, dismiss: () -> Unit, save: (String, Int, String, String, String, String, Boolean) -> Unit) {
+@Composable private fun ItemEditorDialog(
+    data: ItemEditorData, saving: Boolean, isLookingUp: Boolean,
+    onLookup: (String) -> Unit, dismiss: () -> Unit,
+    save: (String, Int, String, String, String, String, Boolean) -> Unit,
+) {
     val item = data.item
     var name by remember(data) { mutableStateOf(data.name.ifBlank { item?.name.orEmpty() }) }
     var quantity by remember(data) { mutableStateOf(item?.quantity ?: 1) }
@@ -548,7 +565,16 @@ fun ShoppingListScreen(
             item { FinanceTextField(barcode, { barcode = it.filter(Char::isLetterOrDigit) }, "Código de barras (opcional)", singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)) }
             item { FinanceTextField(notes, { notes = it }, "Notas (opcional)") }
             item { Row(verticalAlignment = Alignment.CenterVertically) { Text("Comprado", Modifier.weight(1f)); Switch(purchased, { purchased = it }) } }
-            if (data.barcode.isNotBlank() && data.name.isBlank()) item { Text("Código no reconocido. Escribe el nombre para guardarlo en esta lista.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
+            if (data.barcode.isNotBlank() && data.name.isBlank()) {
+                item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (isLookingUp) {
+                        SecondaryButton("Buscando…", {}, Modifier.weight(1f))
+                    } else {
+                        SecondaryButton("Buscar en Internet", { onLookup(barcode) }, Modifier.weight(1f))
+                    }
+                } }
+                item { Text("Código no reconocido. Escribe el nombre o busca en Internet.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
+            }
         }
     }, confirmButton = { TextButton({ save(name, quantity, estimated, actual, barcode, notes, purchased) }, enabled = !saving) { Text("Guardar") } }, dismissButton = { TextButton(dismiss) { Text("Cancelar") } })
 }
@@ -585,6 +611,9 @@ fun ShoppingListScreen(
             FinanceCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(draft.selected, { selected -> changed(drafts.updated(index, draft.copy(selected = selected))) }, enabled = !isReferenceOnly); Text(draft.source.kind.spanishLabel(), fontWeight = FontWeight.SemiBold) }
                 Text(draft.source.sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (draft.source.kind == TicketAmountKind.PRODUCTO && draft.source.productName != null) {
+                    Text("Producto: ${draft.source.productName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
                 if (isReferenceOnly) {
                     Text("Referencia: no se aplicará automáticamente.", style = MaterialTheme.typography.labelSmall)
                 }
@@ -630,7 +659,8 @@ private fun TicketAmountKind.spanishLabel(): String = when (this) {
     TicketAmountKind.SHIPPING -> "Envío"
     TicketAmountKind.SERVICE -> "Servicio o propina"
     TicketAmountKind.TOTAL -> "Total"
-    TicketAmountKind.UNCLASSIFIED -> "Monto sin clasificar"
+    TicketAmountKind.MONTO_DETECTADO -> "Monto detectado"
+    TicketAmountKind.PRODUCTO -> "Producto"
 }
 
 private fun <T> List<T>.updated(index: Int, value: T): List<T> = toMutableList().also { it[index] = value }

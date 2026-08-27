@@ -21,6 +21,7 @@ import com.example.personalfinancetracker.data.repository.RoomFixedEntryReposito
 import com.example.personalfinancetracker.data.repository.RoomPendingEntryRepository
 import com.example.personalfinancetracker.data.repository.RoomSavingsRepository
 import com.example.personalfinancetracker.data.repository.RoomShoppingListRepository
+import com.example.personalfinancetracker.data.repository.OpenFoodFactsProductCatalogRepository
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
@@ -28,6 +29,7 @@ import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
 import com.example.personalfinancetracker.domain.repository.PendingEntryRepository
 import com.example.personalfinancetracker.domain.repository.SavingsRepository
 import com.example.personalfinancetracker.domain.repository.ShoppingListRepository
+import com.example.personalfinancetracker.domain.repository.ProductCatalogRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -306,4 +308,5 @@ abstract class RepositoryModule {
     @Binds abstract fun pendingEntries(implementation: RoomPendingEntryRepository): PendingEntryRepository
     @Binds abstract fun savings(implementation: RoomSavingsRepository): SavingsRepository
     @Binds abstract fun shoppingLists(implementation: RoomShoppingListRepository): ShoppingListRepository
+    @Binds abstract fun productCatalog(implementation: OpenFoodFactsProductCatalogRepository): ProductCatalogRepository
 }

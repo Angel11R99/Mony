@@ -110,4 +110,7 @@ interface ShoppingListDao {
 
     @Query("DELETE FROM known_products WHERE barcode = :barcode")
     suspend fun deleteKnownProduct(barcode: String): Int
+
+    @Query("UPDATE shopping_lists SET status = :status, completedAtEpochMillis = NULL, expenseTransactionId = NULL, updatedAtEpochMillis = :updatedAt WHERE id = :id")
+    suspend fun reopen(id: Long, status: String, updatedAt: Long): Int
 }

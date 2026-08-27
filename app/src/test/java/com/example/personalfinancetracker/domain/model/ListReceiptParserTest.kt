@@ -31,7 +31,7 @@ class ListReceiptParserTest {
         assertTrue(result.isEmpty())
     }
 
-    @Test fun `ticket classifies labeled amounts and keeps unclassified products`() {
+    @Test fun `ticket classifies labeled amounts and detects product prices`() {
         val result = ListTicketParser.parse(
             """
             Café molido RD$ 250.00
@@ -45,7 +45,7 @@ class ListReceiptParserTest {
         )
         assertEquals(
             listOf(
-                TicketAmountKind.UNCLASSIFIED,
+                TicketAmountKind.PRODUCTO,
                 TicketAmountKind.SUBTOTAL,
                 TicketAmountKind.TAX,
                 TicketAmountKind.DISCOUNT,
@@ -71,17 +71,26 @@ class ListReceiptParserTest {
         )
     }
 
-    @Test fun `ambiguous total lines are all returned independently`() {
-        val result = ListTicketParser.parse("Total RD$100.00\nMonto a pagar RD$118.00")
+    @Test fun `label only line propagates context to next line with amount`() {
+        val result = ListTicketParser.parse("ITBIS\n18.00")
         assertEquals(2, result.candidates.size)
-        assertEquals(listOf(10_000L, 11_800L), result.candidates.map { it.amountInCents })
-        assertTrue(result.candidates.all { it.kind == TicketAmountKind.TOTAL })
+        assertEquals(TicketAmountKind.TAX, result.candidates[0].kind)
+        assertEquals(1_800L, result.candidates[0].amountInCents)
+        assertEquals(TicketAmountKind.MONTO_DETECTADO, result.candidates[1].kind)
+        assertEquals(1_800L, result.candidates[1].amountInCents)
     }
 
-    @Test fun `multiple amounts on one labeled line remain separate candidates`() {
-        val result = ListTicketParser.parse("ITBIS estimado 18.00 cobrado 20,00")
-        assertEquals(listOf(1_800L, 2_000L), result.candidates.map { it.amountInCents })
-        assertTrue(result.candidates.all { it.kind == TicketAmountKind.TAX })
+    @Test fun `two consecutive labeled lines do not leak context to unrelated amounts`() {
+        val result = ListTicketParser.parse("ITBIS\n18.00\nDescuento\n5.00")
+        assertEquals(4, result.candidates.size)
+        assertEquals(listOf(TicketAmountKind.TAX, TicketAmountKind.MONTO_DETECTADO, TicketAmountKind.DISCOUNT, TicketAmountKind.MONTO_DETECTADO), result.candidates.map { it.kind })
+    }
+
+    @Test fun `context is cleared when labeled line has amounts`() {
+        val result = ListTicketParser.parse("ITBIS 18.00\n5.00")
+        assertEquals(2, result.candidates.size)
+        assertEquals(TicketAmountKind.TAX, result.candidates[0].kind)
+        assertEquals(TicketAmountKind.PRODUCTO, result.candidates[1].kind)
     }
 
     @Test fun `candidate can be edited immutably without parser assumptions`() {

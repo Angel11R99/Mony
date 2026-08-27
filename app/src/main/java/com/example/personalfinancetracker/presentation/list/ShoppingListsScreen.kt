@@ -2,25 +2,36 @@ package com.example.personalfinancetracker.presentation.list
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,17 +45,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
+import com.example.personalfinancetracker.domain.model.EntryCardSize
 import com.example.personalfinancetracker.domain.model.ShoppingList
 import com.example.personalfinancetracker.domain.model.ShoppingListOverview
 import com.example.personalfinancetracker.domain.model.ShoppingListStatus
@@ -71,8 +85,23 @@ fun ShoppingListsScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
     val pendingDelete by viewModel.pendingDelete.collectAsStateWithLifecycle()
+    val pendingReopen by viewModel.pendingReopen.collectAsStateWithLifecycle()
+    val pendingDuplicate by viewModel.pendingDuplicate.collectAsStateWithLifecycle()
+    val cardSize by viewModel.cardSize.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showCreate by remember { mutableStateOf(false) }
+    var showCardSizeMenu by remember { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var showCompleted by rememberSaveable { mutableStateOf(false) }
+
+    val activeLists = remember(state.lists) { state.lists.filter { it.list.status != ShoppingListStatus.COMPLETED } }
+    val completedLists = remember(state.lists) { state.lists.filter { it.list.status == ShoppingListStatus.COMPLETED } }
+    val displayed = remember(activeLists, completedLists, showCompleted, query) {
+        val source = if (showCompleted) completedLists else activeLists
+        val normalized = query.trim()
+        if (normalized.isBlank()) source
+        else source.filter { it.list.name.contains(normalized, ignoreCase = true) }
+    }
 
     LaunchedEffect(message) {
         message?.let { context.showToast(it); viewModel.consumeMessage() }
@@ -102,7 +131,7 @@ fun ShoppingListsScreen(
                 "No se pudieron cargar las listas.",
                 Modifier.padding(padding).padding(18.dp),
             )
-            state.lists.isEmpty() -> EmptyListsCard(
+            state.lists.isEmpty() && query.isBlank() && !showCompleted -> EmptyListsCard(
                 "Todavía no tienes listas de compra.",
                 Modifier.padding(padding).padding(18.dp),
                 onCreate = { showCreate = true },
@@ -112,15 +141,46 @@ fun ShoppingListsScreen(
                 contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(state.lists, key = { it.list.id }) { overview ->
-                    val list = overview.list
-                    ShoppingListCard(
-                        overview = overview,
-                        onOpen = { onOpen(list.id) },
-                        onDuplicate = { viewModel.duplicate(list, onOpen) },
-                        onDelete = { viewModel.requestDelete(list) },
-                        enabled = !isSaving,
-                    )
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            SearchBar(
+                                query = query,
+                                onQueryChange = { query = it },
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            CardSizeMenu(cardSize, viewModel::setCardSize, showCardSizeMenu, { showCardSizeMenu = it })
+                        }
+                        FilterChips(
+                            activeCount = activeLists.size,
+                            completedCount = completedLists.size,
+                            showCompleted = showCompleted,
+                            onToggle = { showCompleted = !showCompleted },
+                        )
+                    }
+                }
+                if (displayed.isEmpty()) {
+                    item {
+                        EmptyListsCard(
+                            if (query.isNotBlank()) "No se encontraron listas." else "No tienes listas ${if (showCompleted) "completadas" else "activas"}.",
+                            Modifier.fillMaxWidth(),
+                            if (query.isBlank() && !showCompleted) ({ showCreate = true }) else null,
+                        )
+                    }
+                } else {
+                    items(displayed, key = { it.list.id }) { overview ->
+                        val list = overview.list
+                        ShoppingListCard(
+                            overview = overview,
+                            size = cardSize,
+                            onOpen = { onOpen(list.id) },
+                            onDuplicate = { viewModel.requestDuplicate(list) },
+                            onDelete = { viewModel.requestDelete(list) },
+                            onReopen = { viewModel.requestReopen(list) },
+                            enabled = !isSaving,
+                        )
+                    }
                 }
             }
         }
@@ -135,10 +195,82 @@ fun ShoppingListsScreen(
         AlertDialog(
             onDismissRequest = viewModel::cancelDelete,
             title = { Text("Eliminar lista") },
-            text = { Text("¿Eliminar “${list.name}” y todos sus productos y ajustes?") },
+            text = { Text("¿Eliminar \"${list.name}\" y todos sus productos y ajustes?") },
             confirmButton = { TextButton(viewModel::confirmDelete, enabled = !isSaving) { Text("Eliminar") } },
             dismissButton = { TextButton(viewModel::cancelDelete) { Text("Cancelar") } },
         )
+    }
+    pendingReopen?.let { list ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelReopen,
+            title = { Text("¿Reabrir esta lista?") },
+            text = { Text("La lista \"${list.name}\" volverá a En compra. El gasto asociado se eliminará del historial.") },
+            confirmButton = { TextButton(viewModel::confirmReopen, enabled = !isSaving) { Text("Reabrir") } },
+            dismissButton = { TextButton(viewModel::cancelReopen) { Text("Cancelar") } },
+        )
+    }
+    pendingDuplicate?.let { list ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelDuplicate,
+            title = { Text("¿Duplicar lista?") },
+            text = { Text("Se creará una copia de \"${list.name}\" con el mismo nombre y productos.") },
+            confirmButton = { TextButton(viewModel::confirmDuplicate, enabled = !isSaving) { Text("Duplicar") } },
+            dismissButton = { TextButton(viewModel::cancelDuplicate) { Text("Cancelar") } },
+        )
+    }
+}
+
+@Composable
+private fun SearchBar(query: String, onQueryChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    androidx.compose.material3.OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier,
+        placeholder = { Text("Buscar listas…") },
+        leadingIcon = { Icon(Icons.Outlined.Search, null) },
+        trailingIcon = {
+            if (query.isNotBlank()) {
+                IconButton({ onQueryChange("") }) { Icon(Icons.Outlined.Close, "Limpiar") }
+            }
+        },
+        singleLine = true,
+    )
+}
+
+@Composable
+private fun FilterChips(activeCount: Int, completedCount: Int, showCompleted: Boolean, onToggle: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(
+            selected = !showCompleted,
+            onClick = { if (showCompleted) onToggle() },
+            label = { Text("Activas ($activeCount)") },
+        )
+        FilterChip(
+            selected = showCompleted,
+            onClick = { if (!showCompleted) onToggle() },
+            label = { Text("Finalizadas ($completedCount)") },
+        )
+    }
+}
+
+@Composable
+private fun CardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSize) -> Unit, expanded: Boolean, onExpandedChange: (Boolean) -> Unit) {
+    Box {
+        TextButton(onClick = { onExpandedChange(true) }) {
+            Icon(Icons.Outlined.ViewAgenda, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(selected.label, modifier = Modifier.padding(start = 6.dp))
+        }
+        DropdownMenu(expanded, { onExpandedChange(false) }) {
+            EntryCardSize.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    leadingIcon = if (option == selected) {
+                        { Icon(Icons.Outlined.Check, null, tint = MaterialTheme.colorScheme.primary) }
+                    } else null,
+                    onClick = { onSelect(option); onExpandedChange(false) },
+                )
+            }
+        }
     }
 }
 
@@ -159,10 +291,55 @@ private fun EmptyListsCard(text: String, modifier: Modifier, onCreate: (() -> Un
 @Composable
 private fun ShoppingListCard(
     overview: ShoppingListOverview,
+    size: EntryCardSize,
     onOpen: () -> Unit,
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
+    onReopen: () -> Unit,
     enabled: Boolean,
+) {
+    when (size) {
+        EntryCardSize.COMPACT -> CompactListCard(overview, onOpen, onDuplicate, onDelete, onReopen, enabled)
+        EntryCardSize.NORMAL -> NormalListCard(overview, onOpen, onDuplicate, onDelete, onReopen, enabled)
+        EntryCardSize.DETAILED -> DetailedListCard(overview, onOpen, onDuplicate, onDelete, onReopen, enabled)
+    }
+}
+
+@Composable
+private fun CompactListCard(
+    overview: ShoppingListOverview, onOpen: () -> Unit, onDuplicate: () -> Unit,
+    onDelete: () -> Unit, onReopen: () -> Unit, enabled: Boolean,
+) {
+    val list = overview.list
+    FinanceCard(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onOpen)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(list.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(list.status.spanishLabel(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                }
+                Row {
+                    IconButton(onClick = onDuplicate, enabled = enabled, modifier = Modifier.heightIn(min = 36.dp)) { Icon(Icons.Outlined.ContentCopy, "Duplicar lista", modifier = Modifier.padding(0.dp)) }
+                    if (list.status != ShoppingListStatus.COMPLETED) {
+                        IconButton(onClick = onDelete, enabled = enabled, modifier = Modifier.heightIn(min = 36.dp)) { Icon(Icons.Outlined.Delete, "Eliminar lista", modifier = Modifier.padding(0.dp)) }
+                    } else {
+                        IconButton(onClick = onReopen, enabled = enabled, modifier = Modifier.heightIn(min = 36.dp)) { Icon(Icons.Outlined.Refresh, "Reabrir lista", modifier = Modifier.padding(0.dp)) }
+                    }
+                }
+            }
+            Text(
+                "${overview.itemCount} producto${if (overview.itemCount == 1) "" else "s"} · ${MoneyFormatter.format(overview.totalInCents)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun NormalListCard(
+    overview: ShoppingListOverview, onOpen: () -> Unit, onDuplicate: () -> Unit,
+    onDelete: () -> Unit, onReopen: () -> Unit, enabled: Boolean,
 ) {
     val list = overview.list
     FinanceCard(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onOpen)) {
@@ -175,6 +352,8 @@ private fun ShoppingListCard(
                 IconButton(onClick = onDuplicate, enabled = enabled) { Icon(Icons.Outlined.ContentCopy, "Duplicar lista") }
                 if (list.status != ShoppingListStatus.COMPLETED) {
                     IconButton(onClick = onDelete, enabled = enabled) { Icon(Icons.Outlined.Delete, "Eliminar lista") }
+                } else {
+                    IconButton(onClick = onReopen, enabled = enabled) { Icon(Icons.Outlined.Refresh, "Reabrir lista") }
                 }
             }
             val date = list.updatedAt.atZone(ZoneId.systemDefault()).toLocalDate()
@@ -184,6 +363,37 @@ private fun ShoppingListCard(
                 "${overview.itemCount} producto${if (overview.itemCount == 1) "" else "s"} · ${MoneyFormatter.format(overview.totalInCents)}",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            list.budgetInCents?.let { Text("Presupuesto: ${MoneyFormatter.format(it)}", style = MaterialTheme.typography.bodyMedium) }
+        }
+    }
+}
+
+@Composable
+private fun DetailedListCard(
+    overview: ShoppingListOverview, onOpen: () -> Unit, onDuplicate: () -> Unit,
+    onDelete: () -> Unit, onReopen: () -> Unit, enabled: Boolean,
+) {
+    val list = overview.list
+    FinanceCard(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onOpen)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(list.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(list.status.spanishLabel(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                }
+                IconButton(onClick = onDuplicate, enabled = enabled) { Icon(Icons.Outlined.ContentCopy, "Duplicar lista") }
+                if (list.status != ShoppingListStatus.COMPLETED) {
+                    IconButton(onClick = onDelete, enabled = enabled) { Icon(Icons.Outlined.Delete, "Eliminar lista") }
+                } else {
+                    IconButton(onClick = onReopen, enabled = enabled) { Icon(Icons.Outlined.Refresh, "Reabrir lista") }
+                }
+            }
+            val zone = ZoneId.systemDefault()
+            val timingFormatter = DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy", Locale.forLanguageTag("es-DO"))
+            Text("Creada ${list.createdAt.atZone(zone).toLocalDate().format(timingFormatter)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val updated = list.updatedAt.atZone(zone).toLocalDate().format(timingFormatter)
+            Text("Actualizada $updated", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${overview.itemCount} producto${if (overview.itemCount == 1) "" else "s"} · ${MoneyFormatter.format(overview.totalInCents)}", style = MaterialTheme.typography.bodyMedium)
             list.budgetInCents?.let { Text("Presupuesto: ${MoneyFormatter.format(it)}", style = MaterialTheme.typography.bodyMedium) }
         }
     }

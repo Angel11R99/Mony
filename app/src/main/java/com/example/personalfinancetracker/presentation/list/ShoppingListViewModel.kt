@@ -17,6 +17,8 @@ import com.example.personalfinancetracker.domain.model.ShoppingListStatus
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.FinalizePurchaseResult
+import com.example.personalfinancetracker.domain.repository.ProductCatalogRepository
+import com.example.personalfinancetracker.domain.repository.ProductCatalogResult
 import com.example.personalfinancetracker.domain.repository.ShoppingListRepository
 import com.example.personalfinancetracker.domain.repository.ShoppingMutationResult
 import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
@@ -57,6 +59,13 @@ data class NewScannedProduct(
     val suggestedPriceInCents: Long? = null,
 )
 
+data class RemoteLookupResult(
+    val barcode: String,
+    val name: String,
+    val brand: String?,
+    val source: String,
+)
+
 data class MatchedScannedProduct(
     val item: ShoppingListItem,
     val barcode: String,
@@ -70,6 +79,7 @@ data class AdjustmentDraft(val name: String, val isPositive: Boolean, val amount
 class ShoppingListViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: ShoppingListRepository,
+    private val catalogRepository: ProductCatalogRepository,
     categories: CategoryRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -94,6 +104,8 @@ class ShoppingListViewModel @Inject constructor(
     val matchedScannedProduct = MutableStateFlow<MatchedScannedProduct?>(null)
     val missingPriceItemIds = MutableStateFlow<List<Long>>(emptyList())
     val purchaseCompleted = MutableStateFlow(false)
+    val remoteLookupResult = MutableStateFlow<RemoteLookupResult?>(null)
+    val isLookingUp = MutableStateFlow(false)
     private var pendingFinalizeCategoryId: Long? = null
 
     fun consumeMessage() { message.value = null }
@@ -101,6 +113,7 @@ class ShoppingListViewModel @Inject constructor(
     fun clearMatchedScannedProduct() { matchedScannedProduct.value = null }
     fun clearMissingPrices() { missingPriceItemIds.value = emptyList() }
     fun consumePurchaseCompleted() { purchaseCompleted.value = false }
+    fun consumeRemoteLookupResult() { remoteLookupResult.value = null }
     fun cancelBarcodeMatch() { pendingBarcodeMatch.value = null }
     fun markMissingPriceReviewed(itemId: Long) {
         missingPriceItemIds.value = missingPriceItemIds.value - itemId
@@ -272,6 +285,7 @@ class ShoppingListViewModel @Inject constructor(
     private fun handleKnownProduct(barcode: String, known: KnownProduct?, details: ShoppingListDetails) {
         if (known == null) {
             newScannedProduct.value = NewScannedProduct(barcode)
+            viewModelScope.launch { lookupRemote(barcode) }
             return
         }
         val match = ListProductMatcher.match(
@@ -284,6 +298,32 @@ class ShoppingListViewModel @Inject constructor(
                 barcode, known, match.itemId, match.candidateName,
             )
             ProductMatchResult.None -> newScannedProduct.value = NewScannedProduct(barcode, known.name, known.lastPriceInCents)
+        }
+    }
+
+    fun lookupRemote(barcode: String) {
+        val trimmed = barcode.trim()
+        if (trimmed.isEmpty() || isLookingUp.value) return
+        viewModelScope.launch {
+            isLookingUp.value = true
+            runCatching { catalogRepository.lookup(trimmed) }
+                .onSuccess { result ->
+                    when (result) {
+                        is ProductCatalogResult.Found -> {
+                            remoteLookupResult.value = RemoteLookupResult(
+                                barcode = trimmed,
+                                name = result.name,
+                                brand = result.brand,
+                                source = result.source,
+                            )
+                            message.value = "Producto encontrado en ${result.source}."
+                        }
+                        ProductCatalogResult.NotFound -> message.value = "Producto no encontrado en el catálogo."
+                        ProductCatalogResult.Unavailable -> message.value = "Sin conexión. Puedes continuar manualmente."
+                    }
+                }
+                .onFailure { message.value = "No se pudo buscar el producto." }
+            isLookingUp.value = false
         }
     }
 

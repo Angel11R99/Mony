@@ -22,9 +22,15 @@ class EntryDisplayPreferences(context: Context) {
             ?.let { runCatching { EntryCardSize.valueOf(it) }.getOrNull() }
             ?: EntryCardSize.NORMAL,
     )
+    private val mutableListCardSize = MutableStateFlow(
+        preferences.getString(KEY_LIST_CARD_SIZE, null)
+            ?.let { runCatching { EntryCardSize.valueOf(it) }.getOrNull() }
+            ?: EntryCardSize.NORMAL,
+    )
     val pendingCardSize: StateFlow<EntryCardSize> = mutablePendingCardSize
     val fixedCardSize: StateFlow<EntryCardSize> = mutableFixedCardSize
     val savingsCardSize: StateFlow<EntryCardSize> = mutableSavingsCardSize
+    val listCardSize: StateFlow<EntryCardSize> = mutableListCardSize
 
     fun setPendingCardSize(size: EntryCardSize) {
         preferences.edit().putString(KEY_PENDING_CARD_SIZE, size.name).apply()
@@ -41,10 +47,16 @@ class EntryDisplayPreferences(context: Context) {
         mutableSavingsCardSize.value = size
     }
 
+    fun setListCardSize(size: EntryCardSize) {
+        preferences.edit().putString(KEY_LIST_CARD_SIZE, size.name).apply()
+        mutableListCardSize.value = size
+    }
+
     private companion object {
         const val PREFERENCES_NAME = "entry_display_preferences"
         const val KEY_PENDING_CARD_SIZE = "pending_card_size"
         const val KEY_FIXED_CARD_SIZE = "fixed_card_size"
         const val KEY_SAVINGS_CARD_SIZE = "savings_card_size"
+        const val KEY_LIST_CARD_SIZE = "list_card_size"
     }
 }

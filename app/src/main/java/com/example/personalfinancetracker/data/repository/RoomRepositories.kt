@@ -557,6 +557,17 @@ class RoomShoppingListRepository @Inject constructor(
         }
         FinalizePurchaseResult.Completed(transactionId, total)
     }
+
+    override suspend fun reopen(listId: Long): ShoppingMutationResult = database.withTransaction {
+        val list = dao.getList(listId) ?: return@withTransaction ShoppingMutationResult.NotFound
+        if (list.status != ShoppingListStatus.COMPLETED.name) {
+            return@withTransaction ShoppingMutationResult.NotFound
+        }
+        list.expenseTransactionId?.let { transactionDao.delete(it) }
+        val now = Instant.now().toEpochMilli()
+        dao.reopen(listId, ShoppingListStatus.SHOPPING.name, now)
+        ShoppingMutationResult.Success(listId)
+    }
 }
 
 class RoomBudgetRepository @Inject constructor(
