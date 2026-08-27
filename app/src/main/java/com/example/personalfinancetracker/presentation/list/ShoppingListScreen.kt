@@ -74,6 +74,7 @@ import com.example.personalfinancetracker.domain.model.ShoppingListItem
 import com.example.personalfinancetracker.domain.model.ShoppingListStatus
 import com.example.personalfinancetracker.domain.model.TicketAmountCandidate
 import com.example.personalfinancetracker.domain.model.TicketAmountKind
+import com.example.personalfinancetracker.domain.model.TicketOcrLine
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.FinanceDetailRow
@@ -156,7 +157,7 @@ fun ShoppingListScreen(
                                 if (priceCandidates.isEmpty()) notify("No se encontraron precios en la imagen.")
                             }
                             DocumentScanPurpose.TICKET -> {
-                                val parsed = ListTicketParser.parse(result.text).candidates
+                                val parsed = ListTicketParser.parse(result.text, result.toTicketOcrLines()).candidates
                                 ticketDrafts = parsed.map { candidate ->
                                     TicketDraftUi(
                                         source = candidate,
@@ -690,3 +691,12 @@ private fun extractProductNameFromOcr(text: String): String {
         .filter { line -> skipPatterns.none { it.containsMatchIn(line) } }
     return meaningfulLines.maxByOrNull { it.length }?.trim().orEmpty()
 }
+
+private fun com.google.mlkit.vision.text.Text.toTicketOcrLines(): List<TicketOcrLine> =
+    textBlocks.flatMap { block ->
+        block.lines.mapNotNull { line ->
+            line.boundingBox?.let { bounds ->
+                TicketOcrLine(line.text, bounds.left, bounds.top, bounds.right, bounds.bottom)
+            }
+        }
+    }

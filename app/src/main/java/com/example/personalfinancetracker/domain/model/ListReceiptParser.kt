@@ -26,6 +26,15 @@ data class TicketAmountCandidate(
 
 data class TicketParseResult(val candidates: List<TicketAmountCandidate>)
 
+/** A line recognized by OCR together with its position in the scanned document. */
+data class TicketOcrLine(
+    val text: String,
+    val left: Int,
+    val top: Int,
+    val right: Int,
+    val bottom: Int,
+)
+
 object ListOcrMoneyParser {
     private val moneyPattern = Regex(
         "(?<![\\d.,])(?:RD\\$|\\$)?\\s*(?:\\d{1,3}(?:,\\d{3})+\\.\\d{2}|" +
@@ -114,6 +123,22 @@ object ListTicketParser {
         return TicketParseResult(labeledCandidates)
     }
 
+    /**
+     * Uses OCR geometry to connect a price with the closest description on the same visual row.
+     * This avoids depending on the order in which OCR returns separate columns of a ticket.
+     */
+    fun parse(text: String, ocrLines: List<TicketOcrLine>): TicketParseResult {
+        val parsed = parse(text)
+        if (ocrLines.isEmpty()) return parsed
+
+        return TicketParseResult(parsed.candidates.map { candidate ->
+            if (candidate.kind != TicketAmountKind.PRODUCTO) candidate
+            else candidate.copy(
+                productName = findProductNameByPosition(candidate, ocrLines) ?: candidate.productName,
+            )
+        })
+    }
+
     private fun extractProductName(line: String): String? {
         var result = line
         for (candidate in ListOcrMoneyParser.extractCandidates(line)) {
@@ -129,6 +154,44 @@ object ListTicketParser {
         line.any(Char::isLetter) &&
             !Regex("(?i)^\\s*(descripcion|descripción|producto|product|cantidad|cant\\.?|precio|price)\\s*$")
                 .matches(line)
+
+    private fun findProductNameByPosition(
+        candidate: TicketAmountCandidate,
+        ocrLines: List<TicketOcrLine>,
+    ): String? {
+        val priceLines = ocrLines.filter { line ->
+            ListOcrMoneyParser.extractCandidates(line.text).any { it.amountInCents == candidate.amountInCents }
+        }
+        val matchingSourceLines = priceLines.filter { it.text.trim() == candidate.sourceLine.trim() }
+        val priceLine = (matchingSourceLines.ifEmpty { priceLines }).firstOrNull() ?: return null
+
+        return ocrLines
+            .asSequence()
+            .filter { it != priceLine && ListOcrMoneyParser.extractCandidates(it.text).isEmpty() }
+            .filter { isProductDescription(it.text.trim()) }
+            .filter { isOnSameVisualRow(priceLine, it) }
+            .minByOrNull { distanceBetween(priceLine, it) }
+            ?.text
+            ?.trim()
+    }
+
+    private fun isOnSameVisualRow(first: TicketOcrLine, second: TicketOcrLine): Boolean {
+        val firstCenter = (first.top + first.bottom) / 2.0
+        val secondCenter = (second.top + second.bottom) / 2.0
+        val largestHeight = maxOf(first.bottom - first.top, second.bottom - second.top).coerceAtLeast(1)
+        return kotlin.math.abs(firstCenter - secondCenter) <= largestHeight * 0.8
+    }
+
+    private fun distanceBetween(first: TicketOcrLine, second: TicketOcrLine): Double {
+        val horizontalGap = when {
+            first.right < second.left -> second.left - first.right
+            second.right < first.left -> first.left - second.right
+            else -> 0
+        }
+        val firstCenter = (first.top + first.bottom) / 2.0
+        val secondCenter = (second.top + second.bottom) / 2.0
+        return horizontalGap + kotlin.math.abs(firstCenter - secondCenter) * 2
+    }
 
     private fun classifyLabelOnly(line: String): TicketAmountKind? {
         val normalized = normalizeProductName(line)

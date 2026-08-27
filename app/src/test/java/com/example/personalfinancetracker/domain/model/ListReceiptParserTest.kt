@@ -108,6 +108,30 @@ class ListReceiptParserTest {
         assertEquals(null, result.candidates.single().productName)
     }
 
+    @Test fun `uses nearest description on the same visual row regardless of OCR order`() {
+        val result = ListTicketParser.parse(
+            "64.95\nLeche Evaporada Carnation",
+            listOf(
+                TicketOcrLine("64.95", left = 420, top = 100, right = 500, bottom = 125),
+                TicketOcrLine("Leche Evaporada Carnation", left = 20, top = 101, right = 300, bottom = 126),
+            ),
+        )
+
+        assertEquals("Leche Evaporada Carnation", result.candidates.single().productName)
+    }
+
+    @Test fun `finds description placed to the right of price`() {
+        val result = ListTicketParser.parse(
+            "64.95\nLeche Evaporada Carnation",
+            listOf(
+                TicketOcrLine("64.95", left = 20, top = 100, right = 100, bottom = 125),
+                TicketOcrLine("Leche Evaporada Carnation", left = 180, top = 100, right = 460, bottom = 125),
+            ),
+        )
+
+        assertEquals("Leche Evaporada Carnation", result.candidates.single().productName)
+    }
+
     @Test fun `candidate can be edited immutably without parser assumptions`() {
         val parsed = ListTicketParser.parse("Total 100.00").candidates.single()
         val edited = parsed.copy(amountInCents = 9_900, kind = TicketAmountKind.SUBTOTAL)
