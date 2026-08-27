@@ -12,6 +12,7 @@ import com.example.personalfinancetracker.data.local.dao.TransactionDao
 import com.example.personalfinancetracker.data.local.dao.FixedEntryDao
 import com.example.personalfinancetracker.data.local.dao.PendingEntryDao
 import com.example.personalfinancetracker.data.local.dao.SavingsGoalDao
+import com.example.personalfinancetracker.data.local.dao.ShoppingListDao
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
 import com.example.personalfinancetracker.data.repository.RoomCategoryRepository
 import com.example.personalfinancetracker.data.repository.RoomBudgetRepository
@@ -19,12 +20,14 @@ import com.example.personalfinancetracker.data.repository.RoomTransactionReposit
 import com.example.personalfinancetracker.data.repository.RoomFixedEntryRepository
 import com.example.personalfinancetracker.data.repository.RoomPendingEntryRepository
 import com.example.personalfinancetracker.data.repository.RoomSavingsRepository
+import com.example.personalfinancetracker.data.repository.RoomShoppingListRepository
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.domain.repository.FixedEntryRepository
 import com.example.personalfinancetracker.domain.repository.PendingEntryRepository
 import com.example.personalfinancetracker.domain.repository.SavingsRepository
+import com.example.personalfinancetracker.domain.repository.ShoppingListRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -173,11 +176,78 @@ object DatabaseModule {
         }
     }
 
+    internal val migration13To14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS shopping_lists (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    name TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    budgetInCents INTEGER,
+                    expenseTransactionId INTEGER,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    updatedAtEpochMillis INTEGER NOT NULL,
+                    completedAtEpochMillis INTEGER,
+                    FOREIGN KEY(expenseTransactionId) REFERENCES transactions(id) ON UPDATE NO ACTION ON DELETE SET NULL
+                )""".trimIndent()
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS index_shopping_lists_expenseTransactionId ON shopping_lists(expenseTransactionId)"
+            )
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS shopping_list_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    shoppingListId INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    quantity INTEGER NOT NULL,
+                    estimatedUnitPriceInCents INTEGER,
+                    actualUnitPriceInCents INTEGER,
+                    barcode TEXT,
+                    isPurchased INTEGER NOT NULL,
+                    isIdentified INTEGER NOT NULL,
+                    notes TEXT,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    updatedAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(shoppingListId) REFERENCES shopping_lists(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                )""".trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_shopping_list_items_shoppingListId ON shopping_list_items(shoppingListId)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_shopping_list_items_barcode ON shopping_list_items(barcode)"
+            )
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS shopping_adjustments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    shoppingListId INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    isPositive INTEGER NOT NULL,
+                    amountInCents INTEGER NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(shoppingListId) REFERENCES shopping_lists(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                )""".trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_shopping_adjustments_shoppingListId ON shopping_adjustments(shoppingListId)"
+            )
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS known_products (
+                    barcode TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    lastPriceInCents INTEGER,
+                    lastUsedAtEpochMillis INTEGER NOT NULL,
+                    PRIMARY KEY(barcode)
+                )""".trimIndent()
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): FinanceDatabase =
         Room.databaseBuilder(context, FinanceDatabase::class.java, "personal_finance.db")
-            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9, migration9To10, migration10To11, migration11To12, migration12To13)
+            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9, migration9To10, migration10To11, migration11To12, migration12To13, migration13To14)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -199,6 +269,7 @@ object DatabaseModule {
     @Provides fun fixedEntryDao(db: FinanceDatabase): FixedEntryDao = db.fixedEntryDao()
     @Provides fun pendingEntryDao(db: FinanceDatabase): PendingEntryDao = db.pendingEntryDao()
     @Provides fun savingsGoalDao(db: FinanceDatabase): SavingsGoalDao = db.savingsGoalDao()
+    @Provides fun shoppingListDao(db: FinanceDatabase): ShoppingListDao = db.shoppingListDao()
 
     private val initialCategories = listOf(
         Triple("Salario", "INCOME", "payments"),
@@ -234,4 +305,5 @@ abstract class RepositoryModule {
     @Binds abstract fun fixedEntries(implementation: RoomFixedEntryRepository): FixedEntryRepository
     @Binds abstract fun pendingEntries(implementation: RoomPendingEntryRepository): PendingEntryRepository
     @Binds abstract fun savings(implementation: RoomSavingsRepository): SavingsRepository
+    @Binds abstract fun shoppingLists(implementation: RoomShoppingListRepository): ShoppingListRepository
 }

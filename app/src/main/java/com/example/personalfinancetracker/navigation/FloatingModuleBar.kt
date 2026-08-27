@@ -6,13 +6,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -49,6 +51,7 @@ internal val moduleDestinations = listOf(
     ModuleDestination("Fijos", "fixed", Icons.Outlined.Repeat),
     ModuleDestination("Recordatorios", "pending", Icons.Outlined.Notifications),
     ModuleDestination("Ahorros", "savings", Icons.Outlined.Savings),
+    ModuleDestination("Lista", "list", Icons.Outlined.ShoppingCart),
     ModuleDestination("Estadísticas", "statistics", Icons.Outlined.Insights),
     ModuleDestination("Historial", "history", Icons.Outlined.History),
 )
@@ -68,11 +71,12 @@ internal fun FloatingModuleBar(
         color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        Row(
+        LazyRow(
             modifier = Modifier.fillMaxSize().padding(horizontal = 5.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            visibleDestinations.forEach { destination ->
+            items(visibleDestinations.size, key = { visibleDestinations[it].route }) { index ->
+                val destination = visibleDestinations[index]
                 val selected = isModuleSelected(destination.route, selectedRoute)
                 ModuleItem(
                     destination = destination,
@@ -80,7 +84,7 @@ internal fun FloatingModuleBar(
                     showLabel = config.showLabels,
                     labelTextSize = config.labelTextSize,
                     onClick = { onNavigate(destination.route) },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.width(if (config.showLabels) 86.dp else 58.dp),
                 )
             }
         }

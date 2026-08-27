@@ -120,6 +120,7 @@ fun HistoryScreen(
     onEdit: (Long, TransactionType) -> Unit,
     onSettings: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel(),
+    onViewShoppingList: (Long) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var typeFilter by remember { mutableStateOf(HistoryTypeFilter.ALL) }
@@ -321,8 +322,15 @@ fun HistoryScreen(
                         Modifier.weight(1f),
                         onClick = { selectedTransaction = transaction },
                     )
-                    IconButton(onClick = { onEdit(transaction.id, transaction.type) }) {
-                        Icon(Icons.Outlined.Edit, "Editar")
+                    val linkedShoppingList = state.shoppingListIdsByExpenseTransactionId[transaction.id]
+                    IconButton(
+                        onClick = { onEdit(transaction.id, transaction.type) },
+                        enabled = linkedShoppingList == null,
+                    ) {
+                        Icon(
+                            Icons.Outlined.Edit,
+                            if (linkedShoppingList == null) "Editar" else "El gasto de una lista finalizada no se puede editar",
+                        )
                     }
                     IconButton(onClick = { pendingDuplicate = transaction }) {
                         Icon(Icons.Outlined.ContentCopy, "Duplicar")
@@ -353,7 +361,11 @@ fun HistoryScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("$categoryName · ${MoneyFormatter.format(transaction.amountInCents)}")
                     Text(
-                        "Esta acción no se puede deshacer.",
+                        if (state.shoppingListIdsByExpenseTransactionId.containsKey(transaction.id)) {
+                            "La lista y su detalle se conservarán, pero dejarán de estar vinculados a este gasto."
+                        } else {
+                            "Esta acción no se puede deshacer."
+                        },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -536,10 +548,21 @@ fun HistoryScreen(
     }
 
     selectedTransaction?.let { transaction ->
+        val shoppingListId = if (transaction.type == TransactionType.EXPENSE) {
+            state.shoppingListIdsByExpenseTransactionId[transaction.id]
+        } else {
+            null
+        }
         TransactionDetailsDialog(
             transaction = transaction,
             category = state.categories[transaction.categoryId],
             onDismiss = { selectedTransaction = null },
+            onViewShoppingList = shoppingListId?.let { listId ->
+                {
+                    selectedTransaction = null
+                    onViewShoppingList(listId)
+                }
+            },
         )
     }
 }

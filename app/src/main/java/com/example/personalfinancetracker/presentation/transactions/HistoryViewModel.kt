@@ -10,6 +10,7 @@ import com.example.personalfinancetracker.core.HistoryPdfWriter
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
+import com.example.personalfinancetracker.domain.repository.ShoppingListRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
 import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,6 +25,7 @@ import javax.inject.Inject
 data class HistoryUiState(
     val transactions: List<FinanceTransaction> = emptyList(),
     val categories: Map<Long, Category> = emptyMap(),
+    val shoppingListIdsByExpenseTransactionId: Map<Long, Long> = emptyMap(),
     val isReady: Boolean = false,
 )
 
@@ -43,12 +45,20 @@ data class HistoryPdfRequest(
 class HistoryViewModel @Inject constructor(
     private val transactionsRepository: TransactionRepository,
     categories: CategoryRepository,
+    shoppingLists: ShoppingListRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
-    val state = combine(transactionsRepository.observeAll(), categories.observeAll()) { items, cats ->
+    val state = combine(
+        transactionsRepository.observeAll(),
+        categories.observeAll(),
+        shoppingLists.observeLists(),
+    ) { items, cats, lists ->
         HistoryUiState(
             transactions = items,
             categories = cats.associateBy(Category::id),
+            shoppingListIdsByExpenseTransactionId = lists.mapNotNull { list ->
+                list.expenseTransactionId?.let { transactionId -> transactionId to list.id }
+            }.toMap(),
             isReady = true,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())

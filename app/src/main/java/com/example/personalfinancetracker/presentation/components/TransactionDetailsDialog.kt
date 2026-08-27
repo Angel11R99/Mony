@@ -26,6 +26,7 @@ fun TransactionDetailsDialog(
     transaction: FinanceTransaction,
     category: Category?,
     onDismiss: () -> Unit,
+    onViewShoppingList: (() -> Unit)? = null,
 ) {
     val isExpense = transaction.type == TransactionType.EXPENSE
     val movementColor = if (isExpense) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
@@ -71,6 +72,13 @@ fun TransactionDetailsDialog(
                         )
                         Text(note, style = MaterialTheme.typography.bodyMedium)
                     }
+                }
+                onViewShoppingList?.let { onViewList ->
+                    SecondaryButton(
+                        text = "Ver detalle de compra",
+                        onClick = onViewList,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         },

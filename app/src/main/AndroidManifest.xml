@@ -14,6 +14,9 @@
         android:roundIcon="@mipmap/personal_finance_tracker"
         android:supportsRtl="true"
         android:theme="@style/Theme.PersonalFinanceTracker">
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode_ui" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

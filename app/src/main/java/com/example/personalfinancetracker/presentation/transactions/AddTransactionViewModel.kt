@@ -69,6 +69,7 @@ class AddTransactionViewModel @Inject constructor(
     }
 
     fun save(amount: String, categoryId: Long?, note: String, date: String, onSaved: () -> Unit) {
+        if (saving.value) return
         val cents = MoneyFormatter.parseToCents(amount)
         val parsedDate = runCatching { LocalDate.parse(date) }.getOrNull()
         when {
@@ -88,6 +89,8 @@ class AddTransactionViewModel @Inject constructor(
                         date = parsedDate,
                         createdAt = existing?.createdAt ?: Instant.now(),
                         updatedAt = Instant.now(),
+                        fixedEntryId = existing?.fixedEntryId,
+                        savingsGoalId = existing?.savingsGoalId,
                     ))
                 }
                 saving.value = false

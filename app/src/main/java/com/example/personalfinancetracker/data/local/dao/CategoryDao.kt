@@ -14,6 +14,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories")
     suspend fun getAll(): List<CategoryEntity>
 
+    @Query("SELECT * FROM categories WHERE id = :id LIMIT 1")
+    suspend fun get(id: Long): CategoryEntity?
+
     @Query("SELECT * FROM categories WHERE type = :type AND isActive = 1 ORDER BY name")
     fun observeActive(type: String): Flow<List<CategoryEntity>>
 

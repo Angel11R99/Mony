@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 data class FloatingModuleBarConfig(
-    val visibleRoutes: Set<String> = setOf("home", "fixed", "pending", "savings", "statistics", "history"),
+    val visibleRoutes: Set<String> = setOf("home", "fixed", "pending", "savings", "list", "statistics", "history"),
     val showLabels: Boolean = true,
     val labelTextSize: Float = 10f,
 )
@@ -36,9 +36,10 @@ class FloatingModuleBarPreferences(context: Context) {
     companion object {
         const val MIN_TEXT_SIZE = 8f
         const val MAX_TEXT_SIZE = 14f
-        private val DEFAULT_VISIBLE_ROUTES = setOf(
+        private val LEGACY_DEFAULT_VISIBLE_ROUTES = setOf(
             "home", "fixed", "pending", "savings", "statistics", "history",
         )
+        private val DEFAULT_VISIBLE_ROUTES = LEGACY_DEFAULT_VISIBLE_ROUTES + "list"
         private const val PREFERENCES_NAME = "floating_module_bar_preferences"
         private const val KEY_VISIBLE_ROUTES = "visible_routes"
         private const val KEY_SHOW_LABELS = "show_labels"
@@ -49,11 +50,17 @@ class FloatingModuleBarPreferences(context: Context) {
         )
 
         private fun read(preferences: android.content.SharedPreferences) = FloatingModuleBarConfig(
-            visibleRoutes = preferences.getStringSet(KEY_VISIBLE_ROUTES, null)
-                ?.toSet()
-                ?: DEFAULT_VISIBLE_ROUTES,
+            visibleRoutes = includeListInLegacyDefaults(
+                preferences.getStringSet(KEY_VISIBLE_ROUTES, null)?.toSet(),
+            ),
             showLabels = preferences.getBoolean(KEY_SHOW_LABELS, true),
             labelTextSize = preferences.getFloat(KEY_LABEL_TEXT_SIZE, 10f),
         )
+
+        internal fun includeListInLegacyDefaults(stored: Set<String>?): Set<String> = when (stored) {
+            null -> DEFAULT_VISIBLE_ROUTES
+            LEGACY_DEFAULT_VISIBLE_ROUTES -> DEFAULT_VISIBLE_ROUTES
+            else -> stored
+        }
     }
 }

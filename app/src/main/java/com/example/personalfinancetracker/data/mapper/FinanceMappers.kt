@@ -4,6 +4,10 @@ import com.example.personalfinancetracker.data.local.entity.CategoryEntity
 import com.example.personalfinancetracker.data.local.entity.TransactionEntity
 import com.example.personalfinancetracker.data.local.entity.FixedEntryEntity
 import com.example.personalfinancetracker.data.local.entity.PendingEntryEntity
+import com.example.personalfinancetracker.data.local.entity.KnownProductEntity
+import com.example.personalfinancetracker.data.local.entity.ShoppingAdjustmentEntity
+import com.example.personalfinancetracker.data.local.entity.ShoppingListEntity
+import com.example.personalfinancetracker.data.local.entity.ShoppingListItemEntity
 import com.example.personalfinancetracker.data.local.dao.SavingsGoalWithSaved
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
@@ -15,6 +19,11 @@ import com.example.personalfinancetracker.domain.model.FixedDateMode
 import com.example.personalfinancetracker.domain.model.FixedScheduleMode
 import com.example.personalfinancetracker.domain.model.PendingEntry
 import com.example.personalfinancetracker.domain.model.PendingType
+import com.example.personalfinancetracker.domain.model.KnownProduct
+import com.example.personalfinancetracker.domain.model.ShoppingAdjustment
+import com.example.personalfinancetracker.domain.model.ShoppingList
+import com.example.personalfinancetracker.domain.model.ShoppingListItem
+import com.example.personalfinancetracker.domain.model.ShoppingListStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -125,4 +134,88 @@ fun PendingEntry.toEntity() = PendingEntryEntity(
     transactionId = transactionId,
     createdAtEpochMillis = createdAt.toEpochMilli(),
     updatedAtEpochMillis = updatedAt.toEpochMilli(),
+)
+
+fun ShoppingListEntity.toDomain() = ShoppingList(
+    id = id,
+    name = name,
+    status = ShoppingListStatus.valueOf(status),
+    budgetInCents = budgetInCents,
+    expenseTransactionId = expenseTransactionId,
+    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+    completedAt = completedAtEpochMillis?.let(Instant::ofEpochMilli),
+)
+
+fun ShoppingList.toEntity() = ShoppingListEntity(
+    id = id,
+    name = name,
+    status = status.name,
+    budgetInCents = budgetInCents,
+    expenseTransactionId = expenseTransactionId,
+    createdAtEpochMillis = createdAt.toEpochMilli(),
+    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+    completedAtEpochMillis = completedAt?.toEpochMilli(),
+)
+
+fun ShoppingListItemEntity.toDomain() = ShoppingListItem(
+    id = id,
+    shoppingListId = shoppingListId,
+    name = name,
+    quantity = quantity,
+    estimatedUnitPriceInCents = estimatedUnitPriceInCents,
+    actualUnitPriceInCents = actualUnitPriceInCents,
+    barcode = barcode,
+    isPurchased = isPurchased,
+    isIdentified = isIdentified,
+    notes = notes,
+    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+)
+
+fun ShoppingListItem.toEntity() = ShoppingListItemEntity(
+    id = id,
+    shoppingListId = shoppingListId,
+    name = name,
+    quantity = quantity,
+    estimatedUnitPriceInCents = estimatedUnitPriceInCents,
+    actualUnitPriceInCents = actualUnitPriceInCents,
+    barcode = barcode,
+    isPurchased = isPurchased,
+    isIdentified = isIdentified,
+    notes = notes,
+    createdAtEpochMillis = createdAt.toEpochMilli(),
+    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+)
+
+fun ShoppingAdjustmentEntity.toDomain() = ShoppingAdjustment(
+    id = id,
+    shoppingListId = shoppingListId,
+    name = name,
+    isPositive = isPositive,
+    amountInCents = amountInCents,
+    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+)
+
+fun ShoppingAdjustment.toEntity() = ShoppingAdjustmentEntity(
+    id = id,
+    shoppingListId = shoppingListId,
+    name = name,
+    isPositive = isPositive,
+    amountInCents = amountInCents,
+    createdAtEpochMillis = createdAt.toEpochMilli(),
+)
+
+fun KnownProductEntity.toDomain() = KnownProduct(
+    barcode = barcode,
+    name = name,
+    lastPriceInCents = lastPriceInCents,
+    lastUsedAt = Instant.ofEpochMilli(lastUsedAtEpochMillis),
+)
+
+fun KnownProduct.toEntity() = KnownProductEntity(
+    barcode = barcode,
+    name = name,
+    lastPriceInCents = lastPriceInCents,
+    lastUsedAtEpochMillis = lastUsedAt.toEpochMilli(),
 )

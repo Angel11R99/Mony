@@ -25,6 +25,8 @@ import com.example.personalfinancetracker.presentation.home.HomeScreen
 import com.example.personalfinancetracker.presentation.statistics.StatisticsScreen
 import com.example.personalfinancetracker.presentation.fixed.FixedEntriesScreen
 import com.example.personalfinancetracker.presentation.pending.PendingEntriesScreen
+import com.example.personalfinancetracker.presentation.list.ShoppingListScreen
+import com.example.personalfinancetracker.presentation.list.ShoppingListsScreen
 import com.example.personalfinancetracker.presentation.savings.SavingsScreen
 import com.example.personalfinancetracker.presentation.transactions.AddTransactionScreen
 import com.example.personalfinancetracker.presentation.transactions.HistoryScreen
@@ -57,7 +59,7 @@ fun FinanceApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val systemBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val showModuleBar = currentRoute != "settings"
+    val showModuleBar = shouldShowModuleBar(currentRoute)
 
     fun navigateToModule(route: String) {
         navController.navigate(route) {
@@ -72,7 +74,7 @@ fun FinanceApp(
     }
 
     LaunchedEffect(initialDestination) {
-        if (initialDestination in setOf("home", "history", "statistics", "fixed", "pending", "savings", "settings")) {
+        if (isValidInitialDestination(initialDestination)) {
             navigateToModule(initialDestination!!)
         }
     }
@@ -129,6 +131,7 @@ fun FinanceApp(
                         navController.navigate("edit/${type.name}/$id")
                     },
                     onSettings = { navController.navigate("settings") },
+                    onViewShoppingList = { navController.navigate("list/$it") },
                 )
             }
             composable("statistics") {
@@ -139,6 +142,20 @@ fun FinanceApp(
             }
             composable("pending") {
                 PendingEntriesScreen(onSettings = { navController.navigate("settings") })
+            }
+            composable("list") {
+                ShoppingListsScreen(
+                    onOpen = { navController.navigate("list/$it") },
+                    onSettings = { navController.navigate("settings") },
+                )
+            }
+            composable(
+                route = "list/{listId}",
+                arguments = listOf(navArgument("listId") { type = NavType.LongType }),
+            ) {
+                ShoppingListScreen(
+                    onBack = { if (!navController.popBackStack()) navigateToModule("list") },
+                )
             }
             composable("settings") {
                 SettingsScreen(
@@ -179,3 +196,9 @@ fun FinanceApp(
         }
     }
 }
+
+internal val topLevelRoutes = setOf("home", "history", "statistics", "fixed", "pending", "savings", "list")
+
+internal fun shouldShowModuleBar(route: String?): Boolean = route in topLevelRoutes
+
+internal fun isValidInitialDestination(route: String?): Boolean = route in topLevelRoutes || route == "settings"
