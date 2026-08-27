@@ -627,11 +627,6 @@ private fun HistoryFilters(
                 )
             }
         }
-        HistoryCycleMenu(
-            selected = cycleFilter,
-            options = cycleOptions,
-            onSelect = onCycleChange,
-        )
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -690,6 +685,9 @@ private fun HistoryFilters(
             onStartDateChange = onStartDateChange,
             endDate = endDate,
             onEndDateChange = onEndDateChange,
+            cycleFilter = cycleFilter,
+            onCycleChange = onCycleChange,
+            cycleOptions = cycleOptions,
             onDismiss = { showAdvancedFilters = false },
         )
     }
@@ -705,6 +703,9 @@ private fun HistoryAdvancedFiltersSheet(
     onStartDateChange: (LocalDate?) -> Unit,
     endDate: LocalDate?,
     onEndDateChange: (LocalDate?) -> Unit,
+    cycleFilter: HistoryCycleFilter,
+    onCycleChange: (HistoryCycleFilter) -> Unit,
+    cycleOptions: List<HistoryCycleFilter>,
     onDismiss: () -> Unit,
 ) {
     var categoryExpanded by remember { mutableStateOf(false) }
@@ -742,6 +743,11 @@ private fun HistoryAdvancedFiltersSheet(
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HistoryCycleMenu(
+                selected = cycleFilter,
+                options = cycleOptions,
+                onSelect = onCycleChange,
+            )
             ExposedDropdownMenuBox(
                 expanded = categoryExpanded,
                 onExpandedChange = { categoryExpanded = it },

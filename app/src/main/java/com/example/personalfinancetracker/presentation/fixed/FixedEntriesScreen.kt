@@ -13,12 +13,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Add
@@ -30,6 +33,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.ViewAgenda
@@ -43,10 +47,12 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -125,8 +131,15 @@ fun FixedEntriesScreen(
     var pendingDelete by remember { mutableStateOf<FixedEntry?>(null) }
     var configEntry by remember { mutableStateOf<FixedEntry?>(null) }
     var manualEntry by remember { mutableStateOf<FixedEntry?>(null) }
+    var showFilters by remember { mutableStateOf(false) }
+    var draftType by remember { mutableStateOf(selectedType) }
     val visibleEntries = remember(state.entries, selectedType, query, state.categories) {
         filterFixedEntries(state.entries, selectedType, query, state.categories)
+    }
+    val typeCounts = remember(state.entries, query, state.categories) {
+        val base = filterFixedEntries(state.entries, TransactionType.EXPENSE, query, state.categories).size to
+            filterFixedEntries(state.entries, TransactionType.INCOME, query, state.categories).size
+        base
     }
 
     LaunchedEffect(message) {
@@ -172,10 +185,14 @@ fun FixedEntriesScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TypeChip(TransactionType.EXPENSE, selectedType, { selectedType = it }, Modifier.weight(1f))
-                    TypeChip(TransactionType.INCOME, selectedType, { selectedType = it }, Modifier.weight(1f))
-                }
+                FixedFilterButton(
+                    selectedType = selectedType,
+                    counts = typeCounts,
+                    onClick = {
+                        draftType = selectedType
+                        showFilters = true
+                    },
+                )
             }
             item {
                 Row(
@@ -300,6 +317,20 @@ fun FixedEntriesScreen(
                 viewModel.addNow(entry, date)
                 manualEntry = null
             },
+        )
+    }
+
+    if (showFilters) {
+        FixedFilterSheet(
+            draftType = draftType,
+            onTypeChange = { draftType = it },
+            counts = typeCounts,
+            onClear = { draftType = TransactionType.EXPENSE },
+            onApply = {
+                selectedType = draftType
+                showFilters = false
+            },
+            onDismiss = { showFilters = false },
         )
     }
 
@@ -1075,18 +1106,84 @@ private fun FixedEntryDialog(
 }
 
 @Composable
+private fun FixedFilterButton(
+    selectedType: TransactionType,
+    counts: Pair<Int, Int>,
+    onClick: () -> Unit,
+) {
+    val label = if (selectedType == TransactionType.EXPENSE) "Gastos (${counts.first})" else "Ingresos (${counts.second})"
+    androidx.compose.material3.OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+        shape = MaterialTheme.shapes.small,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+    ) {
+        Icon(Icons.Outlined.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
+            Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+        }
+        Icon(Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FixedFilterSheet(
+    draftType: TransactionType,
+    onTypeChange: (TransactionType) -> Unit,
+    counts: Pair<Int, Int>,
+    onClear: () -> Unit,
+    onApply: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.large,
+        dragHandle = null,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 680.dp)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(start = 18.dp, top = 16.dp, end = 18.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("FILTROS", style = MaterialTheme.typography.headlineMedium)
+                    Text("Filtra por tipo de plantilla", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros") }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text("TIPO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TypeChip(TransactionType.EXPENSE, draftType, onTypeChange, Modifier.weight(1f))
+                TypeChip(TransactionType.INCOME, draftType, onTypeChange, Modifier.weight(1f))
+            }
+            Text("Gastos: ${counts.first} · Ingresos: ${counts.second}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SecondaryButton("Limpiar", onClear, Modifier.weight(1f))
+                PrimaryButton("Aplicar", onApply, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
 private fun FixedEntriesSkeleton() {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SkeletonChip(Modifier.weight(1f))
-                SkeletonChip(Modifier.weight(1f))
-            }
-        }
+        item { SkeletonBox(Modifier.fillMaxWidth().heightIn(min = 52.dp), MaterialTheme.shapes.small) }
         item {
             Row(
                 Modifier.fillMaxWidth(),

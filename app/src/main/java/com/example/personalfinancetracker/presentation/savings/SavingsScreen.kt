@@ -1,9 +1,12 @@
 package com.example.personalfinancetracker.presentation.savings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +30,8 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ViewAgenda
@@ -106,6 +111,8 @@ fun SavingsScreen(
     var showCompleted by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     val cardSize by viewModel.cardSize.collectAsStateWithLifecycle()
+    var showFilters by remember { mutableStateOf(false) }
+    var draftShowCompleted by remember { mutableStateOf(showCompleted) }
 
     val displayedGoals = remember(state.activeGoals, state.completedGoals, showCompleted, query) {
         val goals = if (showCompleted) state.completedGoals else state.activeGoals
@@ -160,33 +167,15 @@ fun SavingsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
             item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(
-                        selected = !showCompleted,
-                        onClick = { showCompleted = false },
-                        label = { Text("Activas (${state.activeGoals.size})", maxLines = 1) },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.small,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                    )
-                    FilterChip(
-                        selected = showCompleted,
-                        onClick = { showCompleted = true },
-                        label = { Text("Completadas (${state.completedGoals.size})", maxLines = 1) },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.small,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                    )
-                }
+                SavingsFilterButton(
+                    showCompleted = showCompleted,
+                    activeCount = state.activeGoals.size,
+                    completedCount = state.completedGoals.size,
+                    onClick = {
+                        draftShowCompleted = showCompleted
+                        showFilters = true
+                    },
+                )
             }
             if (state.goals.isNotEmpty()) {
                 item {
@@ -375,6 +364,107 @@ fun SavingsScreen(
             shape = MaterialTheme.shapes.medium,
         )
     }
+
+    if (showFilters) {
+        SavingsFilterSheet(
+            draftShowCompleted = draftShowCompleted,
+            onDraftChange = { draftShowCompleted = it },
+            activeCount = state.activeGoals.size,
+            completedCount = state.completedGoals.size,
+            onClear = { draftShowCompleted = false },
+            onApply = {
+                showCompleted = draftShowCompleted
+                showFilters = false
+            },
+            onDismiss = { showFilters = false },
+        )
+    }
+}
+
+@Composable
+private fun SavingsFilterButton(
+    showCompleted: Boolean,
+    activeCount: Int,
+    completedCount: Int,
+    onClick: () -> Unit,
+) {
+    val label = if (showCompleted) "Completadas ($completedCount)" else "Activas ($activeCount)"
+    androidx.compose.material3.OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+        shape = MaterialTheme.shapes.small,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+    ) {
+        Icon(Icons.Outlined.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
+            Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+        }
+        Icon(Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SavingsFilterSheet(
+    draftShowCompleted: Boolean,
+    onDraftChange: (Boolean) -> Unit,
+    activeCount: Int,
+    completedCount: Int,
+    onClear: () -> Unit,
+    onApply: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.large,
+        dragHandle = null,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 680.dp)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(start = 18.dp, top = 16.dp, end = 18.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("FILTROS", style = MaterialTheme.typography.headlineMedium)
+                    Text("Filtra por estado de la meta", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros") }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text("ESTADO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = !draftShowCompleted,
+                    onClick = { onDraftChange(false) },
+                    label = { Text("Activas ($activeCount)") },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary, selectedLabelColor = MaterialTheme.colorScheme.onPrimary),
+                )
+                FilterChip(
+                    selected = draftShowCompleted,
+                    onClick = { onDraftChange(true) },
+                    label = { Text("Completadas ($completedCount)") },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary, selectedLabelColor = MaterialTheme.colorScheme.onPrimary),
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SecondaryButton("Limpiar", onClear, Modifier.weight(1f))
+                PrimaryButton("Aplicar", onApply, Modifier.weight(1f))
+            }
+        }
+    }
 }
 
 @Composable
@@ -384,12 +474,7 @@ private fun SavingsSkeleton() {
         contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SkeletonChip(Modifier.weight(1f))
-                SkeletonChip(Modifier.weight(1f))
-            }
-        }
+        item { androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(52.dp).clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.surfaceVariant)) }
         item { SkeletonTextField() }
         items(4) { SkeletonGoalCard() }
     }

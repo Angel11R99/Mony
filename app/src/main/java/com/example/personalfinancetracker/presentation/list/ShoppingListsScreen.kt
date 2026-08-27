@@ -1,5 +1,6 @@
 package com.example.personalfinancetracker.presentation.list
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,18 +11,23 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ViewAgenda
@@ -32,9 +38,12 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -93,6 +102,8 @@ fun ShoppingListsScreen(
     var showCardSizeMenu by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var showCompleted by rememberSaveable { mutableStateOf(false) }
+    var showFilters by remember { mutableStateOf(false) }
+    var draftShowCompleted by remember { mutableStateOf(showCompleted) }
 
     val activeLists = remember(state.lists) { state.lists.filter { it.list.status != ShoppingListStatus.COMPLETED } }
     val completedLists = remember(state.lists) { state.lists.filter { it.list.status == ShoppingListStatus.COMPLETED } }
@@ -143,6 +154,15 @@ fun ShoppingListsScreen(
             ) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ListFilterButton(
+                            showCompleted = showCompleted,
+                            activeCount = activeLists.size,
+                            completedCount = completedLists.size,
+                            onClick = {
+                                draftShowCompleted = showCompleted
+                                showFilters = true
+                            },
+                        )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             SearchBar(
                                 query = query,
@@ -152,12 +172,6 @@ fun ShoppingListsScreen(
                             Spacer(Modifier.width(8.dp))
                             CardSizeMenu(cardSize, viewModel::setCardSize, showCardSizeMenu, { showCardSizeMenu = it })
                         }
-                        FilterChips(
-                            activeCount = activeLists.size,
-                            completedCount = completedLists.size,
-                            showCompleted = showCompleted,
-                            onToggle = { showCompleted = !showCompleted },
-                        )
                     }
                 }
                 if (displayed.isEmpty()) {
@@ -218,6 +232,21 @@ fun ShoppingListsScreen(
             dismissButton = { TextButton(viewModel::cancelDuplicate) { Text("Cancelar") } },
         )
     }
+
+    if (showFilters) {
+        ListFilterSheet(
+            draftShowCompleted = draftShowCompleted,
+            onDraftChange = { draftShowCompleted = it },
+            activeCount = activeLists.size,
+            completedCount = completedLists.size,
+            onClear = { draftShowCompleted = false },
+            onApply = {
+                showCompleted = draftShowCompleted
+                showFilters = false
+            },
+            onDismiss = { showFilters = false },
+        )
+    }
 }
 
 @Composable
@@ -235,6 +264,92 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, modifier: 
         },
         singleLine = true,
     )
+}
+
+@Composable
+private fun ListFilterButton(
+    showCompleted: Boolean,
+    activeCount: Int,
+    completedCount: Int,
+    onClick: () -> Unit,
+) {
+    val label = if (showCompleted) "Finalizadas ($completedCount)" else "Activas ($activeCount)"
+    androidx.compose.material3.OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+        shape = MaterialTheme.shapes.small,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+    ) {
+        Icon(Icons.Outlined.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
+            Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+        }
+        Icon(Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ListFilterSheet(
+    draftShowCompleted: Boolean,
+    onDraftChange: (Boolean) -> Unit,
+    activeCount: Int,
+    completedCount: Int,
+    onClear: () -> Unit,
+    onApply: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.large,
+        dragHandle = null,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 680.dp)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(start = 18.dp, top = 16.dp, end = 18.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("FILTROS", style = MaterialTheme.typography.headlineMedium)
+                    Text("Filtra por estado de la lista", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros") }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text("ESTADO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = !draftShowCompleted,
+                    onClick = { onDraftChange(false) },
+                    label = { Text("Activas ($activeCount)") },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary, selectedLabelColor = MaterialTheme.colorScheme.onPrimary),
+                )
+                FilterChip(
+                    selected = draftShowCompleted,
+                    onClick = { onDraftChange(true) },
+                    label = { Text("Finalizadas ($completedCount)") },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary, selectedLabelColor = MaterialTheme.colorScheme.onPrimary),
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                com.example.personalfinancetracker.presentation.components.SecondaryButton("Limpiar", onClear, Modifier.weight(1f))
+                com.example.personalfinancetracker.presentation.components.PrimaryButton("Aplicar", onApply, Modifier.weight(1f))
+            }
+        }
+    }
 }
 
 @Composable
