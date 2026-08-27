@@ -16,12 +16,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.automirrored.outlined.Undo
@@ -37,6 +40,7 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.ViewAgenda
@@ -55,6 +59,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
@@ -104,6 +109,7 @@ import com.example.personalfinancetracker.presentation.components.GlobalOutlined
 import com.example.personalfinancetracker.presentation.components.GlobalSettingsButton
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.LoadingContent
+import com.example.personalfinancetracker.presentation.components.SkeletonBox
 import com.example.personalfinancetracker.presentation.components.SkeletonCard
 import com.example.personalfinancetracker.presentation.components.SkeletonChip
 import com.example.personalfinancetracker.presentation.components.SkeletonEntryCard
@@ -143,7 +149,12 @@ fun PendingEntriesScreen(
     }
     var selectedType by remember { mutableStateOf(PendingType.PAYMENT) }
     var periodFilter by remember { mutableStateOf(PendingPeriodFilter.FORTNIGHT) }
+    var statusFilter by remember { mutableStateOf(PendingStatusFilter.ALL) }
     var query by remember { mutableStateOf("") }
+    var showFilters by remember { mutableStateOf(false) }
+    var draftType by remember { mutableStateOf(selectedType) }
+    var draftPeriod by remember { mutableStateOf(periodFilter) }
+    var draftStatus by remember { mutableStateOf(statusFilter) }
     val cardSize by viewModel.cardSize.collectAsStateWithLifecycle()
     var editorEntry by remember { mutableStateOf<PendingEntry?>(null) }
     var showEditor by remember { mutableStateOf(false) }
@@ -160,11 +171,21 @@ fun PendingEntriesScreen(
         }
     }
 
-    val visibleEntries = remember(state.entries, selectedType, periodRange, query, state.categories) {
-        filterPendingEntries(state.entries, selectedType, periodRange, query, state.categories)
+    val visibleEntries = remember(state.entries, selectedType, periodRange, statusFilter, query, state.categories) {
+        filterPendingEntries(state.entries, selectedType, periodRange, query, state.categories, statusFilter)
     }
     val pendingTotal = remember(visibleEntries) {
         visibleEntries.filterNot(PendingEntry::isDone).sumOf(PendingEntry::amountInCents)
+    }
+    val statusCounts = remember(state.entries, selectedType, periodRange, query, state.categories) {
+        val baseFiltered = filterPendingEntries(
+            state.entries, selectedType, periodRange, query, state.categories, PendingStatusFilter.ALL
+        )
+        Triple(
+            baseFiltered.size,
+            baseFiltered.count { !it.isDone },
+            baseFiltered.count { it.isDone },
+        )
     }
 
     LaunchedEffect(message) {
@@ -210,17 +231,18 @@ fun PendingEntriesScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PendingTypeChip(PendingType.PAYMENT, selectedType, { selectedType = it }, Modifier.weight(1f))
-                    PendingTypeChip(PendingType.COLLECTION, selectedType, { selectedType = it }, Modifier.weight(1f))
-                }
-            }
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PendingPeriodChip("Quincena", periodFilter == PendingPeriodFilter.FORTNIGHT, { periodFilter = PendingPeriodFilter.FORTNIGHT }, Modifier.weight(1f))
-                    PendingPeriodChip("Mes", periodFilter == PendingPeriodFilter.MONTH, { periodFilter = PendingPeriodFilter.MONTH }, Modifier.weight(1f))
-                    PendingPeriodChip("Todas", periodFilter == PendingPeriodFilter.ALL, { periodFilter = PendingPeriodFilter.ALL }, Modifier.weight(1f))
-                }
+                PendingFilterButton(
+                    type = selectedType,
+                    period = periodFilter,
+                    status = statusFilter,
+                    statusCounts = statusCounts,
+                    onClick = {
+                        draftType = selectedType
+                        draftPeriod = periodFilter
+                        draftStatus = statusFilter
+                        showFilters = true
+                    },
+                )
             }
             item {
                 Row(
@@ -339,6 +361,30 @@ fun PendingEntriesScreen(
         )
     }
 
+    if (showFilters) {
+        PendingFilterSheet(
+            draftType = draftType,
+            onTypeChange = { draftType = it },
+            draftPeriod = draftPeriod,
+            onPeriodChange = { draftPeriod = it },
+            draftStatus = draftStatus,
+            onStatusChange = { draftStatus = it },
+            statusCounts = statusCounts,
+            onClear = {
+                draftType = PendingType.PAYMENT
+                draftPeriod = PendingPeriodFilter.ALL
+                draftStatus = PendingStatusFilter.ALL
+            },
+            onApply = {
+                selectedType = draftType
+                periodFilter = draftPeriod
+                statusFilter = draftStatus
+                showFilters = false
+            },
+            onDismiss = { showFilters = false },
+        )
+    }
+
     pendingDelete?.let { entry ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
@@ -374,17 +420,7 @@ private fun PendingEntriesSkeleton() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SkeletonChip(Modifier.weight(1f))
-                SkeletonChip(Modifier.weight(1f))
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SkeletonChip(Modifier.weight(1f))
-                SkeletonChip(Modifier.weight(1f))
-                SkeletonChip(Modifier.weight(1f))
-            }
+            SkeletonBox(Modifier.fillMaxWidth().heightIn(min = 52.dp), MaterialTheme.shapes.small)
         }
         item { SkeletonTextField() }
         item {
@@ -508,6 +544,167 @@ private fun PendingPeriodChip(
             selectedBorderColor = MaterialTheme.colorScheme.secondary,
         ),
     )
+}
+
+@Composable
+private fun PendingStatusChip(
+    label: String,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onSelect,
+        label = { Text(label, maxLines = 1) },
+        modifier = modifier,
+        shape = MaterialTheme.shapes.small,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
+            borderColor = MaterialTheme.colorScheme.outline,
+            selectedBorderColor = MaterialTheme.colorScheme.primary,
+        ),
+    )
+}
+
+enum class PendingStatusFilter(val label: String) {
+    ALL("Todos"),
+    PENDING("Pendientes"),
+    DONE("Hechos"),
+}
+
+@Composable
+private fun PendingFilterButton(
+    type: PendingType,
+    period: PendingPeriodFilter,
+    status: PendingStatusFilter,
+    statusCounts: Triple<Int, Int, Int>,
+    onClick: () -> Unit,
+) {
+    val typeLabel = if (type == PendingType.PAYMENT) "Pagos" else "Cobros"
+    val periodLabel = when (period) {
+        PendingPeriodFilter.FORTNIGHT -> "Quincena"
+        PendingPeriodFilter.MONTH -> "Mes"
+        PendingPeriodFilter.ALL -> "Todas"
+    }
+    val statusLabel = when (status) {
+        PendingStatusFilter.ALL -> "Todos (${statusCounts.first})"
+        PendingStatusFilter.PENDING -> "Pendientes (${statusCounts.second})"
+        PendingStatusFilter.DONE -> "Hechos (${statusCounts.third})"
+    }
+    androidx.compose.material3.OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+        shape = MaterialTheme.shapes.small,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Icon(
+            androidx.compose.material.icons.Icons.Outlined.FilterList,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
+            Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Text("$typeLabel · $periodLabel · $statusLabel", style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+        }
+        Icon(
+            androidx.compose.material.icons.Icons.Outlined.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PendingFilterSheet(
+    draftType: PendingType,
+    onTypeChange: (PendingType) -> Unit,
+    draftPeriod: PendingPeriodFilter,
+    onPeriodChange: (PendingPeriodFilter) -> Unit,
+    draftStatus: PendingStatusFilter,
+    onStatusChange: (PendingStatusFilter) -> Unit,
+    statusCounts: Triple<Int, Int, Int>,
+    onClear: () -> Unit,
+    onApply: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.large,
+        dragHandle = null,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 680.dp)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(start = 18.dp, top = 16.dp, end = 18.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("FILTROS", style = MaterialTheme.typography.headlineMedium)
+                    Text(
+                        "Filtra por tipo, periodo y estado",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros")
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text("TIPO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PendingTypeChip(PendingType.PAYMENT, draftType, onTypeChange, Modifier.weight(1f))
+                PendingTypeChip(PendingType.COLLECTION, draftType, onTypeChange, Modifier.weight(1f))
+            }
+            Text("PERIODO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PendingPeriodChip("Quincena", draftPeriod == PendingPeriodFilter.FORTNIGHT, { onPeriodChange(PendingPeriodFilter.FORTNIGHT) }, Modifier.weight(1f))
+                PendingPeriodChip("Mes", draftPeriod == PendingPeriodFilter.MONTH, { onPeriodChange(PendingPeriodFilter.MONTH) }, Modifier.weight(1f))
+                PendingPeriodChip("Todas", draftPeriod == PendingPeriodFilter.ALL, { onPeriodChange(PendingPeriodFilter.ALL) }, Modifier.weight(1f))
+            }
+            Text("ESTADO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PendingStatusChip(
+                    label = "Todos (${statusCounts.first})",
+                    selected = draftStatus == PendingStatusFilter.ALL,
+                    onSelect = { onStatusChange(PendingStatusFilter.ALL) },
+                    modifier = Modifier.weight(1f),
+                )
+                PendingStatusChip(
+                    label = "Pendientes (${statusCounts.second})",
+                    selected = draftStatus == PendingStatusFilter.PENDING,
+                    onSelect = { onStatusChange(PendingStatusFilter.PENDING) },
+                    modifier = Modifier.weight(1f),
+                )
+                PendingStatusChip(
+                    label = "Hechos (${statusCounts.third})",
+                    selected = draftStatus == PendingStatusFilter.DONE,
+                    onSelect = { onStatusChange(PendingStatusFilter.DONE) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SecondaryButton("Limpiar", onClear, Modifier.weight(1f))
+                PrimaryButton("Aplicar", onApply, Modifier.weight(1f))
+            }
+        }
+    }
 }
 
 @Composable
@@ -1169,12 +1366,20 @@ internal fun filterPendingEntries(
     range: DateRange?,
     query: String,
     categories: Map<Long, Category>,
+    status: PendingStatusFilter = PendingStatusFilter.ALL,
 ): List<PendingEntry> {
     val normalizedQuery = query.trim()
     val digitQuery = normalizedQuery.filter(Char::isDigit)
     return entries
         .filter { it.type == type }
         .filter { range == null || it.date in range.start..range.endInclusive }
+        .filter {
+            when (status) {
+                PendingStatusFilter.ALL -> true
+                PendingStatusFilter.PENDING -> !it.isDone
+                PendingStatusFilter.DONE -> it.isDone
+            }
+        }
         .filter {
             normalizedQuery.isEmpty() || it.matchesPendingQuery(normalizedQuery, digitQuery, categories)
         }

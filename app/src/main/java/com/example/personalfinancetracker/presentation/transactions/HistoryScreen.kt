@@ -105,6 +105,12 @@ private enum class HistoryTypeFilter(val label: String, val type: TransactionTyp
     INCOME("Ingresos", TransactionType.INCOME),
 }
 
+sealed class HistoryCycleFilter(val label: String, val range: com.example.personalfinancetracker.domain.model.DateRange?) {
+    data object All : HistoryCycleFilter("Todos los ciclos", null)
+    data class Custom(val dateRange: com.example.personalfinancetracker.domain.model.DateRange, val displayLabel: String) :
+        HistoryCycleFilter(displayLabel, dateRange)
+}
+
 internal enum class HistorySort(val label: String) {
     NEWEST("Más recientes"),
     OLDEST("Más antiguos"),
@@ -129,6 +135,7 @@ fun HistoryScreen(
     var endDate by remember { mutableStateOf<LocalDate?>(null) }
     var sort by remember { mutableStateOf(HistorySort.NEWEST) }
     var query by remember { mutableStateOf("") }
+    var cycleFilter by remember { mutableStateOf<HistoryCycleFilter>(HistoryCycleFilter.All) }
     var pendingDelete by remember { mutableStateOf<FinanceTransaction?>(null) }
     var pendingDuplicate by remember { mutableStateOf<FinanceTransaction?>(null) }
     var selectedTransaction by remember { mutableStateOf<FinanceTransaction?>(null) }
@@ -160,6 +167,14 @@ fun HistoryScreen(
         }
     }
 
+    val cycleOptions = remember(state.budget, state.cycleHistory) {
+        buildHistoryCycleOptions(state.budget, state.cycleHistory)
+    }
+    LaunchedEffect(cycleOptions) {
+        if (cycleFilter != HistoryCycleFilter.All && cycleOptions.none { it.label == cycleFilter.label && it.range == cycleFilter.range }) {
+            cycleFilter = HistoryCycleFilter.All
+        }
+    }
     val availableCategories = remember(state.categories, typeFilter) {
         state.categories.values
             .filter { typeFilter.type == null || it.type == typeFilter.type }
@@ -168,9 +183,9 @@ fun HistoryScreen(
     LaunchedEffect(typeFilter) {
         if (categoryId != null && availableCategories.none { it.id == categoryId }) categoryId = null
     }
-    val filtered = remember(state.transactions, typeFilter, categoryId, startDate, endDate, query, state.categories) {
+    val filtered = remember(state.transactions, typeFilter, categoryId, startDate, endDate, cycleFilter, query, state.categories) {
         searchFinanceTransactions(
-            filterTransactions(state.transactions, typeFilter.type, categoryId, startDate, endDate),
+            filterTransactions(state.transactions, typeFilter.type, categoryId, startDate, endDate, cycleFilter.range),
             state.categories,
             query,
         )
@@ -183,8 +198,10 @@ fun HistoryScreen(
 
     val pdfDateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     fun buildPdfRequest(allHistory: Boolean): HistoryPdfRequest {
+        val cycleLabel = cycleFilter.takeIf { it != HistoryCycleFilter.All }?.label
         val periodLabel = when {
             allHistory -> "Todo el historial"
+            cycleLabel != null -> "Ciclo: $cycleLabel"
             startDate != null && endDate != null ->
                 "Período: ${startDate!!.format(pdfDateFormatter)} – ${endDate!!.format(pdfDateFormatter)}"
             startDate != null -> "Desde: ${startDate!!.format(pdfDateFormatter)}"
@@ -199,6 +216,7 @@ fun HistoryScreen(
                 categoryId?.let {
                     add("Categoría: ${state.categories[it]?.name ?: "Sin categoría"}")
                 }
+                cycleLabel?.let { add("Ciclo: $it") }
                 if (query.isNotBlank()) add("Búsqueda: \"${query.trim()}\"")
                 if (isEmpty()) add("Sin filtros adicionales")
             }
@@ -291,11 +309,15 @@ fun HistoryScreen(
                     },
                     sort = sort,
                     onSortChange = { sort = it },
+                    cycleFilter = cycleFilter,
+                    onCycleChange = { cycleFilter = it },
+                    cycleOptions = cycleOptions,
                     onClear = {
                         typeFilter = HistoryTypeFilter.ALL
                         categoryId = null
                         startDate = null
                         endDate = null
+                        cycleFilter = HistoryCycleFilter.All
                     },
                 )
             }
@@ -583,6 +605,9 @@ private fun HistoryFilters(
     onEndDateChange: (LocalDate?) -> Unit,
     sort: HistorySort,
     onSortChange: (HistorySort) -> Unit,
+    cycleFilter: HistoryCycleFilter,
+    onCycleChange: (HistoryCycleFilter) -> Unit,
+    cycleOptions: List<HistoryCycleFilter>,
     onClear: () -> Unit,
 ) {
     var showAdvancedFilters by remember { mutableStateOf(false) }
@@ -602,6 +627,11 @@ private fun HistoryFilters(
                 )
             }
         }
+        HistoryCycleMenu(
+            selected = cycleFilter,
+            options = cycleOptions,
+            onSelect = onCycleChange,
+        )
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -904,11 +934,13 @@ internal fun filterTransactions(
     categoryId: Long?,
     startDate: LocalDate?,
     endDate: LocalDate?,
+    cycleRange: com.example.personalfinancetracker.domain.model.DateRange? = null,
 ): List<FinanceTransaction> = transactions.filter { transaction ->
     (type == null || transaction.type == type) &&
         (categoryId == null || transaction.categoryId == categoryId) &&
         (startDate == null || !transaction.date.isBefore(startDate)) &&
-        (endDate == null || !transaction.date.isAfter(endDate))
+        (endDate == null || !transaction.date.isAfter(endDate)) &&
+        (cycleRange == null || transaction.date in cycleRange.start..cycleRange.endInclusive)
 }
 
 internal fun searchCategories(categories: List<Category>, query: String): List<Category> =
@@ -977,6 +1009,85 @@ internal fun sortTransactions(
         HistorySort.CATEGORY_DESC -> transactions.sortedWith(
             compareByDescending(categoryName).then(newestFirst)
         )
+    }
+}
+
+private fun buildHistoryCycleOptions(
+    budget: com.example.personalfinancetracker.domain.model.BudgetConfig?,
+    history: List<com.example.personalfinancetracker.domain.model.BudgetCycle>,
+): List<HistoryCycleFilter> {
+    val formatter = DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.forLanguageTag("es-DO"))
+    val options = mutableListOf<HistoryCycleFilter>(HistoryCycleFilter.All)
+    budget?.let {
+        val current = com.example.personalfinancetracker.domain.model.activeBudgetPeriod(it, LocalDate.now())
+        val prev = com.example.personalfinancetracker.domain.model.previousBudgetPeriod(it, LocalDate.now())
+        options.add(
+            HistoryCycleFilter.Custom(
+                current,
+                "Actual: ${current.start.format(formatter)} – ${current.endInclusive.format(formatter)}",
+            ),
+        )
+        options.add(
+            HistoryCycleFilter.Custom(
+                prev,
+                "Anterior: ${prev.start.format(formatter)} – ${prev.endInclusive.format(formatter)}",
+            ),
+        )
+    }
+    history.forEach { cycle ->
+        val range = com.example.personalfinancetracker.domain.model.DateRange(cycle.startDate, cycle.endDate)
+        val label = "Hist: ${range.start.format(formatter)} – ${range.endInclusive.format(formatter)}"
+        if (options.none { it.range == range }) {
+            options.add(HistoryCycleFilter.Custom(range, label))
+        }
+    }
+    return options.distinctBy { it.range to it.label }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HistoryCycleMenu(
+    selected: HistoryCycleFilter,
+    options: List<HistoryCycleFilter>,
+    onSelect: (HistoryCycleFilter) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = selected.label,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Ciclo") },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded)
+            },
+            leadingIcon = {
+                Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            },
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth(),
+            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(),
+            shape = MaterialTheme.shapes.small,
+            singleLine = true,
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    leadingIcon = if (selected.label == option.label && selected.range == option.range) {
+                        { Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                    } else null,
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
+                )
+            }
+        }
     }
 }
 

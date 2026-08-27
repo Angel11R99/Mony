@@ -7,8 +7,11 @@ import android.net.Uri
 import com.example.personalfinancetracker.core.CsvExporter
 import com.example.personalfinancetracker.core.HistoryPdfMeta
 import com.example.personalfinancetracker.core.HistoryPdfWriter
+import com.example.personalfinancetracker.domain.model.BudgetConfig
+import com.example.personalfinancetracker.domain.model.BudgetCycle
 import com.example.personalfinancetracker.domain.model.Category
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
+import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.ShoppingListRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
@@ -26,6 +29,8 @@ data class HistoryUiState(
     val transactions: List<FinanceTransaction> = emptyList(),
     val categories: Map<Long, Category> = emptyMap(),
     val shoppingListIdsByExpenseTransactionId: Map<Long, Long> = emptyMap(),
+    val budget: BudgetConfig? = null,
+    val cycleHistory: List<BudgetCycle> = emptyList(),
     val isReady: Boolean = false,
 )
 
@@ -46,19 +51,24 @@ class HistoryViewModel @Inject constructor(
     private val transactionsRepository: TransactionRepository,
     categories: CategoryRepository,
     shoppingLists: ShoppingListRepository,
+    budgetRepository: BudgetRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val state = combine(
         transactionsRepository.observeAll(),
         categories.observeAll(),
         shoppingLists.observeLists(),
-    ) { items, cats, lists ->
+        budgetRepository.observe(),
+        budgetRepository.observeHistory(),
+    ) { items, cats, lists, budget, history ->
         HistoryUiState(
             transactions = items,
             categories = cats.associateBy(Category::id),
             shoppingListIdsByExpenseTransactionId = lists.mapNotNull { list ->
                 list.expenseTransactionId?.let { transactionId -> transactionId to list.id }
             }.toMap(),
+            budget = budget,
+            cycleHistory = history,
             isReady = true,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
