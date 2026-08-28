@@ -88,6 +88,7 @@ import java.util.Locale
 fun ShoppingListsScreen(
     onOpen: (Long) -> Unit,
     onSettings: () -> Unit,
+    initialQuery: String? = null,
     viewModel: ShoppingListsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -100,7 +101,7 @@ fun ShoppingListsScreen(
     val context = LocalContext.current
     var showCreate by remember { mutableStateOf(false) }
     var showCardSizeMenu by remember { mutableStateOf(false) }
-    var query by rememberSaveable { mutableStateOf("") }
+    var query by rememberSaveable { mutableStateOf(initialQuery.orEmpty()) }
     var statusFilter by rememberSaveable { mutableStateOf(ListStatusFilter.ALL) }
     var showFilters by remember { mutableStateOf(false) }
     var draftStatusFilter by remember { mutableStateOf(statusFilter) }

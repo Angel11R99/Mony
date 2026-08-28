@@ -36,6 +36,13 @@ data class PendingEntriesUiState(
     val isReady: Boolean = false,
 )
 
+data class PendingDraftState(
+    val type: PendingType,
+    val categoryId: Long?,
+    val date: LocalDate,
+    val reminderTime: LocalTime?,
+)
+
 @HiltViewModel
 class PendingEntriesViewModel @Inject constructor(
     private val pendingEntries: PendingEntryRepository,
@@ -54,6 +61,11 @@ class PendingEntriesViewModel @Inject constructor(
     val isSaving = MutableStateFlow(false)
     private val processingEntryIds = mutableSetOf<Long>()
     private val displayPreferences = EntryDisplayPreferences(context)
+
+    private val _lastDraft = MutableStateFlow(
+        PendingDraftState(PendingType.PAYMENT, null, LocalDate.now(), null),
+    )
+    val lastDraft: StateFlow<PendingDraftState> = _lastDraft
 
     val cardSize: StateFlow<EntryCardSize> = displayPreferences.pendingCardSize
 
@@ -111,6 +123,9 @@ class PendingEntriesViewModel @Inject constructor(
                     PendingReminderScheduler.schedule(context, persistedEntry)
                 }.onSuccess {
                     message.value = "Recordatorio de ${type.label()} guardado"
+                    if (existing == null) {
+                        _lastDraft.value = PendingDraftState(type, categoryId, date, reminderTime)
+                    }
                     onSaved()
                 }.onFailure { error -> message.value = error.message ?: "No se pudo guardar" }
                 isSaving.value = false

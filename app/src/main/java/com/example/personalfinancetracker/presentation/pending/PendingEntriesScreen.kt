@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
@@ -128,11 +129,13 @@ import java.util.Locale
 @Composable
 fun PendingEntriesScreen(
     onSettings: () -> Unit,
+    onOpenList: (String) -> Unit,
     viewModel: PendingEntriesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
+    val lastDraft by viewModel.lastDraft.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var notificationsGranted by remember {
         mutableStateOf(
@@ -323,9 +326,10 @@ fun PendingEntriesScreen(
                         editorEntry = entry
                         showEditor = true
                     },
+                    onOpenList = onOpenList,
                      onDelete = { pendingDelete = entry },
                      onSelect = { selectedEntry = entry },
-                 )
+                  )
              }
                 }
             }
@@ -335,7 +339,10 @@ fun PendingEntriesScreen(
     if (showEditor) {
         PendingEntryDialog(
             entry = editorEntry,
-            initialType = editorEntry?.type ?: selectedType,
+            initialType = editorEntry?.type ?: lastDraft.type,
+            initialCategoryId = if (editorEntry == null) lastDraft.categoryId else null,
+            initialDate = if (editorEntry == null) lastDraft.date else null,
+            initialReminderTime = if (editorEntry == null) lastDraft.reminderTime else null,
             categories = state.categories.values.toList(),
             isSaving = isSaving,
             notificationsGranted = notificationsGranted,
@@ -758,18 +765,35 @@ private fun PendingEntryCard(
     formatter: DateTimeFormatter,
     onToggleDone: () -> Unit,
     onEdit: () -> Unit,
+    onOpenList: (String) -> Unit,
     onDelete: () -> Unit,
     onSelect: () -> Unit,
 ) {
     FinanceCard(Modifier.fillMaxWidth().clickable(onClick = onSelect)) {
         when (size) {
             EntryCardSize.COMPACT ->
-                PendingCompactCardContent(entry, category, formatter, onToggleDone, onEdit, onDelete)
+                PendingCompactCardContent(entry, category, formatter, onToggleDone, onEdit, onOpenList, onDelete)
             EntryCardSize.NORMAL ->
-                PendingNormalCardContent(entry, category, formatter, onToggleDone, onEdit, onDelete)
+                PendingNormalCardContent(entry, category, formatter, onToggleDone, onEdit, onOpenList, onDelete)
             EntryCardSize.DETAILED ->
-                PendingDetailedCardContent(entry, category, formatter, onToggleDone, onEdit, onDelete)
+                PendingDetailedCardContent(entry, category, formatter, onToggleDone, onEdit, onOpenList, onDelete)
         }
+    }
+}
+
+@Composable
+private fun PendingEditAction(
+    sourceShoppingListId: Long?,
+    listName: String,
+    onEdit: () -> Unit,
+    onOpenList: (String) -> Unit,
+) {
+    if (sourceShoppingListId != null) {
+        IconButton(onClick = { onOpenList(listName) }) {
+            Icon(Icons.Outlined.ShoppingCart, "Ir a Lista", modifier = Modifier.size(20.dp))
+        }
+    } else {
+        IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Editar", modifier = Modifier.size(20.dp)) }
     }
 }
 
@@ -780,6 +804,7 @@ private fun PendingCompactCardContent(
     formatter: DateTimeFormatter,
     onToggleDone: () -> Unit,
     onEdit: () -> Unit,
+    onOpenList: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
     Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -839,9 +864,7 @@ private fun PendingCompactCardContent(
                     modifier = Modifier.size(20.dp),
                 )
             }
-            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Outlined.Edit, "Editar", modifier = Modifier.size(20.dp))
-            }
+            PendingEditAction(entry.sourceShoppingListId, entry.description, onEdit, onOpenList)
             IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                 Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
             }
@@ -856,6 +879,7 @@ private fun PendingNormalCardContent(
     formatter: DateTimeFormatter,
     onToggleDone: () -> Unit,
     onEdit: () -> Unit,
+    onOpenList: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -880,7 +904,15 @@ private fun PendingNormalCardContent(
                 )
             }
         }
-        PendingCardActionsRow(onToggleDone = onToggleDone, isDone = entry.isDone, onEdit = onEdit, onDelete = onDelete)
+        PendingCardActionsRow(
+            sourceShoppingListId = entry.sourceShoppingListId,
+            listName = entry.description,
+            isDone = entry.isDone,
+            onToggleDone = onToggleDone,
+            onEdit = onEdit,
+            onOpenList = onOpenList,
+            onDelete = onDelete,
+        )
     }
 }
 
@@ -891,6 +923,7 @@ private fun PendingDetailedCardContent(
     formatter: DateTimeFormatter,
     onToggleDone: () -> Unit,
     onEdit: () -> Unit,
+    onOpenList: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
     var expanded by remember(entry.id, entry.updatedAt) { mutableStateOf(false) }
@@ -927,7 +960,15 @@ private fun PendingDetailedCardContent(
                 FinanceDetailRow("Creado", entry.createdAt.atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(formatter))
             }
         }
-        PendingCardActionsRow(onToggleDone = onToggleDone, isDone = entry.isDone, onEdit = onEdit, onDelete = onDelete)
+        PendingCardActionsRow(
+            sourceShoppingListId = entry.sourceShoppingListId,
+            listName = entry.description,
+            isDone = entry.isDone,
+            onToggleDone = onToggleDone,
+            onEdit = onEdit,
+            onOpenList = onOpenList,
+            onDelete = onDelete,
+        )
     }
 }
 
@@ -971,9 +1012,12 @@ private fun PendingCardDateRow(entry: PendingEntry, formatter: DateTimeFormatter
 
 @Composable
 private fun PendingCardActionsRow(
+    sourceShoppingListId: Long?,
+    listName: String,
     isDone: Boolean,
     onToggleDone: () -> Unit,
     onEdit: () -> Unit,
+    onOpenList: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -982,7 +1026,7 @@ private fun PendingCardActionsRow(
             onClick = onToggleDone,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Editar") }
+        PendingEditAction(sourceShoppingListId, listName, onEdit, onOpenList)
         IconButton(onClick = onDelete) {
             Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
         }
@@ -1053,6 +1097,9 @@ private fun PendingStatusBadge(entry: PendingEntry) {
 private fun PendingEntryDialog(
     entry: PendingEntry?,
     initialType: PendingType,
+    initialCategoryId: Long? = null,
+    initialDate: LocalDate? = null,
+    initialReminderTime: LocalTime? = null,
     categories: List<Category>,
     isSaving: Boolean,
     notificationsGranted: Boolean,
@@ -1065,13 +1112,13 @@ private fun PendingEntryDialog(
     var amount by remember(entry) {
         mutableStateOf(entry?.amountInCents?.let { java.math.BigDecimal.valueOf(it, 2).stripTrailingZeros().toPlainString() }.orEmpty())
     }
-    var categoryId by remember(entry) { mutableStateOf(entry?.categoryId) }
+    var categoryId by remember(entry) { mutableStateOf(entry?.categoryId ?: initialCategoryId) }
     var comment by remember(entry) { mutableStateOf(entry?.comment.orEmpty()) }
-    var date by remember(entry) { mutableStateOf(entry?.date ?: LocalDate.now()) }
-    var reminderTime by remember(entry) { mutableStateOf(entry?.reminderTime) }
+    var date by remember(entry) { mutableStateOf(entry?.date ?: initialDate ?: LocalDate.now()) }
+    var reminderTime by remember(entry) { mutableStateOf(entry?.reminderTime ?: initialReminderTime) }
     var categoryExpanded by remember { mutableStateOf(false) }
     var categorySearch by remember(entry, categories) {
-        mutableStateOf(categories.firstOrNull { it.id == entry?.categoryId }?.name.orEmpty())
+        mutableStateOf(categories.firstOrNull { it.id == (entry?.categoryId ?: initialCategoryId) }?.name.orEmpty())
     }
     val availableCategories = remember(categories, type) {
         categories.filter { it.type == type.toTransactionType() && it.isActive }.sortedBy(Category::name)

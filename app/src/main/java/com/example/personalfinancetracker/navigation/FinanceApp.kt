@@ -20,6 +20,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import android.net.Uri
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.presentation.home.HomeScreen
 import com.example.personalfinancetracker.presentation.statistics.StatisticsScreen
@@ -57,7 +58,7 @@ fun FinanceApp(
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
+    val currentRoute = backStackEntry?.destination?.route?.substringBefore('?')
     val systemBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val showModuleBar = shouldShowModuleBar(currentRoute)
 
@@ -141,10 +142,23 @@ fun FinanceApp(
                 FixedEntriesScreen(onSettings = { navController.navigate("settings") })
             }
             composable("pending") {
-                PendingEntriesScreen(onSettings = { navController.navigate("settings") })
+                PendingEntriesScreen(
+                    onSettings = { navController.navigate("settings") },
+                    onOpenList = { navController.navigate("list?query=${Uri.encode(it)}") },
+                )
             }
-            composable("list") {
+            composable(
+                route = "list?query={query}",
+                arguments = listOf(
+                    navArgument("query") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) { backStackEntry ->
                 ShoppingListsScreen(
+                    initialQuery = backStackEntry.arguments?.getString("query"),
                     onOpen = { navController.navigate("list/$it") },
                     onSettings = { navController.navigate("settings") },
                 )
