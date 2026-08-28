@@ -245,11 +245,40 @@ object DatabaseModule {
         }
     }
 
+    internal val migration14To15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE shopping_lists ADD COLUMN payableId INTEGER")
+            db.execSQL("ALTER TABLE shopping_lists ADD COLUMN purchaseDateEpochDay INTEGER")
+            db.execSQL("ALTER TABLE shopping_lists ADD COLUMN paymentMethod TEXT")
+            db.execSQL("ALTER TABLE shopping_lists ADD COLUMN expenseCategoryId INTEGER")
+            db.execSQL("ALTER TABLE pending_entries ADD COLUMN sourceShoppingListId INTEGER")
+            db.execSQL("UPDATE shopping_lists SET paymentMethod = 'DEBIT' WHERE expenseTransactionId IS NOT NULL")
+            db.execSQL("UPDATE shopping_lists SET purchaseDateEpochDay = (SELECT dateEpochDay FROM transactions WHERE transactions.id = shopping_lists.expenseTransactionId) WHERE expenseTransactionId IS NOT NULL")
+            db.execSQL("UPDATE shopping_lists SET expenseCategoryId = (SELECT categoryId FROM transactions WHERE transactions.id = shopping_lists.expenseTransactionId) WHERE expenseTransactionId IS NOT NULL")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_shopping_lists_payableId ON shopping_lists(payableId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_shopping_lists_expenseCategoryId ON shopping_lists(expenseCategoryId)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_pending_entries_sourceShoppingListId ON pending_entries(sourceShoppingListId)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS product_recognition_aliases (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    detectedText TEXT NOT NULL,
+                    normalizedAlias TEXT NOT NULL,
+                    displayName TEXT NOT NULL,
+                    barcode TEXT,
+                    confirmationCount INTEGER NOT NULL,
+                    lastUsedAtEpochMillis INTEGER NOT NULL
+                )""".trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_product_recognition_aliases_normalizedAlias ON product_recognition_aliases(normalizedAlias)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_product_recognition_aliases_barcode ON product_recognition_aliases(barcode)")
+        }
+    }
+
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): FinanceDatabase =
         Room.databaseBuilder(context, FinanceDatabase::class.java, "personal_finance.db")
-            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9, migration9To10, migration10To11, migration11To12, migration12To13, migration13To14)
+            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9, migration9To10, migration10To11, migration11To12, migration12To13, migration13To14, migration14To15)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)

@@ -13,7 +13,11 @@ import androidx.room.PrimaryKey
         childColumns = ["expenseTransactionId"],
         onDelete = ForeignKey.SET_NULL,
     )],
-    indices = [Index(value = ["expenseTransactionId"], unique = true)],
+    indices = [
+        Index(value = ["expenseTransactionId"], unique = true),
+        Index(value = ["payableId"], unique = true),
+        Index("expenseCategoryId"),
+    ],
 )
 data class ShoppingListEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -21,6 +25,10 @@ data class ShoppingListEntity(
     val status: String,
     val budgetInCents: Long?,
     val expenseTransactionId: Long?,
+    val payableId: Long?,
+    val purchaseDateEpochDay: Long?,
+    val paymentMethod: String?,
+    val expenseCategoryId: Long?,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
     val completedAtEpochMillis: Long?,

@@ -85,4 +85,13 @@ class ListProductMatcherTest {
         )
         assertEquals(ProductMatchResult.None, ListProductMatcher.match("Huevos", null, candidates))
     }
+
+    @Test fun `matches abbreviations presentation and brand locally`() {
+        val result = ListProductMatcher.match(
+            "LECHE EVAP CARN 315G",
+            null,
+            listOf(item(12, "Leche evaporada Carnation 315 g")),
+        )
+        assertEquals(ProductMatchResult.Clear(12), result)
+    }
 }

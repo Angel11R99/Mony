@@ -21,6 +21,7 @@ import com.example.personalfinancetracker.data.local.entity.KnownProductEntity
 import com.example.personalfinancetracker.data.local.entity.ShoppingAdjustmentEntity
 import com.example.personalfinancetracker.data.local.entity.ShoppingListEntity
 import com.example.personalfinancetracker.data.local.entity.ShoppingListItemEntity
+import com.example.personalfinancetracker.data.local.entity.ProductRecognitionAliasEntity
 
 @Database(
     entities = [
@@ -35,8 +36,9 @@ import com.example.personalfinancetracker.data.local.entity.ShoppingListItemEnti
         ShoppingListItemEntity::class,
         ShoppingAdjustmentEntity::class,
         KnownProductEntity::class,
+        ProductRecognitionAliasEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 abstract class FinanceDatabase : RoomDatabase() {

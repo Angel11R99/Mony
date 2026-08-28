@@ -18,6 +18,7 @@ import androidx.room.PrimaryKey
         Index("type"),
         Index("dateEpochDay"),
         Index("isDone"),
+        Index("sourceShoppingListId", unique = true),
     ],
 )
 data class PendingEntryEntity(
@@ -34,4 +35,5 @@ data class PendingEntryEntity(
     val transactionId: Long?,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
+    val sourceShoppingListId: Long? = null,
 )

@@ -11,6 +11,7 @@ import com.example.personalfinancetracker.data.local.entity.ShoppingAdjustmentEn
 import com.example.personalfinancetracker.data.local.entity.ShoppingListEntity
 import com.example.personalfinancetracker.data.local.entity.ShoppingListItemEntity
 import com.example.personalfinancetracker.data.local.entity.TransactionEntity
+import com.example.personalfinancetracker.data.local.entity.ProductRecognitionAliasEntity
 import kotlinx.coroutines.flow.Flow
 
 data class ShoppingListOverviewRow(
@@ -63,6 +64,9 @@ interface ShoppingListDao {
     @Query("SELECT * FROM known_products WHERE barcode = :barcode LIMIT 1")
     suspend fun findKnownProduct(barcode: String): KnownProductEntity?
 
+    @Query("SELECT * FROM product_recognition_aliases WHERE normalizedAlias = :normalizedAlias ORDER BY confirmationCount DESC, lastUsedAtEpochMillis DESC")
+    suspend fun findAliases(normalizedAlias: String): List<ProductRecognitionAliasEntity>
+
     @Query("SELECT transactions.* FROM transactions INNER JOIN shopping_lists ON shopping_lists.expenseTransactionId = transactions.id WHERE shopping_lists.id = :listId LIMIT 1")
     suspend fun getExpenseTransaction(listId: Long): TransactionEntity?
 
@@ -102,15 +106,21 @@ interface ShoppingListDao {
     @Query("UPDATE shopping_lists SET status = 'COMPLETED', completedAtEpochMillis = :completedAt, updatedAtEpochMillis = :completedAt WHERE id = :id AND status != 'COMPLETED'")
     suspend fun markCompleted(id: Long, completedAt: Long): Int
 
-    @Query("UPDATE shopping_lists SET expenseTransactionId = :transactionId WHERE id = :id AND status = 'COMPLETED'")
-    suspend fun attachExpenseTransaction(id: Long, transactionId: Long): Int
-
     @Upsert
     suspend fun upsertKnownProduct(product: KnownProductEntity)
+
+    @Query("SELECT * FROM product_recognition_aliases WHERE normalizedAlias = :normalizedAlias AND displayName = :displayName AND ((barcode IS NULL AND :barcode IS NULL) OR barcode = :barcode) LIMIT 1")
+    suspend fun findAlias(normalizedAlias: String, displayName: String, barcode: String?): ProductRecognitionAliasEntity?
+
+    @Insert
+    suspend fun insertAlias(alias: ProductRecognitionAliasEntity): Long
+
+    @Update
+    suspend fun updateAlias(alias: ProductRecognitionAliasEntity): Int
 
     @Query("DELETE FROM known_products WHERE barcode = :barcode")
     suspend fun deleteKnownProduct(barcode: String): Int
 
-    @Query("UPDATE shopping_lists SET status = :status, completedAtEpochMillis = NULL, expenseTransactionId = NULL, updatedAtEpochMillis = :updatedAt WHERE id = :id")
+    @Query("UPDATE shopping_lists SET status = :status, completedAtEpochMillis = NULL, expenseTransactionId = NULL, payableId = NULL, updatedAtEpochMillis = :updatedAt WHERE id = :id")
     suspend fun reopen(id: Long, status: String, updatedAt: Long): Int
 }

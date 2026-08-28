@@ -101,14 +101,18 @@ fun ShoppingListsScreen(
     var showCreate by remember { mutableStateOf(false) }
     var showCardSizeMenu by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
-    var showCompleted by rememberSaveable { mutableStateOf(false) }
+    var statusFilter by rememberSaveable { mutableStateOf(ListStatusFilter.ALL) }
     var showFilters by remember { mutableStateOf(false) }
-    var draftShowCompleted by remember { mutableStateOf(showCompleted) }
+    var draftStatusFilter by remember { mutableStateOf(statusFilter) }
 
     val activeLists = remember(state.lists) { state.lists.filter { it.list.status != ShoppingListStatus.COMPLETED } }
     val completedLists = remember(state.lists) { state.lists.filter { it.list.status == ShoppingListStatus.COMPLETED } }
-    val displayed = remember(activeLists, completedLists, showCompleted, query) {
-        val source = if (showCompleted) completedLists else activeLists
+    val displayed = remember(activeLists, completedLists, statusFilter, query) {
+        val source = when (statusFilter) {
+            ListStatusFilter.ALL -> state.lists
+            ListStatusFilter.ACTIVE -> activeLists
+            ListStatusFilter.COMPLETED -> completedLists
+        }
         val normalized = query.trim()
         if (normalized.isBlank()) source
         else source.filter { it.list.name.contains(normalized, ignoreCase = true) }
@@ -142,7 +146,7 @@ fun ShoppingListsScreen(
                 "No se pudieron cargar las listas.",
                 Modifier.padding(padding).padding(18.dp),
             )
-            state.lists.isEmpty() && query.isBlank() && !showCompleted -> EmptyListsCard(
+            state.lists.isEmpty() && query.isBlank() -> EmptyListsCard(
                 "Todavía no tienes listas de compra.",
                 Modifier.padding(padding).padding(18.dp),
                 onCreate = { showCreate = true },
@@ -155,11 +159,11 @@ fun ShoppingListsScreen(
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         ListFilterButton(
-                            showCompleted = showCompleted,
+                            statusFilter = statusFilter,
                             activeCount = activeLists.size,
                             completedCount = completedLists.size,
                             onClick = {
-                                draftShowCompleted = showCompleted
+                                draftStatusFilter = statusFilter
                                 showFilters = true
                             },
                         )
@@ -177,9 +181,9 @@ fun ShoppingListsScreen(
                 if (displayed.isEmpty()) {
                     item {
                         EmptyListsCard(
-                            if (query.isNotBlank()) "No se encontraron listas." else "No tienes listas ${if (showCompleted) "completadas" else "activas"}.",
+                            if (query.isNotBlank()) "No se encontraron listas." else "No hay listas para este filtro.",
                             Modifier.fillMaxWidth(),
-                            if (query.isBlank() && !showCompleted) ({ showCreate = true }) else null,
+                            if (query.isBlank() && statusFilter != ListStatusFilter.COMPLETED) ({ showCreate = true }) else null,
                         )
                     }
                 } else {
@@ -235,13 +239,13 @@ fun ShoppingListsScreen(
 
     if (showFilters) {
         ListFilterSheet(
-            draftShowCompleted = draftShowCompleted,
-            onDraftChange = { draftShowCompleted = it },
+            draftStatusFilter = draftStatusFilter,
+            onDraftChange = { draftStatusFilter = it },
             activeCount = activeLists.size,
             completedCount = completedLists.size,
-            onClear = { draftShowCompleted = false },
+            onClear = { draftStatusFilter = ListStatusFilter.ALL },
             onApply = {
-                showCompleted = draftShowCompleted
+                statusFilter = draftStatusFilter
                 showFilters = false
             },
             onDismiss = { showFilters = false },
@@ -266,14 +270,20 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, modifier: 
     )
 }
 
+private enum class ListStatusFilter { ALL, ACTIVE, COMPLETED }
+
 @Composable
 private fun ListFilterButton(
-    showCompleted: Boolean,
+    statusFilter: ListStatusFilter,
     activeCount: Int,
     completedCount: Int,
     onClick: () -> Unit,
 ) {
-    val label = if (showCompleted) "Finalizadas ($completedCount)" else "Activas ($activeCount)"
+    val label = when (statusFilter) {
+        ListStatusFilter.ALL -> "Todos (${activeCount + completedCount})"
+        ListStatusFilter.ACTIVE -> "Activas ($activeCount)"
+        ListStatusFilter.COMPLETED -> "Finalizadas ($completedCount)"
+    }
     androidx.compose.material3.OutlinedButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
@@ -293,8 +303,8 @@ private fun ListFilterButton(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ListFilterSheet(
-    draftShowCompleted: Boolean,
-    onDraftChange: (Boolean) -> Unit,
+    draftStatusFilter: ListStatusFilter,
+    onDraftChange: (ListStatusFilter) -> Unit,
     activeCount: Int,
     completedCount: Int,
     onClear: () -> Unit,
@@ -328,16 +338,24 @@ private fun ListFilterSheet(
             Text("ESTADO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
-                    selected = !draftShowCompleted,
-                    onClick = { onDraftChange(false) },
+                    selected = draftStatusFilter == ListStatusFilter.ALL,
+                    onClick = { onDraftChange(ListStatusFilter.ALL) },
+                    label = { Text("Todos (${activeCount + completedCount})") },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary, selectedLabelColor = MaterialTheme.colorScheme.onPrimary),
+                )
+                FilterChip(
+                    selected = draftStatusFilter == ListStatusFilter.ACTIVE,
+                    onClick = { onDraftChange(ListStatusFilter.ACTIVE) },
                     label = { Text("Activas ($activeCount)") },
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary, selectedLabelColor = MaterialTheme.colorScheme.onPrimary),
                 )
                 FilterChip(
-                    selected = draftShowCompleted,
-                    onClick = { onDraftChange(true) },
+                    selected = draftStatusFilter == ListStatusFilter.COMPLETED,
+                    onClick = { onDraftChange(ListStatusFilter.COMPLETED) },
                     label = { Text("Finalizadas ($completedCount)") },
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
@@ -349,22 +367,6 @@ private fun ListFilterSheet(
                 com.example.personalfinancetracker.presentation.components.PrimaryButton("Aplicar", onApply, Modifier.weight(1f))
             }
         }
-    }
-}
-
-@Composable
-private fun FilterChips(activeCount: Int, completedCount: Int, showCompleted: Boolean, onToggle: () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(
-            selected = !showCompleted,
-            onClick = { if (showCompleted) onToggle() },
-            label = { Text("Activas ($activeCount)") },
-        )
-        FilterChip(
-            selected = showCompleted,
-            onClick = { if (!showCompleted) onToggle() },
-            label = { Text("Finalizadas ($completedCount)") },
-        )
     }
 }
 

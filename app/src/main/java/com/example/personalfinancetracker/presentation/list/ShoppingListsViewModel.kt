@@ -11,6 +11,7 @@ import com.example.personalfinancetracker.domain.model.ShoppingListOverview
 import com.example.personalfinancetracker.domain.model.ShoppingListStatus
 import com.example.personalfinancetracker.domain.repository.ShoppingListRepository
 import com.example.personalfinancetracker.domain.repository.ShoppingMutationResult
+import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
@@ -141,6 +142,7 @@ class ShoppingListsViewModel @Inject constructor(
                         ShoppingMutationResult.NotFound -> "La lista ya no existe."
                         ShoppingMutationResult.CompletedList -> "La lista ya no está completada."
                     }
+                    if (result is ShoppingMutationResult.Success) runCatching { updateAllFinanceWidgets(context) }
                 }.onFailure { message.value = "No se pudo reabrir la lista." }
             mutablePendingReopen.value = null
             isSaving.value = false

@@ -179,4 +179,61 @@ class ListReceiptParserTest {
         assertEquals(TicketAmountKind.SUBTOTAL, edited.kind)
         assertEquals(10_000L, parsed.amountInCents)
     }
+
+    @Test fun `equal prices remain independent geometric occurrences`() {
+        val result = ListTicketParser.parse(
+            "Leche 64.95\nPan 64.95",
+            listOf(
+                TicketOcrLine("Leche", 10, 10, 120, 35, blockIndex = 0, lineIndex = 0),
+                TicketOcrLine("64.95", 300, 10, 380, 35, blockIndex = 0, lineIndex = 1),
+                TicketOcrLine("Pan", 10, 60, 120, 85, blockIndex = 1, lineIndex = 0),
+                TicketOcrLine("64.95", 300, 60, 380, 85, blockIndex = 1, lineIndex = 1),
+            ),
+        )
+
+        assertEquals(listOf("Leche", "Pan"), result.candidates.map { it.productName })
+        assertEquals(2, result.candidates.map { it.occurrenceId }.distinct().size)
+    }
+
+    @Test fun `extracts quantity while preserving unit price`() {
+        val result = ListTicketParser.parse("2 x Leche 75.00").candidates.single()
+        assertEquals(2, result.quantity)
+        assertEquals(7_500L, result.amountInCents)
+        assertEquals("Leche", result.productName)
+    }
+
+    @Test fun `quantity line with unit price and subtotal creates one product`() {
+        val result = ListTicketParser.parse("2 x Leche 75.00 150.00")
+        assertEquals(1, result.candidates.size)
+        assertEquals(2, result.candidates.single().quantity)
+        assertEquals(7_500L, result.candidates.single().amountInCents)
+    }
+
+    @Test fun `geometric quantity unit price and subtotal in separate boxes creates one product`() {
+        val result = ListTicketParser.parse(
+            "2 x Leche\n75.00\n150.00",
+            listOf(
+                TicketOcrLine("2 x Leche", 10, 100, 180, 125, blockIndex = 0, lineIndex = 0),
+                TicketOcrLine("75.00", 220, 100, 290, 125, blockIndex = 0, lineIndex = 1),
+                TicketOcrLine("150.00", 320, 100, 400, 125, blockIndex = 0, lineIndex = 2),
+            ),
+        )
+        assertEquals(1, result.candidates.size)
+        assertEquals("Leche", result.candidates.single().productName)
+        assertEquals(2, result.candidates.single().quantity)
+        assertEquals(7_500L, result.candidates.single().amountInCents)
+    }
+
+    @Test fun `near shelf label wins over distant package noise`() {
+        val result = ListTicketParser.parse(
+            "Ingredientes nutricionales HATUEY GALLETAS HIER 99.50",
+            listOf(
+                TicketOcrLine("Ingredientes nutricionales", 5, 5, 250, 30, blockIndex = 0, lineIndex = 0),
+                TicketOcrLine("HATUEY GALLETAS HIER", 20, 100, 260, 125, blockIndex = 1, lineIndex = 0),
+                TicketOcrLine("99.50", 320, 100, 400, 125, blockIndex = 1, lineIndex = 1),
+            ),
+        )
+        assertEquals("HATUEY GALLETAS HIER", result.candidates.single().productName)
+        assertEquals(RecognitionConfidence.HIGH, result.candidates.single().confidence)
+    }
 }

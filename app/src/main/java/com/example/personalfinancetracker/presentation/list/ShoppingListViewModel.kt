@@ -14,6 +14,10 @@ import com.example.personalfinancetracker.domain.model.ShoppingAdjustment
 import com.example.personalfinancetracker.domain.model.ShoppingListDetails
 import com.example.personalfinancetracker.domain.model.ShoppingListItem
 import com.example.personalfinancetracker.domain.model.ShoppingListStatus
+import com.example.personalfinancetracker.domain.model.ShoppingPaymentMethod
+import com.example.personalfinancetracker.domain.model.TicketAmountCandidate
+import com.example.personalfinancetracker.domain.model.TicketAmountKind
+import com.example.personalfinancetracker.domain.model.RecognitionConfidence
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.FinalizePurchaseResult
@@ -21,6 +25,7 @@ import com.example.personalfinancetracker.domain.repository.ProductCatalogReposi
 import com.example.personalfinancetracker.domain.repository.ProductCatalogResult
 import com.example.personalfinancetracker.domain.repository.ShoppingListRepository
 import com.example.personalfinancetracker.domain.repository.ShoppingMutationResult
+import com.example.personalfinancetracker.domain.repository.TicketProductUpdate
 import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -41,7 +46,10 @@ data class ShoppingListUiState(
     val isLoading: Boolean = true,
     val hasError: Boolean = false,
 ) {
-    val editable get() = details?.list?.status != ShoppingListStatus.COMPLETED
+    val editable get() = details?.let { value ->
+        value.list.status != ShoppingListStatus.COMPLETED ||
+            value.list.purchaseDate != null && value.list.paymentMethod != null && value.list.expenseCategoryId != null
+    } == true
     val defaultCategoryId get() = categories.firstOrNull { it.name.equals("Compras", true) }?.id
         ?: categories.firstOrNull()?.id
 }
@@ -75,6 +83,24 @@ data class MatchedScannedProduct(
 
 data class AdjustmentDraft(val name: String, val isPositive: Boolean, val amountInCents: Long)
 
+data class TicketProductDraft(
+    val occurrenceId: String,
+    val detectedText: String,
+    val name: String,
+    val quantity: Int,
+    val unitPriceInCents: Long,
+    val selectedItemId: Long?,
+    val suggestedItemId: Long?,
+    val confidence: RecognitionConfidence,
+    val included: Boolean = true,
+)
+
+data class TicketReview(
+    val products: List<TicketProductDraft>,
+    val adjustments: List<TicketAmountCandidate>,
+    val ticketTotalInCents: Long?,
+)
+
 @HiltViewModel
 class ShoppingListViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -106,7 +132,10 @@ class ShoppingListViewModel @Inject constructor(
     val purchaseCompleted = MutableStateFlow(false)
     val remoteLookupResult = MutableStateFlow<RemoteLookupResult?>(null)
     val isLookingUp = MutableStateFlow(false)
+    val ticketReview = MutableStateFlow<TicketReview?>(null)
     private var pendingFinalizeCategoryId: Long? = null
+    private var pendingFinalizeDate: LocalDate? = null
+    private var pendingFinalizePaymentMethod: ShoppingPaymentMethod? = null
 
     fun consumeMessage() { message.value = null }
     fun clearScannedProduct() { newScannedProduct.value = null }
@@ -115,6 +144,7 @@ class ShoppingListViewModel @Inject constructor(
     fun consumePurchaseCompleted() { purchaseCompleted.value = false }
     fun consumeRemoteLookupResult() { remoteLookupResult.value = null }
     fun cancelBarcodeMatch() { pendingBarcodeMatch.value = null }
+    fun clearTicketReview() { ticketReview.value = null }
     fun markMissingPriceReviewed(itemId: Long) {
         missingPriceItemIds.value = missingPriceItemIds.value - itemId
     }
@@ -165,7 +195,7 @@ class ShoppingListViewModel @Inject constructor(
                             actualUnitPriceInCents = actual,
                             barcode = barcode.trim().ifEmpty { null },
                             isPurchased = purchased,
-                            isIdentified = existing?.isIdentified == true || barcode.isNotBlank(),
+                            isIdentified = barcode.isNotBlank(),
                             notes = notes.trim().ifEmpty { null },
                             createdAt = existing?.createdAt ?: now,
                             updatedAt = now,
@@ -182,7 +212,7 @@ class ShoppingListViewModel @Inject constructor(
     }
 
     fun changeQuantity(item: ShoppingListItem, delta: Int) {
-        val quantity = (item.quantity + delta).coerceAtLeast(1)
+        val quantity = item.quantity.toLong().plus(delta).coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
         if (quantity == item.quantity) return
         saveItemCopy(item.copy(quantity = quantity, updatedAt = Instant.now()), null)
     }
@@ -223,38 +253,101 @@ class ShoppingListViewModel @Inject constructor(
         }
     }
 
-    fun saveDetectedAdjustments(drafts: List<AdjustmentDraft>, onSaved: () -> Unit) {
-        if (drafts.isEmpty()) { message.value = "Selecciona al menos un ajuste."; return }
-        if (isSaving.value) return
-        val candidates = drafts.map { draft ->
-            ShoppingAdjustment(0, listId, draft.name.trim(), draft.isPositive, draft.amountInCents, Instant.now())
-        }
-        if (!hasSafeAdjustments(candidates, replaceExisting = false)) {
-            message.value = "El total de ajustes es demasiado grande."
-            return
-        }
+    fun deleteAdjustment(adjustment: ShoppingAdjustment) =
+        mutate("Ajuste eliminado.") { repository.deleteAdjustment(adjustment.id) }
+
+    fun prepareTicketReview(candidates: List<TicketAmountCandidate>) {
+        val details = state.value.details ?: return
         viewModelScope.launch {
-            isSaving.value = true
-            runCatching {
-                repository.saveAdjustments(drafts.map { draft ->
-                    check(draft.name.isNotBlank() && draft.amountInCents > 0)
-                    ShoppingAdjustment(0, listId, draft.name.trim(), draft.isPositive, draft.amountInCents, Instant.now())
-                })
-            }.onSuccess { result ->
-                if (result is ShoppingMutationResult.Success) {
-                    message.value = "Ajustes guardados."
-                    onSaved()
-                } else {
-                    message.value = "No se pudieron guardar los ajustes."
+            val automaticallyAssigned = mutableSetOf<Long>()
+            val products = candidates.filter { it.kind == TicketAmountKind.PRODUCTO }.map { candidate ->
+                val learnedName = runCatching { repository.findLearnedNames(candidate.productName.orEmpty()).firstOrNull() }.getOrNull()
+                val detectedName = learnedName ?: candidate.productName.orEmpty()
+                val match = ListProductMatcher.match(
+                    detectedName,
+                    null,
+                    details.items.map { ProductMatchCandidate(it.id, it.name, it.barcode, it.isPurchased, false) },
+                )
+                val suggestedId = when (match) {
+                    is ProductMatchResult.Clear -> match.itemId
+                    is ProductMatchResult.Ambiguous -> match.itemId
+                    ProductMatchResult.None -> null
                 }
+                var confidence = when {
+                    learnedName != null -> RecognitionConfidence.HIGH
+                    match is ProductMatchResult.Clear && candidate.confidence != RecognitionConfidence.LOW -> RecognitionConfidence.HIGH
+                    suggestedId != null || candidate.confidence == RecognitionConfidence.MEDIUM -> RecognitionConfidence.MEDIUM
+                    else -> RecognitionConfidence.LOW
+                }
+                val selectedId = if (
+                    suggestedId != null && confidence == RecognitionConfidence.HIGH && automaticallyAssigned.add(suggestedId)
+                ) suggestedId else null
+                if (suggestedId != null && selectedId == null && confidence == RecognitionConfidence.HIGH) {
+                    confidence = RecognitionConfidence.MEDIUM
+                }
+                TicketProductDraft(
+                    occurrenceId = candidate.occurrenceId,
+                    detectedText = candidate.productName.orEmpty(),
+                    name = detectedName,
+                    quantity = candidate.quantity,
+                    unitPriceInCents = candidate.amountInCents,
+                    selectedItemId = selectedId,
+                    suggestedItemId = suggestedId,
+                    confidence = confidence,
+                )
             }
-                .onFailure { message.value = "No se pudieron guardar los ajustes." }
-            isSaving.value = false
+            ticketReview.value = TicketReview(
+                products = products,
+                adjustments = candidates.filter { it.kind in setOf(TicketAmountKind.TAX, TicketAmountKind.DISCOUNT, TicketAmountKind.SHIPPING, TicketAmountKind.SERVICE) },
+                ticketTotalInCents = candidates.lastOrNull { it.kind == TicketAmountKind.TOTAL }?.amountInCents,
+            )
         }
     }
 
-    fun deleteAdjustment(adjustment: ShoppingAdjustment) =
-        mutate("Ajuste eliminado.") { repository.deleteAdjustment(adjustment.id) }
+    fun applyTicketReview(products: List<TicketProductDraft>, adjustmentDrafts: List<AdjustmentDraft>) {
+        if (isSaving.value) return
+        val included = products.filter { it.included }
+        val totalsAreSafe = runCatching {
+            val productTotal = included.fold(0L) { total, product ->
+                Math.addExact(total, Math.multiplyExact(product.quantity.toLong(), product.unitPriceInCents))
+            }
+            val adjustmentTotal = adjustmentDrafts.fold(0L) { total, adjustment ->
+                Math.addExact(total, if (adjustment.isPositive) adjustment.amountInCents else Math.negateExact(adjustment.amountInCents))
+            }
+            Math.addExact(productTotal, adjustmentTotal)
+        }.isSuccess
+        when {
+            included.any { it.name.isBlank() } -> message.value = "Revisa el nombre de los productos detectados."
+            included.any { it.quantity < 1 } -> message.value = "La cantidad debe ser al menos uno."
+            included.any { it.unitPriceInCents < 0 } -> message.value = "Revisa los precios detectados."
+            adjustmentDrafts.any { it.name.isBlank() || it.amountInCents <= 0 } ->
+                message.value = "Revisa el nombre y monto de los ajustes."
+            included.mapNotNull { it.selectedItemId }.let { it.size != it.distinct().size } ->
+                message.value = "Cada producto de la lista solo puede asociarse una vez por ticket."
+            !totalsAreSafe -> message.value = "El precio o la cantidad son demasiado grandes."
+            else -> viewModelScope.launch {
+                isSaving.value = true
+                val adjustments = adjustmentDrafts.map {
+                    ShoppingAdjustment(0, listId, it.name, it.isPositive, it.amountInCents, Instant.now())
+                }
+                runCatching {
+                    repository.applyTicketReview(
+                        listId,
+                        included.map { TicketProductUpdate(it.detectedText, it.selectedItemId, it.name, it.quantity, it.unitPriceInCents) },
+                        adjustments,
+                    )
+                }.onSuccess { result ->
+                    message.value = when (result) {
+                        is ShoppingMutationResult.Success -> "Ticket aplicado correctamente."
+                        ShoppingMutationResult.CompletedList -> "La compra finalizada no admite otro ticket."
+                        ShoppingMutationResult.NotFound -> "La lista ya no existe."
+                    }
+                    if (result is ShoppingMutationResult.Success) ticketReview.value = null
+                }.onFailure { message.value = "No se pudo aplicar la revisión del ticket." }
+                isSaving.value = false
+            }
+        }
+    }
 
     fun onBarcodeScanned(rawBarcode: String) {
         val barcode = rawBarcode.trim()
@@ -351,20 +444,33 @@ class ShoppingListViewModel @Inject constructor(
         )
     }
 
-    fun finalizePurchase(categoryId: Long?, date: LocalDate, allowMissingPrices: Boolean = false) {
+    fun finalizePurchase(
+        categoryId: Long?,
+        date: LocalDate,
+        paymentMethod: ShoppingPaymentMethod,
+        allowMissingPrices: Boolean = false,
+    ) {
         if (categoryId == null) { message.value = "Selecciona una categoría de gasto."; return }
         if (isSaving.value) return
         pendingFinalizeCategoryId = categoryId
+        pendingFinalizeDate = date
+        pendingFinalizePaymentMethod = paymentMethod
         viewModelScope.launch {
             isSaving.value = true
-            runCatching { repository.finalizePurchase(listId, categoryId, date, allowMissingPrices) }
+            runCatching { repository.finalizePurchase(listId, categoryId, date, paymentMethod, allowMissingPrices) }
                 .onSuccess { result ->
                     when (result) {
                         is FinalizePurchaseResult.Completed -> {
-                            message.value = "Compra finalizada y gasto registrado."
+                            message.value = if (paymentMethod == ShoppingPaymentMethod.CREDIT) {
+                                "Compra finalizada y agregada a Por pagar."
+                            } else {
+                                "Compra finalizada y gasto registrado."
+                            }
                             missingPriceItemIds.value = emptyList()
                             runCatching { updateAllFinanceWidgets(context) }
                             pendingFinalizeCategoryId = null
+                            pendingFinalizeDate = null
+                            pendingFinalizePaymentMethod = null
                             purchaseCompleted.value = true
                         }
                         is FinalizePurchaseResult.MissingActualPrices -> {
@@ -389,7 +495,22 @@ class ShoppingListViewModel @Inject constructor(
             return
         }
         missingPriceItemIds.value = emptyList()
-        finalizePurchase(categoryId, LocalDate.now(), allowMissingPrices = true)
+        finalizePurchase(
+            categoryId,
+            pendingFinalizeDate ?: LocalDate.now(),
+            pendingFinalizePaymentMethod ?: ShoppingPaymentMethod.DEBIT,
+            allowMissingPrices = true,
+        )
+    }
+
+    fun updatePurchaseSettings(categoryId: Long?, date: LocalDate, paymentMethod: ShoppingPaymentMethod) {
+        if (categoryId == null) {
+            message.value = "Selecciona una categoría de gasto."
+            return
+        }
+        mutate("Compra y registro financiero actualizados.") {
+            repository.updatePurchaseSettings(listId, categoryId, date, paymentMethod)
+        }
     }
 
     private fun saveItemCopy(item: ShoppingListItem, success: String?) =
@@ -430,6 +551,7 @@ class ShoppingListViewModel @Inject constructor(
                     ShoppingMutationResult.CompletedList -> "La lista completada es de solo lectura."
                 }
                 if (result is ShoppingMutationResult.Success) onSuccess()
+                if (result is ShoppingMutationResult.Success) runCatching { updateAllFinanceWidgets(context) }
             }.onFailure { message.value = "No se pudo guardar el cambio." }
             isSaving.value = false
         }

@@ -112,7 +112,7 @@ class PendingEntriesViewModel @Inject constructor(
                 }.onSuccess {
                     message.value = "Recordatorio de ${type.label()} guardado"
                     onSaved()
-                }.onFailure { message.value = "No se pudo guardar" }
+                }.onFailure { error -> message.value = error.message ?: "No se pudo guardar" }
                 isSaving.value = false
             }
         }
@@ -155,8 +155,8 @@ class PendingEntriesViewModel @Inject constructor(
             PendingReminderScheduler.cancel(context, entry.id)
         }.onSuccess {
             message.value = "${entry.type.label()} eliminado"
-        }.onFailure {
-            message.value = "No se pudo eliminar el recordatorio"
+        }.onFailure { error ->
+            message.value = error.message ?: "No se pudo eliminar el recordatorio"
         }
         processingEntryIds.remove(entry.id)
     }

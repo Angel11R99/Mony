@@ -37,6 +37,8 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -49,6 +51,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,14 +75,14 @@ import com.example.personalfinancetracker.domain.model.ShoppingAdjustment
 import com.example.personalfinancetracker.domain.model.ShoppingListDetails
 import com.example.personalfinancetracker.domain.model.ShoppingListItem
 import com.example.personalfinancetracker.domain.model.ShoppingListStatus
-import com.example.personalfinancetracker.domain.model.TicketAmountCandidate
+import com.example.personalfinancetracker.domain.model.ShoppingPaymentMethod
+import com.example.personalfinancetracker.domain.model.RecognitionConfidence
 import com.example.personalfinancetracker.domain.model.TicketAmountKind
 import com.example.personalfinancetracker.domain.model.TicketOcrLine
 import com.example.personalfinancetracker.presentation.components.AmountVisualTransformation
 import com.example.personalfinancetracker.presentation.components.FinanceCard
 import com.example.personalfinancetracker.presentation.components.FinanceDetailRow
 import com.example.personalfinancetracker.presentation.components.FinanceTextField
-import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
 import com.example.personalfinancetracker.presentation.components.PrimaryButton
 import com.example.personalfinancetracker.presentation.components.SecondaryButton
 import com.example.personalfinancetracker.presentation.components.sanitizeAmountInput
@@ -101,14 +104,7 @@ import java.util.Locale
 private enum class DocumentScanPurpose { PRICE, TICKET }
 
 private data class ItemEditorData(val item: ShoppingListItem?, val barcode: String = "", val name: String = "", val actual: String = "", val editorKey: Long = System.nanoTime())
-
-private data class TicketDraftUi(
-    val source: TicketAmountCandidate,
-    val selected: Boolean,
-    val name: String,
-    val positive: Boolean,
-    val amount: String,
-)
+private data class TicketAdjustmentUi(val draft: AdjustmentDraft, val included: Boolean = true)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,6 +122,7 @@ fun ShoppingListScreen(
     val purchaseCompleted by viewModel.purchaseCompleted.collectAsStateWithLifecycle()
     val remoteLookup by viewModel.remoteLookupResult.collectAsStateWithLifecycle()
     val isLookingUp by viewModel.isLookingUp.collectAsStateWithLifecycle()
+    val ticketReview by viewModel.ticketReview.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var itemEditor by remember { mutableStateOf<ItemEditorData?>(null) }
     var adjustmentEditor by remember { mutableStateOf<ShoppingAdjustment?>(null) }
@@ -136,7 +133,6 @@ fun ShoppingListScreen(
     var scanPurpose by remember { mutableStateOf<DocumentScanPurpose?>(null) }
     var priceCandidates by remember { mutableStateOf<List<OcrMoneyCandidate>>(emptyList()) }
     var ocrExtractedName by remember { mutableStateOf("") }
-    var ticketDrafts by remember { mutableStateOf<List<TicketDraftUi>>(emptyList()) }
     var reviewingMissingPrices by remember { mutableStateOf(false) }
     var pendingDeleteItem by remember { mutableStateOf<ShoppingListItem?>(null) }
     var pendingDeleteAdjustment by remember { mutableStateOf<ShoppingAdjustment?>(null) }
@@ -158,18 +154,7 @@ fun ShoppingListScreen(
                             }
                             DocumentScanPurpose.TICKET -> {
                                 val parsed = ListTicketParser.parse(result.text, result.toTicketOcrLines()).candidates
-                                ticketDrafts = parsed.map { candidate ->
-                                    TicketDraftUi(
-                                        source = candidate,
-                                        selected = candidate.kind in setOf(
-                                            TicketAmountKind.TAX, TicketAmountKind.DISCOUNT,
-                                            TicketAmountKind.SHIPPING, TicketAmountKind.SERVICE,
-                                        ),
-                                        name = candidate.productName ?: candidate.kind.spanishLabel(),
-                                        positive = candidate.kind != TicketAmountKind.DISCOUNT,
-                                        amount = centsInput(candidate.amountInCents),
-                                    )
-                                }
+                                viewModel.prepareTicketReview(parsed)
                                 if (parsed.isEmpty()) notify("No se encontraron montos en el ticket.")
                             }
                         }
@@ -317,7 +302,7 @@ fun ShoppingListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item { ListHeaderCard(details) }
-                if (state.editable) {
+                if (state.editable && details.list.status != ShoppingListStatus.COMPLETED) {
                     item {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             QuickAction("Producto", Icons.Outlined.Add, Modifier.weight(1f)) { itemEditor = ItemEditorData(null) }
@@ -357,6 +342,9 @@ fun ShoppingListScreen(
                 if (details.list.status == ShoppingListStatus.PENDING && state.editable) {
                     item { PrimaryButton("Iniciar compra", viewModel::startShopping, Modifier.fillMaxWidth(), enabled = !isSaving) }
                 }
+                if (details.list.status == ShoppingListStatus.COMPLETED) {
+                    item { SecondaryButton("Editar fecha y método de pago", { if (!isSaving) showFinalize = true }, Modifier.fillMaxWidth()) }
+                }
             }
         }
     }
@@ -390,21 +378,23 @@ fun ShoppingListScreen(
         }
         priceCandidates = emptyList(); priceTarget = null; ocrExtractedName = ""
     }
-    if (ticketDrafts.isNotEmpty()) TicketCandidatesDialog(
-        ticketDrafts, { ticketDrafts = it }, { ticketDrafts = emptyList() },
-    ) {
-        val drafts = ticketDrafts.filter { it.selected }.mapNotNull {
-            MoneyFormatter.parseToCents(it.amount)?.takeIf { amount -> amount > 0 }?.let { amount ->
-                it.name.trim().takeIf(String::isNotEmpty)?.let { name -> AdjustmentDraft(name, it.positive, amount) }
-            }
-        }
-        if (drafts.size != ticketDrafts.count { it.selected }) {
-            notify("Revisa el nombre y monto de cada ajuste seleccionado.")
-        } else viewModel.saveDetectedAdjustments(drafts) { ticketDrafts = emptyList() }
-    }
+    ticketReview?.let { review -> TicketReviewDialog(
+        review = review,
+        existingItems = details?.items.orEmpty(),
+        saving = isSaving,
+        dismiss = viewModel::clearTicketReview,
+        save = viewModel::applyTicketReview,
+    ) }
     if (showFinalize && details != null) FinalizeDialog(
         details, state.categories, state.defaultCategoryId, isSaving, { showFinalize = false },
-    ) { categoryId -> viewModel.finalizePurchase(categoryId, LocalDate.now()) }
+    ) { categoryId, date, method ->
+        if (details.list.status == ShoppingListStatus.COMPLETED) {
+            viewModel.updatePurchaseSettings(categoryId, date, method)
+            showFinalize = false
+        } else {
+            viewModel.finalizePurchase(categoryId, date, method)
+        }
+    }
     if (missingPrices.isNotEmpty()) MissingPricesDialog(
         count = missingPrices.size,
         onReview = {
@@ -461,6 +451,8 @@ fun ShoppingListScreen(
         )
         FinanceDetailRow("Productos", details.items.size.toString())
         details.list.budgetInCents?.let { FinanceDetailRow("Presupuesto", MoneyFormatter.format(it)) }
+        details.list.purchaseDate?.let { FinanceDetailRow("Fecha de compra", it.format(shoppingDateFormatter)) }
+        details.list.paymentMethod?.let { FinanceDetailRow("Método de pago", it.spanishLabel()) }
     } }
 }
 
@@ -489,6 +481,9 @@ fun ShoppingListScreen(
                 item.estimatedUnitPriceInCents?.let { Text("Estimado: ${MoneyFormatter.format(it)} c/u", style = MaterialTheme.typography.bodySmall) }
                 item.actualUnitPriceInCents?.let { Text("Real: ${MoneyFormatter.format(it)} c/u", style = MaterialTheme.typography.bodySmall) }
                     ?: if (item.isPurchased) Text("Precio real pendiente", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) else Unit
+            }
+            item.actualUnitPriceInCents?.let {
+                Text("Subtotal: ${MoneyFormatter.format(Math.multiplyExact(item.quantity.toLong(), it))}", fontWeight = FontWeight.SemiBold)
             }
             if (editable) IconButton(onOcr, enabled = !isSaving, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.PointOfSale, "Leer precio") }
         }
@@ -565,7 +560,7 @@ fun ShoppingListScreen(
     AlertDialog(onDismissRequest = dismiss, title = { Text(if (item == null) "Agregar producto" else "Editar producto") }, text = {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.heightIn(max = 520.dp)) {
             item { FinanceTextField(name, { name = it }, "Nombre", singleLine = true) }
-            item { Row(verticalAlignment = Alignment.CenterVertically) { Text("Cantidad", Modifier.weight(1f)); IconButton({ quantity = (quantity - 1).coerceAtLeast(1) }) { Icon(Icons.Outlined.Remove, "Reducir") }; Text(quantity.toString()); IconButton({ quantity++ }) { Icon(Icons.Outlined.Add, "Aumentar") } } }
+             item { Row(verticalAlignment = Alignment.CenterVertically) { Text("Cantidad", Modifier.weight(1f)); IconButton({ quantity = (quantity - 1).coerceAtLeast(1) }) { Icon(Icons.Outlined.Remove, "Reducir") }; Text(quantity.toString()); IconButton({ if (quantity < Int.MAX_VALUE) quantity++ }) { Icon(Icons.Outlined.Add, "Aumentar") } } }
             item { MoneyField(estimated, { estimated = it }, "Precio estimado (opcional)") }
             item { MoneyField(actual, { actual = it }, "Precio real (opcional)") }
             item { FinanceTextField(barcode, { barcode = it.filter(Char::isLetterOrDigit) }, "Código de barras (opcional)", singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)) }
@@ -609,42 +604,126 @@ fun ShoppingListScreen(
     } }, confirmButton = {}, dismissButton = { TextButton(dismiss) { Text("Cancelar") } })
 }
 
-@Composable private fun TicketCandidatesDialog(drafts: List<TicketDraftUi>, changed: (List<TicketDraftUi>) -> Unit, dismiss: () -> Unit, save: () -> Unit) {
-    AlertDialog(onDismissRequest = dismiss, title = { Text("Montos detectados") }, text = { LazyColumn(Modifier.heightIn(max = 540.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(drafts.size) { index ->
-            val draft = drafts[index]
-            val isReferenceOnly = draft.source.kind in setOf(TicketAmountKind.SUBTOTAL, TicketAmountKind.TOTAL)
-            FinanceCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(draft.selected, { selected -> changed(drafts.updated(index, draft.copy(selected = selected))) }, enabled = !isReferenceOnly); Text(draft.source.kind.spanishLabel(), fontWeight = FontWeight.SemiBold) }
-                Text(draft.source.sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (draft.source.kind == TicketAmountKind.PRODUCTO && draft.source.productName != null) {
-                    Text("Producto: ${draft.source.productName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                }
-                if (isReferenceOnly) {
-                    Text("Referencia: no se aplicará automáticamente.", style = MaterialTheme.typography.labelSmall)
-                }
-                if (draft.selected) {
-                    FinanceTextField(draft.name, { changed(drafts.updated(index, draft.copy(name = it))) }, "Nombre", singleLine = true)
-                    Row { FilterChip(draft.positive, { changed(drafts.updated(index, draft.copy(positive = true))) }, { Text("+") }); Spacer(Modifier.width(8.dp)); FilterChip(!draft.positive, { changed(drafts.updated(index, draft.copy(positive = false))) }, { Text("−") }) }
-                    MoneyField(draft.amount, { changed(drafts.updated(index, draft.copy(amount = it))) }, "Monto")
-                }
-            } }
+@Composable private fun TicketReviewDialog(
+    review: TicketReview,
+    existingItems: List<ShoppingListItem>,
+    saving: Boolean,
+    dismiss: () -> Unit,
+    save: (List<TicketProductDraft>, List<AdjustmentDraft>) -> Unit,
+) {
+    var products by remember(review) { mutableStateOf(review.products) }
+    var adjustments by remember(review) {
+        mutableStateOf(review.adjustments.map { TicketAdjustmentUi(AdjustmentDraft(it.kind.spanishLabel(), it.kind != TicketAmountKind.DISCOUNT, it.amountInCents)) })
+    }
+    val calculated = runCatching {
+        products.filter { it.included }.fold(0L) { total, product ->
+            Math.addExact(total, Math.multiplyExact(product.quantity.toLong(), product.unitPriceInCents))
+        } + adjustments.filter { it.included }.fold(0L) { total, adjustment ->
+            Math.addExact(total, if (adjustment.draft.isPositive) adjustment.draft.amountInCents else -adjustment.draft.amountInCents)
         }
-    } }, confirmButton = { TextButton(save) { Text("Guardar seleccionados") } }, dismissButton = { TextButton(dismiss) { Text("Cancelar") } })
+    }.getOrDefault(0L)
+    val discrepancy = review.ticketTotalInCents?.let { kotlin.math.abs(it - calculated) }
+    AlertDialog(
+        onDismissRequest = dismiss,
+        title = { Text("Revisar ticket") },
+        text = { LazyColumn(Modifier.heightIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { Text("PRODUCTOS DETECTADOS", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary) }
+            items(products.size) { index ->
+                val product = products[index]
+                var expanded by remember(product.occurrenceId) { mutableStateOf(false) }
+                FinanceCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(product.included, { products = products.updated(index, product.copy(included = it)) })
+                        Text(product.confidence.spanishLabel(), style = MaterialTheme.typography.labelSmall, color = when (product.confidence) {
+                            RecognitionConfidence.HIGH -> MaterialTheme.colorScheme.primary
+                            RecognitionConfidence.MEDIUM -> MaterialTheme.colorScheme.tertiary
+                            RecognitionConfidence.LOW -> MaterialTheme.colorScheme.error
+                        })
+                    }
+                    if (product.included) {
+                        FinanceTextField(product.name, { products = products.updated(index, product.copy(name = it)) }, "Nombre", singleLine = true)
+                        val selectedName = existingItems.firstOrNull { it.id == product.selectedItemId }?.name
+                        SecondaryButton(selectedName?.let { "Coincidencia: $it" } ?: "Agregar como producto nuevo", { expanded = true }, Modifier.fillMaxWidth())
+                        DropdownMenu(expanded, { expanded = false }) {
+                            DropdownMenuItem({ Text("Producto nuevo") }, { products = products.updated(index, product.copy(selectedItemId = null)); expanded = false })
+                            val usedIds = products.mapNotNull { it.selectedItemId }.toSet() - product.selectedItemId
+                            existingItems.filterNot { it.isPurchased || it.id in usedIds }.forEach { item ->
+                                DropdownMenuItem({ Text(item.name) }, { products = products.updated(index, product.copy(selectedItemId = item.id, name = item.name)); expanded = false })
+                            }
+                        }
+                        product.suggestedItemId?.takeIf { product.selectedItemId == null }?.let { suggested ->
+                            existingItems.firstOrNull { it.id == suggested }?.let { Text("Sugerencia: ${it.name}. Confirma manualmente.", style = MaterialTheme.typography.bodySmall) }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Cantidad", Modifier.weight(1f))
+                            IconButton({ if (product.quantity > 1) products = products.updated(index, product.copy(quantity = product.quantity - 1)) }) { Icon(Icons.Outlined.Remove, "Reducir") }
+                            Text(product.quantity.toString())
+                            IconButton({ if (product.quantity < Int.MAX_VALUE) products = products.updated(index, product.copy(quantity = product.quantity + 1)) }) { Icon(Icons.Outlined.Add, "Aumentar") }
+                        }
+                        MoneyField(centsInput(product.unitPriceInCents), { raw -> MoneyFormatter.parseToCents(raw)?.let { products = products.updated(index, product.copy(unitPriceInCents = it)) } }, "Precio unitario")
+                        Text("Subtotal: ${MoneyFormatter.format(product.quantity.toLong() * product.unitPriceInCents)}", fontWeight = FontWeight.SemiBold)
+                    }
+                } }
+            }
+            item { Text("RESUMEN / AJUSTES", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary) }
+            items(adjustments.size) { index ->
+                val adjustment = adjustments[index]
+                FinanceCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(adjustment.included, { adjustments = adjustments.updated(index, adjustment.copy(included = it)) })
+                        Text(adjustment.draft.name, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                    }
+                    if (adjustment.included) {
+                        FinanceTextField(adjustment.draft.name, { name -> adjustments = adjustments.updated(index, adjustment.copy(draft = adjustment.draft.copy(name = name))) }, "Nombre", singleLine = true)
+                        Row {
+                            FilterChip(adjustment.draft.isPositive, { adjustments = adjustments.updated(index, adjustment.copy(draft = adjustment.draft.copy(isPositive = true))) }, { Text("Sumar +") })
+                            Spacer(Modifier.width(8.dp))
+                            FilterChip(!adjustment.draft.isPositive, { adjustments = adjustments.updated(index, adjustment.copy(draft = adjustment.draft.copy(isPositive = false))) }, { Text("Restar −") })
+                        }
+                        MoneyField(centsInput(adjustment.draft.amountInCents), { raw -> MoneyFormatter.parseToCents(raw)?.let { amount -> adjustments = adjustments.updated(index, adjustment.copy(draft = adjustment.draft.copy(amountInCents = amount))) } }, "Monto")
+                    }
+                } }
+            }
+            item { FinanceDetailRow("Total calculado", MoneyFormatter.format(calculated)) }
+            review.ticketTotalInCents?.let { total -> item { FinanceDetailRow("Total del ticket", MoneyFormatter.format(total)) } }
+            if (discrepancy != null && discrepancy > maxOf(100L, (review.ticketTotalInCents ?: 0L) / 100)) {
+                item { Text("Advertencia: el total calculado difiere del total reconocido en el ticket.", color = MaterialTheme.colorScheme.error) }
+            }
+        } },
+        confirmButton = { TextButton({ save(products, adjustments.filter { it.included }.map { it.draft }) }, enabled = !saving && (products.any { it.included } || adjustments.any { it.included }) ) { Text("Aplicar") } },
+        dismissButton = { TextButton(dismiss) { Text("Cancelar") } },
+    )
 }
 
-@Composable private fun FinalizeDialog(details: ShoppingListDetails, categories: List<com.example.personalfinancetracker.domain.model.Category>, initialCategory: Long?, saving: Boolean, dismiss: () -> Unit, finalize: (Long?) -> Unit) {
-    var categoryId by remember { mutableStateOf(initialCategory) }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun FinalizeDialog(details: ShoppingListDetails, categories: List<com.example.personalfinancetracker.domain.model.Category>, initialCategory: Long?, saving: Boolean, dismiss: () -> Unit, finalize: (Long?, LocalDate, ShoppingPaymentMethod) -> Unit) {
+    var categoryId by remember { mutableStateOf(details.list.expenseCategoryId ?: initialCategory) }
+    var date by remember { mutableStateOf(details.list.purchaseDate ?: LocalDate.now()) }
+    var paymentMethod by remember { mutableStateOf(details.list.paymentMethod ?: ShoppingPaymentMethod.DEBIT) }
     var expanded by remember { mutableStateOf(false) }
-    AlertDialog(onDismissRequest = dismiss, title = { Text("Finalizar compra") }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    AlertDialog(onDismissRequest = dismiss, title = { Text(if (details.list.status == ShoppingListStatus.COMPLETED) "Editar compra" else "Finalizar compra") }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         FinanceDetailRow("Productos comprados", details.items.count { it.isPurchased }.toString())
         FinanceDetailRow("Subtotal", MoneyFormatter.format(details.purchasedSubtotalInCents))
         FinanceDetailRow("Ajustes", MoneyFormatter.format(details.adjustmentTotalInCents))
         FinanceDetailRow("Total del gasto", MoneyFormatter.format(details.actualTotalInCents), valueColor = MaterialTheme.colorScheme.primary)
-        Text("Fecha: ${LocalDate.now().format(shoppingDateFormatter)}", style = MaterialTheme.typography.bodyMedium)
+        SecondaryButton("Fecha: ${date.format(shoppingDateFormatter)}", { showDatePicker = true }, Modifier.fillMaxWidth())
+        Text("Método de pago", style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ShoppingPaymentMethod.entries.forEach { method -> FilterChip(paymentMethod == method, { paymentMethod = method }, { Text(method.shortLabel()) }) }
+        }
+        if (paymentMethod == ShoppingPaymentMethod.CREDIT) Text("Se creará una obligación en Por pagar; no se registrará gasto hasta marcarla como pagada.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Column { SecondaryButton(categories.firstOrNull { it.id == categoryId }?.name ?: "Seleccionar categoría", { expanded = true }, Modifier.fillMaxWidth()); DropdownMenu(expanded, { expanded = false }) { categories.forEach { category -> DropdownMenuItem({ Text(category.name) }, { categoryId = category.id; expanded = false }) } } }
         if (categories.isEmpty()) Text("No hay categorías de gasto activas.", color = MaterialTheme.colorScheme.error)
-    } }, confirmButton = { TextButton({ finalize(categoryId) }, enabled = !saving && categoryId != null) { Text("Finalizar") } }, dismissButton = { TextButton(dismiss) { Text("Cancelar") } })
+    } }, confirmButton = { TextButton({ finalize(categoryId, date, paymentMethod) }, enabled = !saving && categoryId != null) { Text(if (details.list.status == ShoppingListStatus.COMPLETED) "Guardar" else "Finalizar") } }, dismissButton = { TextButton(dismiss) { Text("Cancelar") } })
+    if (showDatePicker) {
+        val picker = rememberDatePickerState(initialSelectedDateMillis = date.toEpochDay() * 86_400_000L)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = { TextButton({ picker.selectedDateMillis?.let { date = LocalDate.ofEpochDay(it / 86_400_000L) }; showDatePicker = false }) { Text("Aceptar") } },
+            dismissButton = { TextButton({ showDatePicker = false }) { Text("Cancelar") } },
+        ) { DatePicker(picker) }
+    }
 }
 
 @Composable private fun MissingPricesDialog(count: Int, onReview: () -> Unit, onForce: () -> Unit, onDismiss: () -> Unit) {
@@ -667,6 +746,24 @@ private fun TicketAmountKind.spanishLabel(): String = when (this) {
     TicketAmountKind.TOTAL -> "Total"
     TicketAmountKind.MONTO_DETECTADO -> "Monto detectado"
     TicketAmountKind.PRODUCTO -> "Producto"
+}
+
+private fun RecognitionConfidence.spanishLabel(): String = when (this) {
+    RecognitionConfidence.HIGH -> "Coincidencia alta"
+    RecognitionConfidence.MEDIUM -> "Revisar sugerencia"
+    RecognitionConfidence.LOW -> "Requiere revisión"
+}
+
+private fun ShoppingPaymentMethod.spanishLabel(): String = when (this) {
+    ShoppingPaymentMethod.CASH -> "Efectivo"
+    ShoppingPaymentMethod.DEBIT -> "Débito"
+    ShoppingPaymentMethod.CREDIT -> "Crédito"
+}
+
+private fun ShoppingPaymentMethod.shortLabel(): String = when (this) {
+    ShoppingPaymentMethod.CASH -> "Efectivo"
+    ShoppingPaymentMethod.DEBIT -> "Débito"
+    ShoppingPaymentMethod.CREDIT -> "Crédito"
 }
 
 private fun <T> List<T>.updated(index: Int, value: T): List<T> = toMutableList().also { it[index] = value }
@@ -693,10 +790,10 @@ private fun extractProductNameFromOcr(text: String): String {
 }
 
 private fun com.google.mlkit.vision.text.Text.toTicketOcrLines(): List<TicketOcrLine> =
-    textBlocks.flatMap { block ->
-        block.lines.mapNotNull { line ->
+    textBlocks.flatMapIndexed { blockIndex, block ->
+        block.lines.mapIndexedNotNull { lineIndex, line ->
             line.boundingBox?.let { bounds ->
-                TicketOcrLine(line.text, bounds.left, bounds.top, bounds.right, bounds.bottom)
+                TicketOcrLine(line.text, bounds.left, bounds.top, bounds.right, bounds.bottom, blockIndex, lineIndex)
             }
         }
     }

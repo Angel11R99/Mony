@@ -15,6 +15,7 @@ import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.ShoppingListRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
+import com.example.personalfinancetracker.domain.repository.PendingEntryRepository
 import com.example.personalfinancetracker.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -51,22 +52,32 @@ class HistoryViewModel @Inject constructor(
     private val transactionsRepository: TransactionRepository,
     categories: CategoryRepository,
     shoppingLists: ShoppingListRepository,
+    pendingEntries: PendingEntryRepository,
     budgetRepository: BudgetRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
+    private val shoppingLinks = combine(
+        shoppingLists.observeLists(),
+        pendingEntries.observeAll(),
+    ) { lists, pending ->
+        val pendingById = pending.associateBy { it.id }
+        lists.mapNotNull { list ->
+            list.expenseTransactionId?.let { it to list.id }
+                ?: list.payableId?.let(pendingById::get)?.transactionId?.let { it to list.id }
+        }.toMap()
+    }
+
     val state = combine(
         transactionsRepository.observeAll(),
         categories.observeAll(),
-        shoppingLists.observeLists(),
+        shoppingLinks,
         budgetRepository.observe(),
         budgetRepository.observeHistory(),
-    ) { items, cats, lists, budget, history ->
+    ) { items, cats, links, budget, history ->
         HistoryUiState(
             transactions = items,
             categories = cats.associateBy(Category::id),
-            shoppingListIdsByExpenseTransactionId = lists.mapNotNull { list ->
-                list.expenseTransactionId?.let { transactionId -> transactionId to list.id }
-            }.toMap(),
+            shoppingListIdsByExpenseTransactionId = links,
             budget = budget,
             cycleHistory = history,
             isReady = true,
@@ -83,8 +94,12 @@ class HistoryViewModel @Inject constructor(
     }
 
     fun delete(id: Long) = viewModelScope.launch {
-        transactionsRepository.delete(id)
-        runCatching { updateAllFinanceWidgets(context) }
+        runCatching { transactionsRepository.delete(id) }
+            .onSuccess {
+                message.value = "Movimiento eliminado."
+                runCatching { updateAllFinanceWidgets(context) }
+            }
+            .onFailure { message.value = it.message ?: "No se pudo eliminar el movimiento." }
     }
 
     fun duplicate(id: Long) = viewModelScope.launch {

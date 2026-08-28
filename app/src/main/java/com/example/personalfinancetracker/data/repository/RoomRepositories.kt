@@ -14,6 +14,8 @@ import com.example.personalfinancetracker.data.local.entity.CategoryEntity
 import com.example.personalfinancetracker.data.local.entity.TransactionEntity
 import com.example.personalfinancetracker.data.local.entity.SavingsGoalEntity
 import com.example.personalfinancetracker.data.local.entity.KnownProductEntity
+import com.example.personalfinancetracker.data.local.entity.PendingEntryEntity
+import com.example.personalfinancetracker.data.local.entity.ProductRecognitionAliasEntity
 import com.example.personalfinancetracker.data.local.database.FinanceDatabase
 import com.example.personalfinancetracker.data.mapper.toDomain
 import com.example.personalfinancetracker.data.mapper.toEntity
@@ -35,6 +37,9 @@ import com.example.personalfinancetracker.domain.model.ShoppingListDetails
 import com.example.personalfinancetracker.domain.model.ShoppingListItem
 import com.example.personalfinancetracker.domain.model.ShoppingListOverview
 import com.example.personalfinancetracker.domain.model.ShoppingListStatus
+import com.example.personalfinancetracker.domain.model.ShoppingPaymentMethod
+import com.example.personalfinancetracker.domain.model.PendingType
+import com.example.personalfinancetracker.domain.model.normalizeProductName
 import com.example.personalfinancetracker.domain.repository.CategoryRepository
 import com.example.personalfinancetracker.domain.repository.BudgetRepository
 import com.example.personalfinancetracker.domain.repository.TransactionRepository
@@ -44,6 +49,7 @@ import com.example.personalfinancetracker.domain.repository.SavingsRepository
 import com.example.personalfinancetracker.domain.repository.FinalizePurchaseResult
 import com.example.personalfinancetracker.domain.repository.ShoppingListRepository
 import com.example.personalfinancetracker.domain.repository.ShoppingMutationResult
+import com.example.personalfinancetracker.domain.repository.TicketProductUpdate
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -59,6 +65,7 @@ class RoomTransactionRepository @Inject constructor(
     private val categoryDao: CategoryDao,
     private val database: FinanceDatabase,
     private val shoppingListDao: ShoppingListDao,
+    private val pendingEntryDao: PendingEntryDao,
 ) : TransactionRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
     override fun observeByPeriod(period: DateRange) = dao.observeByPeriod(
@@ -72,9 +79,18 @@ class RoomTransactionRepository @Inject constructor(
         check(shoppingListDao.findListIdByExpenseTransaction(transaction.id) == null) {
             "Este gasto pertenece a una lista finalizada y no se puede editar."
         }
+        check(pendingEntryDao.findByTransactionId(transaction.id)?.sourceShoppingListId == null) {
+            "Este gasto pertenece a una compra a crédito y no se puede editar."
+        }
         dao.update(transaction.toEntity())
     }
     override suspend fun delete(id: Long) = database.withTransaction {
+        check(shoppingListDao.findListIdByExpenseTransaction(id) == null) {
+            "Este gasto pertenece a una lista finalizada y no se puede eliminar."
+        }
+        check(pendingEntryDao.findByTransactionId(id)?.sourceShoppingListId == null) {
+            "Este gasto pertenece a una compra a crédito y no se puede eliminar."
+        }
         val deleted = dao.get(id)
         dao.delete(id)
         val fixedEntryId = deleted?.let {
@@ -230,7 +246,10 @@ class RoomPendingEntryRepository @Inject constructor(
 ) : PendingEntryRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
     override suspend fun get(id: Long) = dao.get(id)?.toDomain()
-    override suspend fun save(entry: PendingEntry) = dao.upsert(entry.toEntity())
+    override suspend fun save(entry: PendingEntry): Long {
+        check(entry.sourceShoppingListId == null) { "Esta obligación debe editarse desde la compra vinculada." }
+        return dao.upsert(entry.toEntity())
+    }
     override suspend fun complete(entry: PendingEntry, transaction: FinanceTransaction) {
         database.withTransaction {
             val transactionId = transactionDao.insert(transaction.toEntity())
@@ -245,7 +264,10 @@ class RoomPendingEntryRepository @Inject constructor(
             dao.upsert(entry.copy(isDone = false, doneAt = null, transactionId = null).toEntity())
         }
     }
-    override suspend fun delete(id: Long) = dao.delete(id)
+    override suspend fun delete(id: Long) {
+        check(dao.get(id)?.sourceShoppingListId == null) { "Esta obligación debe eliminarse desde la compra vinculada." }
+        dao.delete(id)
+    }
 }
 
 class RoomSavingsRepository @Inject constructor(
@@ -285,6 +307,7 @@ class RoomShoppingListRepository @Inject constructor(
     private val dao: ShoppingListDao,
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
+    private val pendingEntryDao: PendingEntryDao,
     private val database: FinanceDatabase,
 ) : ShoppingListRepository {
     override fun observeLists(): Flow<List<ShoppingList>> =
@@ -332,17 +355,20 @@ class RoomShoppingListRepository @Inject constructor(
 
     override suspend fun update(list: ShoppingList): ShoppingMutationResult = database.withTransaction {
         val current = dao.getList(list.id) ?: return@withTransaction ShoppingMutationResult.NotFound
-        if (current.status == ShoppingListStatus.COMPLETED.name || list.status == ShoppingListStatus.COMPLETED) {
-            return@withTransaction ShoppingMutationResult.CompletedList
-        }
         dao.updateList(
             list.copy(
                 name = list.name.trim(),
-                expenseTransactionId = null,
+                status = current.toDomain().status,
+                expenseTransactionId = current.expenseTransactionId,
+                payableId = current.payableId,
+                purchaseDate = current.purchaseDateEpochDay?.let(LocalDate::ofEpochDay),
+                paymentMethod = current.paymentMethod?.let(ShoppingPaymentMethod::valueOf),
+                expenseCategoryId = current.expenseCategoryId,
                 createdAt = current.toDomain().createdAt,
-                completedAt = null,
+                completedAt = current.completedAtEpochMillis?.let(Instant::ofEpochMilli),
             ).toEntity()
         )
+        if (current.status == ShoppingListStatus.COMPLETED.name) syncCompletedPurchase(list.id)
         ShoppingMutationResult.Success(list.id)
     }
 
@@ -357,12 +383,10 @@ class RoomShoppingListRepository @Inject constructor(
 
     override suspend fun saveItem(item: ShoppingListItem): ShoppingMutationResult = database.withTransaction {
         val list = dao.getList(item.shoppingListId) ?: return@withTransaction ShoppingMutationResult.NotFound
-        if (list.status == ShoppingListStatus.COMPLETED.name) {
-            return@withTransaction ShoppingMutationResult.CompletedList
-        }
         if (item.id == 0L) {
             val id = dao.insertItem(item.copy(name = item.name.trim()).toEntity())
             dao.touchList(item.shoppingListId, Instant.now().toEpochMilli())
+            if (list.status == ShoppingListStatus.COMPLETED.name) syncCompletedPurchase(item.shoppingListId)
             ShoppingMutationResult.Success(id)
         } else {
             val current = dao.getItem(item.id)
@@ -371,6 +395,7 @@ class RoomShoppingListRepository @Inject constructor(
             }
             dao.updateItem(item.copy(name = item.name.trim()).toEntity())
             dao.touchList(item.shoppingListId, Instant.now().toEpochMilli())
+            if (list.status == ShoppingListStatus.COMPLETED.name) syncCompletedPurchase(item.shoppingListId)
             ShoppingMutationResult.Success(item.id)
         }
     }
@@ -378,11 +403,9 @@ class RoomShoppingListRepository @Inject constructor(
     override suspend fun deleteItem(itemId: Long): ShoppingMutationResult = database.withTransaction {
         val item = dao.getItem(itemId) ?: return@withTransaction ShoppingMutationResult.NotFound
         val list = dao.getList(item.shoppingListId) ?: return@withTransaction ShoppingMutationResult.NotFound
-        if (list.status == ShoppingListStatus.COMPLETED.name) {
-            return@withTransaction ShoppingMutationResult.CompletedList
-        }
         dao.deleteItem(itemId)
         dao.touchList(item.shoppingListId, Instant.now().toEpochMilli())
+        if (list.status == ShoppingListStatus.COMPLETED.name) syncCompletedPurchase(item.shoppingListId)
         ShoppingMutationResult.Success(itemId)
     }
 
@@ -390,10 +413,7 @@ class RoomShoppingListRepository @Inject constructor(
         database.withTransaction {
             val list = dao.getList(adjustment.shoppingListId)
                 ?: return@withTransaction ShoppingMutationResult.NotFound
-            if (list.status == ShoppingListStatus.COMPLETED.name) {
-                return@withTransaction ShoppingMutationResult.CompletedList
-            }
-            if (adjustment.id == 0L) {
+            val result = if (adjustment.id == 0L) {
                 val id = dao.insertAdjustment(adjustment.copy(name = adjustment.name.trim()).toEntity())
                 dao.touchList(adjustment.shoppingListId, Instant.now().toEpochMilli())
                 ShoppingMutationResult.Success(id)
@@ -406,6 +426,8 @@ class RoomShoppingListRepository @Inject constructor(
                 dao.touchList(adjustment.shoppingListId, Instant.now().toEpochMilli())
                 ShoppingMutationResult.Success(adjustment.id)
             }
+            if (list.status == ShoppingListStatus.COMPLETED.name) syncCompletedPurchase(adjustment.shoppingListId)
+            result
         }
 
     override suspend fun saveAdjustments(adjustments: List<ShoppingAdjustment>): ShoppingMutationResult =
@@ -416,9 +438,6 @@ class RoomShoppingListRepository @Inject constructor(
                 return@withTransaction ShoppingMutationResult.NotFound
             }
             val list = dao.getList(listId) ?: return@withTransaction ShoppingMutationResult.NotFound
-            if (list.status == ShoppingListStatus.COMPLETED.name) {
-                return@withTransaction ShoppingMutationResult.CompletedList
-            }
             adjustments.forEach { adjustment ->
                 if (adjustment.id == 0L) {
                     dao.insertAdjustment(adjustment.copy(name = adjustment.name.trim()).toEntity())
@@ -431,6 +450,7 @@ class RoomShoppingListRepository @Inject constructor(
                 }
             }
             dao.touchList(listId, Instant.now().toEpochMilli())
+            if (list.status == ShoppingListStatus.COMPLETED.name) syncCompletedPurchase(listId)
             ShoppingMutationResult.Success(listId)
         }
 
@@ -440,16 +460,57 @@ class RoomShoppingListRepository @Inject constructor(
                 ?: return@withTransaction ShoppingMutationResult.NotFound
             val list = dao.getList(adjustment.shoppingListId)
                 ?: return@withTransaction ShoppingMutationResult.NotFound
-            if (list.status == ShoppingListStatus.COMPLETED.name) {
-                return@withTransaction ShoppingMutationResult.CompletedList
-            }
             dao.deleteAdjustment(adjustmentId)
             dao.touchList(adjustment.shoppingListId, Instant.now().toEpochMilli())
+            if (list.status == ShoppingListStatus.COMPLETED.name) syncCompletedPurchase(adjustment.shoppingListId)
             ShoppingMutationResult.Success(adjustmentId)
         }
 
     override suspend fun findKnownProduct(barcode: String) =
         dao.findKnownProduct(barcode.trim())?.toDomain()
+
+    override suspend fun findLearnedNames(detectedText: String): List<String> =
+        dao.findAliases(normalizeProductName(detectedText)).map { it.displayName }.distinct()
+
+    override suspend fun applyTicketReview(
+        listId: Long,
+        products: List<TicketProductUpdate>,
+        adjustments: List<ShoppingAdjustment>,
+    ): ShoppingMutationResult = database.withTransaction {
+        val list = dao.getList(listId) ?: return@withTransaction ShoppingMutationResult.NotFound
+        if (list.status == ShoppingListStatus.COMPLETED.name) return@withTransaction ShoppingMutationResult.CompletedList
+        require(products.mapNotNull { it.itemId }.let { it.size == it.distinct().size })
+        val now = Instant.now()
+        products.forEach { draft ->
+            require(draft.displayName.isNotBlank() && draft.quantity >= 1 && draft.unitPriceInCents >= 0)
+            val existing = draft.itemId?.let { dao.getItem(it) }
+            val item = if (existing == null) {
+                com.example.personalfinancetracker.data.local.entity.ShoppingListItemEntity(
+                    shoppingListId = listId,
+                    name = draft.displayName.trim(),
+                    quantity = draft.quantity,
+                    estimatedUnitPriceInCents = null,
+                    actualUnitPriceInCents = draft.unitPriceInCents,
+                    barcode = null,
+                    isPurchased = true,
+                    isIdentified = false,
+                    notes = null,
+                    createdAtEpochMillis = now.toEpochMilli(),
+                    updatedAtEpochMillis = now.toEpochMilli(),
+                )
+            } else existing.copy(
+                quantity = draft.quantity,
+                actualUnitPriceInCents = draft.unitPriceInCents,
+                isPurchased = true,
+                updatedAtEpochMillis = now.toEpochMilli(),
+            )
+            if (existing == null) dao.insertItem(item) else dao.updateItem(item)
+            learnAlias(draft.detectedText, draft.displayName, item.barcode, now)
+        }
+        adjustments.forEach { dao.insertAdjustment(it.copy(id = 0, shoppingListId = listId).toEntity()) }
+        dao.touchList(listId, now.toEpochMilli())
+        ShoppingMutationResult.Success(listId)
+    }
 
     override suspend fun duplicate(listId: Long): Long? = database.withTransaction {
         val source = dao.getList(listId) ?: return@withTransaction null
@@ -461,6 +522,10 @@ class RoomShoppingListRepository @Inject constructor(
                 id = 0,
                 status = ShoppingListStatus.PENDING.name,
                 expenseTransactionId = null,
+                payableId = null,
+                purchaseDateEpochDay = null,
+                paymentMethod = null,
+                expenseCategoryId = null,
                 createdAtEpochMillis = now.toEpochMilli(),
                 updatedAtEpochMillis = now.toEpochMilli(),
                 completedAtEpochMillis = null,
@@ -494,6 +559,7 @@ class RoomShoppingListRepository @Inject constructor(
         listId: Long,
         categoryId: Long,
         date: LocalDate,
+        paymentMethod: ShoppingPaymentMethod,
         allowMissingPrices: Boolean,
     ): FinalizePurchaseResult = database.withTransaction {
         val list = dao.getList(listId) ?: return@withTransaction FinalizePurchaseResult.ListNotFound
@@ -528,20 +594,15 @@ class RoomShoppingListRepository @Inject constructor(
             val transactionId = dao.getExpenseTransaction(listId)?.id
             return@withTransaction FinalizePurchaseResult.AlreadyCompleted(transactionId)
         }
-        val transactionId = transactionDao.insert(
-            TransactionEntity(
-                amountInCents = total,
-                type = TransactionType.EXPENSE.name,
-                categoryId = categoryId,
-                description = list.name,
-                dateEpochDay = date.toEpochDay(),
-                createdAtEpochMillis = now.toEpochMilli(),
-                updatedAtEpochMillis = now.toEpochMilli(),
-                fixedEntryId = null,
-                savingsGoalId = null,
-            )
-        )
-        check(dao.attachExpenseTransaction(listId, transactionId) == 1)
+        dao.updateList(list.copy(
+            status = ShoppingListStatus.COMPLETED.name,
+            purchaseDateEpochDay = date.toEpochDay(),
+            paymentMethod = paymentMethod.name,
+            expenseCategoryId = categoryId,
+            completedAtEpochMillis = now.toEpochMilli(),
+            updatedAtEpochMillis = now.toEpochMilli(),
+        ))
+        val financialId = syncCompletedPurchase(listId)
         purchasedItems.forEach { item ->
             val barcode = item.barcode?.trim().orEmpty()
             if (barcode.isNotEmpty()) {
@@ -555,7 +616,29 @@ class RoomShoppingListRepository @Inject constructor(
                 )
             }
         }
-        FinalizePurchaseResult.Completed(transactionId, total)
+        FinalizePurchaseResult.Completed(financialId, total)
+    }
+
+    override suspend fun updatePurchaseSettings(
+        listId: Long,
+        categoryId: Long,
+        date: LocalDate,
+        paymentMethod: ShoppingPaymentMethod,
+    ): ShoppingMutationResult = database.withTransaction {
+        val list = dao.getList(listId) ?: return@withTransaction ShoppingMutationResult.NotFound
+        if (list.status != ShoppingListStatus.COMPLETED.name) return@withTransaction ShoppingMutationResult.NotFound
+        val category = categoryDao.get(categoryId)
+        if (category == null || category.type != TransactionType.EXPENSE.name || !category.isActive) {
+            return@withTransaction ShoppingMutationResult.NotFound
+        }
+        dao.updateList(list.copy(
+            purchaseDateEpochDay = date.toEpochDay(),
+            paymentMethod = paymentMethod.name,
+            expenseCategoryId = categoryId,
+            updatedAtEpochMillis = Instant.now().toEpochMilli(),
+        ))
+        syncCompletedPurchase(listId)
+        ShoppingMutationResult.Success(listId)
     }
 
     override suspend fun reopen(listId: Long): ShoppingMutationResult = database.withTransaction {
@@ -564,9 +647,139 @@ class RoomShoppingListRepository @Inject constructor(
             return@withTransaction ShoppingMutationResult.NotFound
         }
         list.expenseTransactionId?.let { transactionDao.delete(it) }
+        list.payableId?.let { payableId ->
+            pendingEntryDao.get(payableId)?.transactionId?.let { transactionDao.delete(it) }
+            pendingEntryDao.delete(payableId)
+        }
         val now = Instant.now().toEpochMilli()
         dao.reopen(listId, ShoppingListStatus.SHOPPING.name, now)
         ShoppingMutationResult.Success(listId)
+    }
+
+    private suspend fun syncCompletedPurchase(listId: Long): Long {
+        val list = checkNotNull(dao.getList(listId))
+        check(list.status == ShoppingListStatus.COMPLETED.name)
+        val categoryId = checkNotNull(list.expenseCategoryId)
+        val date = LocalDate.ofEpochDay(checkNotNull(list.purchaseDateEpochDay))
+        val method = ShoppingPaymentMethod.valueOf(checkNotNull(list.paymentMethod))
+        val details = ShoppingListDetails(
+            list.toDomain(),
+            dao.getItems(listId).map { it.toDomain() },
+            dao.getAdjustments(listId).map { it.toDomain() },
+        )
+        val total = details.actualTotalInCents
+        check(total > 0) { "Completed purchase total must be positive" }
+        val now = Instant.now()
+        return if (method == ShoppingPaymentMethod.CREDIT) {
+            list.expenseTransactionId?.let { transactionDao.delete(it) }
+            val currentPayable = list.payableId?.let { pendingEntryDao.get(it) }
+                ?: pendingEntryDao.findByShoppingListId(listId)
+            var payable = (currentPayable ?: PendingEntryEntity(
+                type = PendingType.PAYMENT.name,
+                description = list.name,
+                amountInCents = total,
+                categoryId = categoryId,
+                dateEpochDay = date.toEpochDay(),
+                reminderMinutesOfDay = null,
+                comment = "Compra creada desde Lista",
+                isDone = false,
+                doneAtEpochMillis = null,
+                transactionId = null,
+                createdAtEpochMillis = now.toEpochMilli(),
+                updatedAtEpochMillis = now.toEpochMilli(),
+                sourceShoppingListId = listId,
+            )).copy(
+                description = list.name,
+                amountInCents = total,
+                categoryId = categoryId,
+                dateEpochDay = date.toEpochDay(),
+                updatedAtEpochMillis = now.toEpochMilli(),
+                sourceShoppingListId = listId,
+            )
+            val payableId = if (currentPayable == null) pendingEntryDao.upsert(payable) else {
+                pendingEntryDao.upsert(payable)
+                payable.id
+            }
+            if (payable.isDone) {
+                val linkedTransaction = payable.transactionId?.let { transactionDao.get(it) }
+                if (linkedTransaction == null) {
+                    val transactionId = transactionDao.insert(TransactionEntity(
+                        amountInCents = total,
+                        type = TransactionType.EXPENSE.name,
+                        categoryId = categoryId,
+                        description = list.name,
+                        dateEpochDay = date.toEpochDay(),
+                        createdAtEpochMillis = now.toEpochMilli(),
+                        updatedAtEpochMillis = now.toEpochMilli(),
+                        fixedEntryId = null,
+                        savingsGoalId = null,
+                    ))
+                    payable = payable.copy(transactionId = transactionId)
+                    pendingEntryDao.upsert(payable)
+                } else {
+                    transactionDao.update(linkedTransaction.copy(
+                        amountInCents = total,
+                        categoryId = categoryId,
+                        description = list.name,
+                        dateEpochDay = date.toEpochDay(),
+                        updatedAtEpochMillis = now.toEpochMilli(),
+                    ))
+                }
+            }
+            dao.updateList(list.copy(expenseTransactionId = null, payableId = payableId, updatedAtEpochMillis = now.toEpochMilli()))
+            payableId
+        } else {
+            list.payableId?.let { payableId ->
+                pendingEntryDao.get(payableId)?.transactionId?.let { transactionDao.delete(it) }
+                pendingEntryDao.delete(payableId)
+            }
+            val existing = list.expenseTransactionId?.let { transactionDao.get(it) }
+            val transaction = (existing ?: TransactionEntity(
+                amountInCents = total,
+                type = TransactionType.EXPENSE.name,
+                categoryId = categoryId,
+                description = list.name,
+                dateEpochDay = date.toEpochDay(),
+                createdAtEpochMillis = now.toEpochMilli(),
+                updatedAtEpochMillis = now.toEpochMilli(),
+                fixedEntryId = null,
+                savingsGoalId = null,
+            )).copy(
+                amountInCents = total,
+                categoryId = categoryId,
+                description = list.name,
+                dateEpochDay = date.toEpochDay(),
+                updatedAtEpochMillis = now.toEpochMilli(),
+            )
+            val transactionId = if (existing == null) transactionDao.insert(transaction) else {
+                transactionDao.update(transaction)
+                transaction.id
+            }
+            dao.updateList(list.copy(expenseTransactionId = transactionId, payableId = null, updatedAtEpochMillis = now.toEpochMilli()))
+            transactionId
+        }
+    }
+
+    private suspend fun learnAlias(detectedText: String, displayName: String, barcode: String?, now: Instant) {
+        val normalized = normalizeProductName(detectedText)
+        if (normalized.isBlank()) return
+        val existing = dao.findAlias(normalized, displayName.trim(), barcode)
+        if (existing == null) {
+            dao.insertAlias(ProductRecognitionAliasEntity(
+                detectedText = detectedText.trim(),
+                normalizedAlias = normalized,
+                displayName = displayName.trim(),
+                barcode = barcode,
+                confirmationCount = 1,
+                lastUsedAtEpochMillis = now.toEpochMilli(),
+            ))
+        } else {
+            dao.updateAlias(existing.copy(
+                detectedText = detectedText.trim(),
+                confirmationCount = existing.confirmationCount + 1,
+                lastUsedAtEpochMillis = now.toEpochMilli(),
+            ))
+        }
     }
 }
 

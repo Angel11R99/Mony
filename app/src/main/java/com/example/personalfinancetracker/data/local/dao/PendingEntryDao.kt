@@ -14,6 +14,12 @@ interface PendingEntryDao {
     @Query("SELECT * FROM pending_entries WHERE id = :id LIMIT 1")
     suspend fun get(id: Long): PendingEntryEntity?
 
+    @Query("SELECT * FROM pending_entries WHERE transactionId = :transactionId LIMIT 1")
+    suspend fun findByTransactionId(transactionId: Long): PendingEntryEntity?
+
+    @Query("SELECT * FROM pending_entries WHERE sourceShoppingListId = :listId LIMIT 1")
+    suspend fun findByShoppingListId(listId: Long): PendingEntryEntity?
+
     @Upsert
     suspend fun upsert(entry: PendingEntryEntity): Long
 

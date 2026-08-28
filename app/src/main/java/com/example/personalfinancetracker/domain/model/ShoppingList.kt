@@ -1,11 +1,18 @@
 package com.example.personalfinancetracker.domain.model
 
 import java.time.Instant
+import java.time.LocalDate
 
 enum class ShoppingListStatus {
     PENDING,
     SHOPPING,
     COMPLETED,
+}
+
+enum class ShoppingPaymentMethod {
+    CASH,
+    DEBIT,
+    CREDIT,
 }
 
 data class ShoppingList(
@@ -14,6 +21,10 @@ data class ShoppingList(
     val status: ShoppingListStatus = ShoppingListStatus.PENDING,
     val budgetInCents: Long? = null,
     val expenseTransactionId: Long? = null,
+    val payableId: Long? = null,
+    val purchaseDate: LocalDate? = null,
+    val paymentMethod: ShoppingPaymentMethod? = null,
+    val expenseCategoryId: Long? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
     val completedAt: Instant? = null,
@@ -21,8 +32,19 @@ data class ShoppingList(
     init {
         require(name.isNotBlank()) { "Shopping list name cannot be blank" }
         require(budgetInCents == null || budgetInCents >= 0) { "Budget cannot be negative" }
+        require(expenseTransactionId == null || payableId == null) { "A purchase cannot have two financial links" }
     }
 }
+
+data class ProductRecognitionAlias(
+    val id: Long = 0,
+    val detectedText: String,
+    val normalizedAlias: String,
+    val displayName: String,
+    val barcode: String? = null,
+    val confirmationCount: Int = 1,
+    val lastUsedAt: Instant,
+)
 
 data class ShoppingListItem(
     val id: Long = 0,

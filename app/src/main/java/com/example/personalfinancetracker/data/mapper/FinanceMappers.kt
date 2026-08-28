@@ -118,6 +118,7 @@ fun PendingEntryEntity.toDomain() = PendingEntry(
     transactionId = transactionId,
     createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
     updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+    sourceShoppingListId = sourceShoppingListId,
 )
 
 fun PendingEntry.toEntity() = PendingEntryEntity(
@@ -134,6 +135,7 @@ fun PendingEntry.toEntity() = PendingEntryEntity(
     transactionId = transactionId,
     createdAtEpochMillis = createdAt.toEpochMilli(),
     updatedAtEpochMillis = updatedAt.toEpochMilli(),
+    sourceShoppingListId = sourceShoppingListId,
 )
 
 fun ShoppingListEntity.toDomain() = ShoppingList(
@@ -142,6 +144,10 @@ fun ShoppingListEntity.toDomain() = ShoppingList(
     status = ShoppingListStatus.valueOf(status),
     budgetInCents = budgetInCents,
     expenseTransactionId = expenseTransactionId,
+    payableId = payableId,
+    purchaseDate = purchaseDateEpochDay?.let(LocalDate::ofEpochDay),
+    paymentMethod = paymentMethod?.let(com.example.personalfinancetracker.domain.model.ShoppingPaymentMethod::valueOf),
+    expenseCategoryId = expenseCategoryId,
     createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
     updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
     completedAt = completedAtEpochMillis?.let(Instant::ofEpochMilli),
@@ -153,6 +159,10 @@ fun ShoppingList.toEntity() = ShoppingListEntity(
     status = status.name,
     budgetInCents = budgetInCents,
     expenseTransactionId = expenseTransactionId,
+    payableId = payableId,
+    purchaseDateEpochDay = purchaseDate?.toEpochDay(),
+    paymentMethod = paymentMethod?.name,
+    expenseCategoryId = expenseCategoryId,
     createdAtEpochMillis = createdAt.toEpochMilli(),
     updatedAtEpochMillis = updatedAt.toEpochMilli(),
     completedAtEpochMillis = completedAt?.toEpochMilli(),

@@ -40,6 +40,7 @@ data class PendingEntry(
     val transactionId: Long? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val sourceShoppingListId: Long? = null,
 )
 
 fun pendingReminderInstant(

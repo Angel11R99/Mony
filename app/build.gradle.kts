@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.google.code.scanner)
     implementation(libs.mlkit.text.recognition)
     implementation(libs.google.document.scanner)
+    implementation(platform(libs.kotlinx.serialization.bom))
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

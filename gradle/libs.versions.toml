@@ -20,6 +20,7 @@ work = "2.11.2"
 googleCodeScanner = "16.1.0"
 mlkitTextRecognition = "16.0.1"
 googleDocumentScanner = "16.0.0"
+serialization = "1.8.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -54,6 +55,7 @@ androidx-work-runtime = { group = "androidx.work", name = "work-runtime", versio
 google-code-scanner = { group = "com.google.android.gms", name = "play-services-code-scanner", version.ref = "googleCodeScanner" }
 mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
 google-document-scanner = { group = "com.google.android.gms", name = "play-services-mlkit-document-scanner", version.ref = "googleDocumentScanner" }
+kotlinx-serialization-bom = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-bom", version.ref = "serialization" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

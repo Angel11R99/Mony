@@ -382,8 +382,11 @@ fun HistoryScreen(
                     IconButton(onClick = { pendingDuplicate = transaction }) {
                         Icon(Icons.Outlined.ContentCopy, "Duplicar")
                     }
-                    IconButton(onClick = { pendingDelete = transaction }) {
-                        Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
+                    IconButton(
+                        onClick = { pendingDelete = transaction },
+                        enabled = linkedShoppingList == null,
+                    ) {
+                        Icon(Icons.Outlined.Delete, if (linkedShoppingList == null) "Eliminar" else "El movimiento se administra desde la compra", tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }

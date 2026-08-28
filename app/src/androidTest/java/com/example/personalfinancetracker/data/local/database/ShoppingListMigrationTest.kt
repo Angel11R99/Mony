@@ -70,6 +70,7 @@ class ShoppingListMigrationTest {
                 cursor.moveToFirst()
                 assertEquals(1, cursor.getInt(0))
             }
+            db.execSQL("PRAGMA foreign_keys=ON")
             db.execSQL("DELETE FROM transactions WHERE id = 7")
             db.query("SELECT expenseTransactionId FROM shopping_lists WHERE id = 1").use { cursor ->
                 cursor.moveToFirst()
@@ -79,6 +80,40 @@ class ShoppingListMigrationTest {
             db.query("SELECT COUNT(*) FROM shopping_list_items WHERE shoppingListId = 1").use { cursor ->
                 cursor.moveToFirst()
                 assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migration14To15PreservesLinksAndAddsPurchaseMetadata() {
+        helper.createDatabase("$databaseName-15", 14).apply {
+            execSQL("INSERT INTO categories (id, name, type, icon, isActive, createdAtEpochMillis, budgetLimitInCents) VALUES (42, 'Compras', 'EXPENSE', 'shopping_cart', 1, 1000, NULL)")
+            execSQL("INSERT INTO transactions (id, amountInCents, type, categoryId, description, dateEpochDay, createdAtEpochMillis, updatedAtEpochMillis, fixedEntryId, savingsGoalId) VALUES (7, 15000, 'EXPENSE', 42, 'Compra', 20000, 1000, 1000, NULL, NULL)")
+            execSQL("INSERT INTO shopping_lists (id, name, status, budgetInCents, expenseTransactionId, createdAtEpochMillis, updatedAtEpochMillis, completedAtEpochMillis) VALUES (1, 'Compra', 'COMPLETED', NULL, 7, 1000, 1000, 1000)")
+            close()
+        }
+
+        helper.runMigrationsAndValidate(
+            "$databaseName-15",
+            15,
+            true,
+            DatabaseModule.migration14To15,
+        ).use { db ->
+            db.query("SELECT expenseTransactionId, payableId, purchaseDateEpochDay, paymentMethod, expenseCategoryId FROM shopping_lists WHERE id = 1").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(7L, cursor.getLong(0))
+                assertEquals(true, cursor.isNull(1))
+                assertEquals(20000L, cursor.getLong(2))
+                assertEquals("DEBIT", cursor.getString(3))
+                assertEquals(42L, cursor.getLong(4))
+            }
+            db.query("SELECT COUNT(*) FROM product_recognition_aliases").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+            db.query("SELECT COUNT(*) FROM pragma_table_info('pending_entries') WHERE name = 'sourceShoppingListId'").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(1, cursor.getInt(0))
             }
         }
     }
