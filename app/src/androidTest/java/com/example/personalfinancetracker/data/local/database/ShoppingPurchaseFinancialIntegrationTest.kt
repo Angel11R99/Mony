@@ -10,6 +10,7 @@ import com.example.personalfinancetracker.domain.model.ShoppingListItem
 import com.example.personalfinancetracker.domain.model.ShoppingPaymentMethod
 import com.example.personalfinancetracker.domain.model.ShoppingListStatus
 import com.example.personalfinancetracker.domain.repository.FinalizePurchaseResult
+import com.example.personalfinancetracker.domain.repository.TicketProductUpdate
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
@@ -91,6 +92,34 @@ class ShoppingPurchaseFinancialIntegrationTest {
         val details = repository.getDetails(listId)!!
         repository.update(details.list.copy(status = ShoppingListStatus.SHOPPING, updatedAt = Instant.now()))
         assertEquals(ShoppingListStatus.SHOPPING, repository.getDetails(listId)!!.list.status)
+    }
+
+    @Test
+    fun ticketMatchUpdatesExistingProductNameQuantityAndActualPrice() = runBlocking {
+        val listId = createPurchase()
+        val initial = repository.getDetails(listId)!!.items.single()
+        repository.saveItem(initial.copy(estimatedUnitPriceInCents = 7_000, updatedAt = Instant.now()))
+        val original = repository.getDetails(listId)!!.items.single()
+        repository.applyTicketReview(
+            listId = listId,
+            products = listOf(
+                TicketProductUpdate(
+                    detectedText = "LECHE MILEX 1L",
+                    itemId = original.id,
+                    displayName = "Leche Milex 1 L",
+                    quantity = 3,
+                    unitPriceInCents = 8_500,
+                ),
+            ),
+            adjustments = emptyList(),
+        )
+
+        val updated = repository.getDetails(listId)!!.items.single()
+        assertEquals(original.id, updated.id)
+        assertEquals("Leche Milex 1 L", updated.name)
+        assertEquals(3, updated.quantity)
+        assertEquals(8_500L, updated.actualUnitPriceInCents)
+        assertEquals(original.estimatedUnitPriceInCents, updated.estimatedUnitPriceInCents)
     }
 
     private suspend fun createPurchase(): Long {

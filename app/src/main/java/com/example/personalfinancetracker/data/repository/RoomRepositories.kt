@@ -503,6 +503,7 @@ class RoomShoppingListRepository @Inject constructor(
                     updatedAtEpochMillis = now.toEpochMilli(),
                 )
             } else existing.copy(
+                name = draft.displayName.trim(),
                 quantity = draft.quantity,
                 actualUnitPriceInCents = draft.unitPriceInCents,
                 isPurchased = true,
