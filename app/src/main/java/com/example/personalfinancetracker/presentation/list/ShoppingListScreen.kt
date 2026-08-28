@@ -41,6 +41,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +58,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,7 +105,14 @@ import java.util.Locale
 
 private enum class DocumentScanPurpose { PRICE, TICKET }
 
-private data class ItemEditorData(val item: ShoppingListItem?, val barcode: String = "", val name: String = "", val actual: String = "", val editorKey: Long = System.nanoTime())
+private data class ItemEditorData(
+    val item: ShoppingListItem?,
+    val barcode: String = "",
+    val name: String = "",
+    val actual: String = "",
+    val initialPurchased: Boolean = false,
+    val editorKey: Long = System.nanoTime(),
+)
 private data class TicketAdjustmentUi(val draft: AdjustmentDraft, val included: Boolean = true)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,6 +145,7 @@ fun ShoppingListScreen(
     var reviewingMissingPrices by remember { mutableStateOf(false) }
     var pendingDeleteItem by remember { mutableStateOf<ShoppingListItem?>(null) }
     var pendingDeleteAdjustment by remember { mutableStateOf<ShoppingAdjustment?>(null) }
+    var lastNewItemPurchased by rememberSaveable { mutableStateOf(false) }
 
     fun notify(text: String) = context.showToast(text)
 
@@ -230,7 +240,13 @@ fun ShoppingListScreen(
     LaunchedEffect(message) { message?.let { notify(it); viewModel.consumeMessage() } }
     LaunchedEffect(scannedProduct) {
         scannedProduct?.let {
-            itemEditor = ItemEditorData(null, it.barcode, it.suggestedName, it.suggestedPriceInCents?.let(::centsInput).orEmpty())
+            itemEditor = ItemEditorData(
+                item = null,
+                barcode = it.barcode,
+                name = it.suggestedName,
+                actual = it.suggestedPriceInCents?.let(::centsInput).orEmpty(),
+                initialPurchased = lastNewItemPurchased,
+            )
             viewModel.clearScannedProduct()
         }
     }
@@ -244,7 +260,12 @@ fun ShoppingListScreen(
     LaunchedEffect(missingPrices, itemEditor, reviewingMissingPrices) {
         if (reviewingMissingPrices && itemEditor == null) {
             val item = state.details?.items?.firstOrNull { it.id in missingPrices }
-            if (item == null) reviewingMissingPrices = false else itemEditor = ItemEditorData(item)
+            if (item == null) {
+                reviewingMissingPrices = false
+                if (missingPrices.isEmpty()) viewModel.forceFinalizePurchase()
+            } else {
+                itemEditor = ItemEditorData(item)
+            }
         }
     }
     LaunchedEffect(matchedScannedProduct) {
@@ -305,7 +326,9 @@ fun ShoppingListScreen(
                 if (state.editable && details.list.status != ShoppingListStatus.COMPLETED) {
                     item {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            QuickAction("Producto", Icons.Outlined.Add, Modifier.weight(1f)) { itemEditor = ItemEditorData(null) }
+                            QuickAction("Producto", Icons.Outlined.Add, Modifier.weight(1f)) {
+                                itemEditor = ItemEditorData(null, initialPurchased = lastNewItemPurchased)
+                            }
                             QuickAction("Código", Icons.Outlined.QrCodeScanner, Modifier.weight(1f), onClick = ::launchBarcodeScanner)
                             QuickAction("Ticket", Icons.Outlined.DocumentScanner, Modifier.weight(1f)) { launchDocumentScanner(DocumentScanPurpose.TICKET) }
                         }
@@ -356,6 +379,7 @@ fun ShoppingListScreen(
         data, isSaving, isLookingUp, viewModel::lookupRemote, { itemEditor = null },
     ) { name, quantity, estimated, actual, barcode, notes, purchased ->
         viewModel.saveItem(data.item, name, quantity, estimated, actual, barcode, notes, purchased) {
+            if (data.item == null) lastNewItemPurchased = purchased
             data.item?.let { viewModel.markMissingPriceReviewed(it.id) }
             itemEditor = null
         }
@@ -520,17 +544,20 @@ fun ShoppingListScreen(
     Surface(shadowElevation = 8.dp, color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             val purchased = details.items.count { it.isPurchased }
-            Row { Text("$purchased/${details.items.size} comprados", Modifier.weight(1f)); Text(MoneyFormatter.format(details.actualTotalInCents), fontWeight = FontWeight.Bold) }
+            Row { Text("${details.items.size} producto${if (details.items.size == 1) "" else "s"}", Modifier.weight(1f)); Text(MoneyFormatter.format(details.finalizableTotalInCents), fontWeight = FontWeight.Bold) }
+            if (purchased < details.items.size) {
+                Text("Al finalizar, los productos pendientes se marcarán como comprados.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Subtotal ${MoneyFormatter.format(details.purchasedSubtotalInCents)}", style = MaterialTheme.typography.labelSmall)
+                Text("Subtotal ${MoneyFormatter.format(details.finalizableSubtotalInCents)}", style = MaterialTheme.typography.labelSmall)
                 Text("Ajustes ${MoneyFormatter.format(details.adjustmentTotalInCents)}", style = MaterialTheme.typography.labelSmall)
-                Text("Total ${MoneyFormatter.format(details.actualTotalInCents)}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                Text("Total ${MoneyFormatter.format(details.finalizableTotalInCents)}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
             }
             details.list.budgetInCents?.let {
                 val remaining = it - details.actualTotalInCents
                 Text(if (remaining >= 0) "Disponible: ${MoneyFormatter.format(remaining)}" else "Exceso: ${MoneyFormatter.format(-remaining)}", color = if (remaining >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
-            PrimaryButton("Finalizar compra", onFinalize, Modifier.fillMaxWidth(), enabled = !isSaving && purchased > 0)
+            PrimaryButton("Finalizar compra", onFinalize, Modifier.fillMaxWidth(), enabled = !isSaving && details.items.isNotEmpty())
         }
     }
 }
@@ -556,7 +583,7 @@ fun ShoppingListScreen(
     var actual by remember(data) { mutableStateOf(data.actual.ifBlank { item?.actualUnitPriceInCents?.let(::centsInput).orEmpty() }) }
     var barcode by remember(data) { mutableStateOf(data.barcode.ifBlank { item?.barcode.orEmpty() }) }
     var notes by remember(data) { mutableStateOf(item?.notes.orEmpty()) }
-    var purchased by remember(data) { mutableStateOf(item?.isPurchased ?: false) }
+    var purchased by remember(data) { mutableStateOf(item?.isPurchased ?: data.initialPurchased) }
     AlertDialog(onDismissRequest = dismiss, title = { Text(if (item == null) "Agregar producto" else "Editar producto") }, text = {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.heightIn(max = 520.dp)) {
             item { FinanceTextField(name, { name = it }, "Nombre", singleLine = true) }
@@ -703,14 +730,27 @@ fun ShoppingListScreen(
     var expanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     AlertDialog(onDismissRequest = dismiss, title = { Text(if (details.list.status == ShoppingListStatus.COMPLETED) "Editar compra" else "Finalizar compra") }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        FinanceDetailRow("Productos comprados", details.items.count { it.isPurchased }.toString())
-        FinanceDetailRow("Subtotal", MoneyFormatter.format(details.purchasedSubtotalInCents))
+        FinanceDetailRow("Productos a finalizar", details.items.size.toString())
+        FinanceDetailRow("Subtotal", MoneyFormatter.format(details.finalizableSubtotalInCents))
+        if (details.items.any { !it.isPurchased }) {
+            Text("Los productos pendientes se marcarán como comprados. Se solicitarán los precios reales que falten.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         FinanceDetailRow("Ajustes", MoneyFormatter.format(details.adjustmentTotalInCents))
-        FinanceDetailRow("Total del gasto", MoneyFormatter.format(details.actualTotalInCents), valueColor = MaterialTheme.colorScheme.primary)
+        FinanceDetailRow("Total del gasto", MoneyFormatter.format(details.finalizableTotalInCents), valueColor = MaterialTheme.colorScheme.primary)
         SecondaryButton("Fecha: ${date.format(shoppingDateFormatter)}", { showDatePicker = true }, Modifier.fillMaxWidth())
         Text("Método de pago", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ShoppingPaymentMethod.entries.forEach { method -> FilterChip(paymentMethod == method, { paymentMethod = method }, { Text(method.shortLabel()) }) }
+            ShoppingPaymentMethod.entries.forEach { method ->
+                FilterChip(
+                    selected = paymentMethod == method,
+                    onClick = { paymentMethod = method },
+                    label = { Text(method.shortLabel()) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                )
+            }
         }
         if (paymentMethod == ShoppingPaymentMethod.CREDIT) Text("Se creará una obligación en Por pagar; no se registrará gasto hasta marcarla como pagada.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Column { SecondaryButton(categories.firstOrNull { it.id == categoryId }?.name ?: "Seleccionar categoría", { expanded = true }, Modifier.fillMaxWidth()); DropdownMenu(expanded, { expanded = false }) { categories.forEach { category -> DropdownMenuItem({ Text(category.name) }, { categoryId = category.id; expanded = false }) } } }

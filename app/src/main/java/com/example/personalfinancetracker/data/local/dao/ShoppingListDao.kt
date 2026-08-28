@@ -94,6 +94,9 @@ interface ShoppingListDao {
     @Query("DELETE FROM shopping_list_items WHERE id = :id")
     suspend fun deleteItem(id: Long): Int
 
+    @Query("UPDATE shopping_list_items SET isPurchased = 1, updatedAtEpochMillis = :updatedAt WHERE shoppingListId = :listId")
+    suspend fun markAllItemsPurchased(listId: Long, updatedAt: Long): Int
+
     @Insert
     suspend fun insertAdjustment(adjustment: ShoppingAdjustmentEntity): Long
 

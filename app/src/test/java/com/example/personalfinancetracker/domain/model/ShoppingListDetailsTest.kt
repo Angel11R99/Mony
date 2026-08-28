@@ -8,6 +8,16 @@ class ShoppingListDetailsTest {
     private val now = Instant.parse("2026-08-26T12:00:00Z")
     private val list = ShoppingList(name = "Supermercado", createdAt = now, updatedAt = now)
 
+    @Test fun `finalizable total includes manually added pending products`() {
+        val details = ShoppingListDetails(
+            list,
+            listOf(item(id = 1, quantity = 2, actual = 7_500, purchased = false)),
+            emptyList(),
+        )
+        assertEquals(15_000L, details.finalizableTotalInCents)
+        assertEquals(0L, details.actualTotalInCents)
+    }
+
     @Test
     fun `total uses purchased real prices and signed adjustments`() {
         val details = ShoppingListDetails(

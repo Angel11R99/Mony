@@ -118,6 +118,11 @@ data class ShoppingListDetails(
             }
         }
 
+    val finalizableSubtotalInCents: Long
+        get() = items.moneySum { item ->
+            item.actualUnitPriceInCents?.let { Math.multiplyExact(item.quantity.toLong(), it) } ?: 0L
+        }
+
     val adjustmentTotalInCents: Long
         get() = adjustments.moneySum { adjustment ->
             if (adjustment.isPositive) adjustment.amountInCents else Math.negateExact(adjustment.amountInCents)
@@ -125,6 +130,9 @@ data class ShoppingListDetails(
 
     val actualTotalInCents: Long
         get() = Math.addExact(purchasedSubtotalInCents, adjustmentTotalInCents)
+
+    val finalizableTotalInCents: Long
+        get() = Math.addExact(finalizableSubtotalInCents, adjustmentTotalInCents)
 
     val remainingBudgetInCents: Long?
         get() = list.budgetInCents?.let { Math.subtractExact(it, actualTotalInCents) }

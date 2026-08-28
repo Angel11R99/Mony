@@ -358,7 +358,11 @@ class RoomShoppingListRepository @Inject constructor(
         dao.updateList(
             list.copy(
                 name = list.name.trim(),
-                status = current.toDomain().status,
+                status = if (current.status == ShoppingListStatus.COMPLETED.name) {
+                    ShoppingListStatus.COMPLETED
+                } else {
+                    list.status
+                },
                 expenseTransactionId = current.expenseTransactionId,
                 payableId = current.payableId,
                 purchaseDate = current.purchaseDateEpochDay?.let(LocalDate::ofEpochDay),
@@ -572,18 +576,18 @@ class RoomShoppingListRepository @Inject constructor(
             return@withTransaction FinalizePurchaseResult.InvalidExpenseCategory
         }
 
-        val purchasedItems = dao.getItems(listId).filter { it.isPurchased }
-        val missingPrices = purchasedItems.filter { it.actualUnitPriceInCents == null }.map { it.id }
+        val purchaseItems = dao.getItems(listId)
+        val missingPrices = purchaseItems.filter { it.actualUnitPriceInCents == null }.map { it.id }
         if (missingPrices.isNotEmpty() && !allowMissingPrices) {
             return@withTransaction FinalizePurchaseResult.MissingActualPrices(missingPrices)
         }
         val details = ShoppingListDetails(
             list = list.toDomain(),
-            items = purchasedItems.map { it.toDomain() },
+            items = purchaseItems.map { it.toDomain() },
             adjustments = dao.getAdjustments(listId).map { it.toDomain() },
         )
         val total = try {
-            details.actualTotalInCents
+            details.finalizableTotalInCents
         } catch (_: ArithmeticException) {
             return@withTransaction FinalizePurchaseResult.CalculationOverflow
         }
@@ -594,6 +598,7 @@ class RoomShoppingListRepository @Inject constructor(
             val transactionId = dao.getExpenseTransaction(listId)?.id
             return@withTransaction FinalizePurchaseResult.AlreadyCompleted(transactionId)
         }
+        dao.markAllItemsPurchased(listId, now.toEpochMilli())
         dao.updateList(list.copy(
             status = ShoppingListStatus.COMPLETED.name,
             purchaseDateEpochDay = date.toEpochDay(),
@@ -603,7 +608,7 @@ class RoomShoppingListRepository @Inject constructor(
             updatedAtEpochMillis = now.toEpochMilli(),
         ))
         val financialId = syncCompletedPurchase(listId)
-        purchasedItems.forEach { item ->
+        purchaseItems.forEach { item ->
             val barcode = item.barcode?.trim().orEmpty()
             if (barcode.isNotEmpty()) {
                 dao.upsertKnownProduct(

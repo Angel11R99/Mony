@@ -8,6 +8,7 @@ import com.example.personalfinancetracker.data.repository.RoomShoppingListReposi
 import com.example.personalfinancetracker.domain.model.ShoppingList
 import com.example.personalfinancetracker.domain.model.ShoppingListItem
 import com.example.personalfinancetracker.domain.model.ShoppingPaymentMethod
+import com.example.personalfinancetracker.domain.model.ShoppingListStatus
 import com.example.personalfinancetracker.domain.repository.FinalizePurchaseResult
 import java.time.Instant
 import java.time.LocalDate
@@ -84,6 +85,14 @@ class ShoppingPurchaseFinancialIntegrationTest {
         assertEquals(0, database.transactionDao().getAll().size)
     }
 
+    @Test
+    fun startingShoppingPersistsStatusAndEnablesManualCompletionFlow() = runBlocking {
+        val listId = createPurchase()
+        val details = repository.getDetails(listId)!!
+        repository.update(details.list.copy(status = ShoppingListStatus.SHOPPING, updatedAt = Instant.now()))
+        assertEquals(ShoppingListStatus.SHOPPING, repository.getDetails(listId)!!.list.status)
+    }
+
     private suspend fun createPurchase(): Long {
         val now = Instant.now()
         val listId = repository.create(ShoppingList(name = "Supermercado", createdAt = now, updatedAt = now))
@@ -93,7 +102,7 @@ class ShoppingPurchaseFinancialIntegrationTest {
                 name = "Leche",
                 quantity = 2,
                 actualUnitPriceInCents = 7_500,
-                isPurchased = true,
+                isPurchased = false,
                 createdAt = now,
                 updatedAt = now,
             ),
