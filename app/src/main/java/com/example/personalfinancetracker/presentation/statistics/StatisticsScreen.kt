@@ -56,6 +56,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -92,6 +93,7 @@ import com.example.personalfinancetracker.presentation.components.SkeletonCircle
 import com.example.personalfinancetracker.presentation.components.SkeletonHost
 import com.example.personalfinancetracker.presentation.components.SkeletonLine
 import com.example.personalfinancetracker.presentation.components.SkeletonTone
+import com.example.personalfinancetracker.presentation.components.localDateNullableSaver
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -100,11 +102,11 @@ fun StatisticsScreen(
     viewModel: StatisticsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var range by remember { mutableStateOf(StatisticsRange.CURRENT_BUDGET) }
-    var cycleIndex by remember { mutableStateOf<Int?>(null) }
-    var categoryId by remember { mutableStateOf<Long?>(null) }
-    var customStart by remember { mutableStateOf<LocalDate?>(null) }
-    var customEnd by remember { mutableStateOf<LocalDate?>(null) }
+    var range by rememberSaveable { mutableStateOf(StatisticsRange.CURRENT_BUDGET) }
+    var cycleIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    var categoryId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var customStart by rememberSaveable(stateSaver = localDateNullableSaver) { mutableStateOf<LocalDate?>(null) }
+    var customEnd by rememberSaveable(stateSaver = localDateNullableSaver) { mutableStateOf<LocalDate?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     var draftRange by remember { mutableStateOf(range) }
     var draftCycleIndex by remember { mutableStateOf(cycleIndex) }

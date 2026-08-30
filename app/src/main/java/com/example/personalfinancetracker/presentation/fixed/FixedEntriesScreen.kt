@@ -69,6 +69,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -123,8 +124,8 @@ fun FixedEntriesScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
-    var query by remember { mutableStateOf("") }
+    var selectedType by rememberSaveable { mutableStateOf(TransactionType.EXPENSE) }
+    var query by rememberSaveable { mutableStateOf("") }
     val cardSize by viewModel.cardSize.collectAsStateWithLifecycle()
     var editorEntry by remember { mutableStateOf<FixedEntry?>(null) }
     var showEditor by remember { mutableStateOf(false) }

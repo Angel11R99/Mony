@@ -68,6 +68,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,6 +83,7 @@ import com.example.personalfinancetracker.core.HistoryPdfMeta
 import com.example.personalfinancetracker.core.MoneyFormatter
 import com.example.personalfinancetracker.core.showToast
 import com.example.personalfinancetracker.domain.model.Category
+import com.example.personalfinancetracker.domain.model.DateRange
 import com.example.personalfinancetracker.domain.model.FinanceTransaction
 import com.example.personalfinancetracker.domain.model.TransactionType
 import com.example.personalfinancetracker.presentation.components.FinanceCard
@@ -90,6 +93,7 @@ import com.example.personalfinancetracker.presentation.components.SecondaryButto
 import com.example.personalfinancetracker.presentation.components.TransactionRow
 import com.example.personalfinancetracker.presentation.components.TransactionDetailsDialog
 import com.example.personalfinancetracker.presentation.components.GlobalOutlinedIconButton
+import com.example.personalfinancetracker.presentation.components.localDateNullableSaver
 import com.example.personalfinancetracker.presentation.components.LoadingContent
 import com.example.personalfinancetracker.presentation.components.ModuleTitle
 import com.example.personalfinancetracker.presentation.components.SkeletonCard
@@ -107,11 +111,32 @@ private enum class HistoryTypeFilter(val label: String, val type: TransactionTyp
     INCOME("Ingresos", TransactionType.INCOME),
 }
 
-sealed class HistoryCycleFilter(val label: String, val range: com.example.personalfinancetracker.domain.model.DateRange?) {
+sealed class HistoryCycleFilter(val label: String, val range: DateRange?) {
     data object All : HistoryCycleFilter("Todos los ciclos", null)
-    data class Custom(val dateRange: com.example.personalfinancetracker.domain.model.DateRange, val displayLabel: String) :
+    data class Custom(val dateRange: DateRange, val displayLabel: String) :
         HistoryCycleFilter(displayLabel, dateRange)
 }
+
+private val historyCycleFilterSaver = listSaver<HistoryCycleFilter, Any>(
+    save = {
+        when (it) {
+            HistoryCycleFilter.All -> listOf(0L)
+            is HistoryCycleFilter.Custom -> listOf(1L, it.dateRange.start.toEpochDay(), it.dateRange.endInclusive.toEpochDay(), it.displayLabel)
+        }
+    },
+    restore = {
+        when (it[0]) {
+            0L -> HistoryCycleFilter.All
+            else -> HistoryCycleFilter.Custom(
+                dateRange = DateRange(
+                    LocalDate.ofEpochDay(it[1] as Long),
+                    LocalDate.ofEpochDay(it[2] as Long),
+                ),
+                displayLabel = it[3] as String,
+            )
+        }
+    },
+)
 
 internal enum class HistorySort(val label: String) {
     NEWEST("Más recientes"),
@@ -131,13 +156,13 @@ fun HistoryScreen(
     onViewShoppingList: (Long) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var typeFilter by remember { mutableStateOf(HistoryTypeFilter.ALL) }
-    var categoryId by remember { mutableStateOf<Long?>(null) }
-    var startDate by remember { mutableStateOf<LocalDate?>(null) }
-    var endDate by remember { mutableStateOf<LocalDate?>(null) }
-    var sort by remember { mutableStateOf(HistorySort.NEWEST) }
-    var query by remember { mutableStateOf("") }
-    var cycleFilter by remember { mutableStateOf<HistoryCycleFilter>(HistoryCycleFilter.All) }
+    var typeFilter by rememberSaveable { mutableStateOf(HistoryTypeFilter.ALL) }
+    var categoryId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var startDate by rememberSaveable(stateSaver = localDateNullableSaver) { mutableStateOf<LocalDate?>(null) }
+    var endDate by rememberSaveable(stateSaver = localDateNullableSaver) { mutableStateOf<LocalDate?>(null) }
+    var sort by rememberSaveable { mutableStateOf(HistorySort.NEWEST) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var cycleFilter by rememberSaveable(stateSaver = historyCycleFilterSaver) { mutableStateOf<HistoryCycleFilter>(HistoryCycleFilter.All) }
     var showFilters by remember { mutableStateOf(false) }
     var draftType by remember { mutableStateOf(typeFilter) }
     var draftCategoryId by remember { mutableStateOf(categoryId) }

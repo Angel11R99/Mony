@@ -77,6 +77,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -150,10 +151,10 @@ fun PendingEntriesScreen(
         notificationsGranted = granted
         if (!granted) context.showToast("Activa las notificaciones para usar alertas")
     }
-    var selectedType by remember { mutableStateOf(PendingType.PAYMENT) }
-    var periodFilter by remember { mutableStateOf(PendingPeriodFilter.FORTNIGHT) }
-    var statusFilter by remember { mutableStateOf(PendingStatusFilter.ALL) }
-    var query by remember { mutableStateOf("") }
+    var selectedType by rememberSaveable { mutableStateOf(PendingType.PAYMENT) }
+    var periodFilter by rememberSaveable { mutableStateOf(PendingPeriodFilter.FORTNIGHT) }
+    var statusFilter by rememberSaveable { mutableStateOf(PendingStatusFilter.ALL) }
+    var query by rememberSaveable { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
     var draftType by remember { mutableStateOf(selectedType) }
     var draftPeriod by remember { mutableStateOf(periodFilter) }

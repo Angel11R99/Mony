@@ -65,8 +65,8 @@ fun FinanceApp(
     fun navigateToModule(route: String) {
         navController.navigate(route) {
             launchSingleTop = true
-            restoreState = false
-            popUpTo("home") { saveState = false }
+            restoreState = true
+            popUpTo("home") { saveState = true }
         }
     }
 
