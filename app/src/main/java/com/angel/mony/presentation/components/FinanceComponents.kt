@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.angel.mony.ui.theme.LocalAppShapes
 
 @Composable
 fun PrimaryButton(
@@ -53,7 +54,7 @@ fun PrimaryButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = 54.dp),
-        shape = MaterialTheme.shapes.small,
+        shape = LocalAppShapes.current.buttonShape,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
         colors = ButtonDefaults.buttonColors(
@@ -77,7 +78,7 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
     OutlinedButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 54.dp),
-        shape = MaterialTheme.shapes.small,
+        shape = LocalAppShapes.current.buttonShape,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         colors = ButtonDefaults.outlinedButtonColors(
@@ -134,7 +135,7 @@ fun GlobalOutlinedIconButton(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier.size(size).then(modifier),
-        shape = MaterialTheme.shapes.small,
+        shape = LocalAppShapes.current.buttonShape,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Icon(
@@ -183,7 +184,7 @@ fun ModuleTitle(text: String) {
 fun FinanceCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Card(
         modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
+        shape = LocalAppShapes.current.cardShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -238,7 +239,7 @@ fun FinanceTextField(
         trailingIcon = trailingIcon,
         leadingIcon = leadingIcon,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
+        shape = LocalAppShapes.current.textFieldShape,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = MaterialTheme.colorScheme.outline,

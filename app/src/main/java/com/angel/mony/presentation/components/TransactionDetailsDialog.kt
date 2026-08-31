@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.ui.theme.LocalAppShapes
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
@@ -35,7 +36,7 @@ fun TransactionDetailsDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = MaterialTheme.shapes.medium,
+        shape = LocalAppShapes.current.dialogShape,
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
         icon = {
             Icon(

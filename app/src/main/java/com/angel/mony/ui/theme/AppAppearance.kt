@@ -12,6 +12,8 @@ data class AppAppearance(
     val themeMode: AppThemeMode = AppThemeMode.SYSTEM,
     val primaryArgb: Int = DEFAULT_PRIMARY_ARGB,
     val accentArgb: Int = DEFAULT_ACCENT_ARGB,
+    val shapeStyle: AppShapeStyle = AppShapeStyle.CUT,
+    val fontFamily: AppFontFamily = AppFontFamily.SYSTEM,
 )
 
 class AppearancePreferences(context: Context) {
@@ -75,6 +77,8 @@ class AppearancePreferences(context: Context) {
 
     fun setPrimaryColor(argb: Int) = update(mutableSettings.value.copy(primaryArgb = argb or OPAQUE_ALPHA))
     fun setAccentColor(argb: Int) = update(mutableSettings.value.copy(accentArgb = argb or OPAQUE_ALPHA))
+    fun setShapeStyle(style: AppShapeStyle) = update(mutableSettings.value.copy(shapeStyle = style))
+    fun setFontFamily(family: AppFontFamily) = update(mutableSettings.value.copy(fontFamily = family))
     fun reset() = update(AppAppearance())
 
     private fun update(value: AppAppearance) {
@@ -82,6 +86,8 @@ class AppearancePreferences(context: Context) {
             .putString(KEY_THEME, value.themeMode.name)
             .putLong(KEY_PRIMARY, value.primaryArgb.toLong())
             .putLong(KEY_ACCENT, value.accentArgb.toLong())
+            .putString(KEY_SHAPE, value.shapeStyle.name)
+            .putString(KEY_FONT, value.fontFamily.name)
             .apply()
         mutableSettings.value = value
     }
@@ -97,6 +103,12 @@ class AppearancePreferences(context: Context) {
                 ?: AppThemeMode.SYSTEM,
             primaryArgb = preferences.getLong(KEY_PRIMARY, DEFAULT_PRIMARY_ARGB.toLong()).toInt(),
             accentArgb = preferences.getLong(KEY_ACCENT, DEFAULT_ACCENT_ARGB.toLong()).toInt(),
+            shapeStyle = preferences.getString(KEY_SHAPE, null)
+                ?.let { runCatching { AppShapeStyle.valueOf(it) }.getOrNull() }
+                ?: AppShapeStyle.CUT,
+            fontFamily = preferences.getString(KEY_FONT, null)
+                ?.let { runCatching { AppFontFamily.valueOf(it) }.getOrNull() }
+                ?: AppFontFamily.SYSTEM,
         )
     }
 }
@@ -108,6 +120,8 @@ private const val PREFERENCES_NAME = "appearance_preferences"
 private const val KEY_THEME = "theme_mode"
 private const val KEY_PRIMARY = "primary_color"
 private const val KEY_ACCENT = "accent_color"
+private const val KEY_SHAPE = "shape_style"
+private const val KEY_FONT = "font_family"
 
 const val DARK_INCOMPATIBLE_LUMINANCE_THRESHOLD: Float = 0.18f
 const val LIGHT_INCOMPATIBLE_LUMINANCE_THRESHOLD: Float = 0.65f

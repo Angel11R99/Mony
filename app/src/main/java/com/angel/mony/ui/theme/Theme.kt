@@ -1,13 +1,17 @@
 package com.angel.mony.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
@@ -72,21 +76,41 @@ val FinanceShapes = Shapes(
     extraLarge = CutCornerShape(topEnd = 18.dp),
 )
 
+/**
+ * CompositionLocal para exponer AppShapeSet completo (incluye shapes específicos por componente)
+ * sin acoplar todo exclusivamente a MaterialTheme.shapes.
+ */
+val LocalAppShapes = compositionLocalOf { createAppShapes(AppShapeStyle.CUT) }
+
 @Composable
 fun PersonalFinanceTrackerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     primarySeed: Color = BrandPurple,
     accentSeed: Color = ExpenseRed,
+    shapeStyle: AppShapeStyle = AppShapeStyle.CUT,
+    fontFamily: AppFontFamily = AppFontFamily.SYSTEM,
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) financeDarkColors(primarySeed, accentSeed)
-        else financeLightColors(primarySeed, accentSeed),
-        typography = Typography,
-        shapes = FinanceShapes,
-        content = content,
-    )
+    val appShapes = remember(shapeStyle) { createAppShapes(shapeStyle) }
+    val typography = remember(fontFamily) { createAppTypography(fontFamily) }
+    val materialShapes = remember(appShapes) { appShapes.toMaterialShapes() }
+    CompositionLocalProvider(LocalAppShapes provides appShapes) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) financeDarkColors(primarySeed, accentSeed)
+            else financeLightColors(primarySeed, accentSeed),
+            typography = typography,
+            shapes = materialShapes,
+            content = content,
+        )
+    }
 }
+
+/** Helpers para consumir shapes específicos de forma centralizada */
+val AppShapeSet.button: Shape get() = buttonShape
+val AppShapeSet.chip: Shape get() = chipShape
+val AppShapeSet.card: Shape get() = cardShape
+val AppShapeSet.dialog: Shape get() = dialogShape
+val AppShapeSet.textField: Shape get() = textFieldShape
 
 internal fun shiftTone(seed: Color, saturationFactor: Float, value: Float): Color {
     val hsv = FloatArray(3)

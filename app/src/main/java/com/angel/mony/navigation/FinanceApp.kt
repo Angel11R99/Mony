@@ -33,6 +33,8 @@ import com.angel.mony.presentation.transactions.AddTransactionScreen
 import com.angel.mony.presentation.transactions.HistoryScreen
 import com.angel.mony.presentation.settings.SettingsScreen
 import com.angel.mony.ui.theme.AppAppearance
+import com.angel.mony.ui.theme.AppFontFamily
+import com.angel.mony.ui.theme.AppShapeStyle
 import com.angel.mony.ui.theme.AppThemeMode
 import java.time.LocalTime
 
@@ -50,6 +52,8 @@ fun FinanceApp(
     onPrimaryChange: (Int) -> Unit,
     onAccentChange: (Int) -> Unit,
     onResetAppearance: () -> Unit,
+    onShapeStyleChange: (AppShapeStyle) -> Unit,
+    onFontFamilyChange: (AppFontFamily) -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onAutomaticCloseTimeChange: (LocalTime) -> Unit,
     onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
@@ -183,6 +187,8 @@ fun FinanceApp(
                     onPrimaryChange = onPrimaryChange,
                     onAccentChange = onAccentChange,
                     onReset = onResetAppearance,
+                    onShapeStyleChange = onShapeStyleChange,
+                    onFontFamilyChange = onFontFamilyChange,
                     onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
                     onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
                     onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,

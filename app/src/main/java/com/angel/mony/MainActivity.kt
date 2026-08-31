@@ -72,6 +72,8 @@ class MainActivity : ComponentActivity() {
                 darkTheme = useDarkTheme,
                 primarySeed = Color(appearance.primaryArgb),
                 accentSeed = Color(appearance.accentArgb),
+                shapeStyle = appearance.shapeStyle,
+                fontFamily = appearance.fontFamily,
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val initialType = intent.getStringExtra(EXTRA_TRANSACTION_TYPE)
@@ -125,6 +127,8 @@ class MainActivity : ComponentActivity() {
                             appearancePreferences.reset()
                             lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
                         },
+                        onShapeStyleChange = appearancePreferences::setShapeStyle,
+                        onFontFamilyChange = appearancePreferences::setFontFamily,
                         onAutomaticCycleCloseChange = cyclePreferences::setAutomaticClose,
                         onAutomaticCloseTimeChange = cyclePreferences::setAutomaticCloseTime,
                         onModuleBarVisibleRoutesChange = moduleBarPreferences::setVisibleRoutes,

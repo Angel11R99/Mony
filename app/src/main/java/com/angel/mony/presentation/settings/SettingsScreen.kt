@@ -69,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntSize
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -91,10 +92,18 @@ import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.BudgetPeriod
 import com.angel.mony.domain.model.defaultCycleSchedules
 import com.angel.mony.ui.theme.AppAppearance
+import com.angel.mony.ui.theme.AppFontFamily
+import com.angel.mony.ui.theme.AppShapeStyle
 import com.angel.mony.ui.theme.AppThemeMode
 import com.angel.mony.ui.theme.accentPresets
+import com.angel.mony.ui.theme.createAppShapes
+import com.angel.mony.ui.theme.createAppTypography
+import com.angel.mony.ui.theme.displayName
 import com.angel.mony.ui.theme.isColorCompatible
 import com.angel.mony.ui.theme.primaryPresets
+import com.angel.mony.ui.theme.recommendedFont
+import com.angel.mony.ui.theme.subtitle
+import com.angel.mony.ui.theme.toComposeFontFamily
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -112,6 +121,8 @@ fun SettingsScreen(
     onPrimaryChange: (Int) -> Unit,
     onAccentChange: (Int) -> Unit,
     onReset: () -> Unit,
+    onShapeStyleChange: (AppShapeStyle) -> Unit,
+    onFontFamilyChange: (AppFontFamily) -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onAutomaticCloseTimeChange: (LocalTime) -> Unit,
     onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
@@ -180,6 +191,8 @@ fun SettingsScreen(
                     onEditPrimary = { editingColor = ColorRole.PRIMARY },
                     onEditAccent = { editingColor = ColorRole.ACCENT },
                     onReset = onReset,
+                    onShapeStyleChange = onShapeStyleChange,
+                    onFontFamilyChange = onFontFamilyChange,
                     onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
                     onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
                     onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
@@ -298,6 +311,8 @@ private fun AppearanceTab(
     onEditPrimary: () -> Unit,
     onEditAccent: () -> Unit,
     onReset: () -> Unit,
+    onShapeStyleChange: (AppShapeStyle) -> Unit,
+    onFontFamilyChange: (AppFontFamily) -> Unit,
     onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
     onModuleBarShowLabelsChange: (Boolean) -> Unit,
     onModuleBarLabelTextSizeChange: (Float) -> Unit,
@@ -370,6 +385,32 @@ private fun AppearanceTab(
                     }
                 }
             }
+        }
+        item { SectionTitle("FORMAS", "Elige la familia geométrica de botones, tarjetas y chips.") }
+        item {
+            ShapeStyleSelector(
+                selected = appearance.shapeStyle,
+                onSelect = onShapeStyleChange,
+            )
+            val rec = appearance.shapeStyle.recommendedFont()
+            if (rec != appearance.fontFamily) {
+                Text(
+                    "Combina bien con: ${rec.displayName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+        }
+        item {
+            LiveShapePreviewCard()
+        }
+        item { SectionTitle("TIPOGRAFÍA", "Elige la fuente global de la aplicación.") }
+        item {
+            FontFamilySelector(
+                selected = appearance.fontFamily,
+                onSelect = onFontFamilyChange,
+            )
         }
         item { SectionTitle("BARRA DE MÓDULOS", "Personaliza la barra de navegación inferior.") }
         item {
@@ -466,6 +507,198 @@ private fun AppearanceTab(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+@Composable
+private fun ShapeStyleSelector(
+    selected: AppShapeStyle,
+    onSelect: (AppShapeStyle) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.lazy.LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(end = 4.dp),
+        ) {
+            items(AppShapeStyle.entries.size) { idx ->
+                val style = AppShapeStyle.entries[idx]
+                val isSelected = style == selected
+                ShapePreviewItem(
+                    style = style,
+                    selected = isSelected,
+                    onClick = { onSelect(style) },
+                )
+            }
+        }
+        // Grid compacta alternativa en 2 filas usando FlowRow para teléfonos pequeños sin scroll excesivo
+        // Se mantiene LazyRow principal; FlowRow secundario no necesario.
+    }
+}
+
+@Composable
+private fun ShapePreviewItem(
+    style: AppShapeStyle,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val previewShapes = remember(style) { createAppShapes(style) }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.width(84.dp),
+    ) {
+        Surface(
+            modifier = Modifier
+                .size(width = 84.dp, height = 48.dp)
+                .clip(previewShapes.buttonShape)
+                .clickable(onClick = onClick),
+            shape = previewShapes.buttonShape,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+            border = BorderStroke(
+                if (selected) 2.dp else 1.dp,
+                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+            ),
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Box(
+                    Modifier
+                        .size(width = 44.dp, height = 14.dp)
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            previewShapes.extraSmall,
+                        ),
+                )
+                if (selected) {
+                    Icon(
+                        Icons.Outlined.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(18.dp).align(Alignment.TopEnd).padding(top = 2.dp, end = 2.dp),
+                    )
+                }
+            }
+        }
+        Text(
+            style.displayName,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun LiveShapePreviewCard() {
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("VISTA PREVIA EN VIVO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            PrimaryButton(text = "Botón principal", onClick = {}, modifier = Modifier.fillMaxWidth())
+            SecondaryButton(text = "Botón secundario", onClick = {}, modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = true,
+                    onClick = {},
+                    label = { Text("Chip") },
+                    shape = MaterialTheme.shapes.small,
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                )
+                FilterChip(
+                    selected = false,
+                    onClick = {},
+                    label = { Text("Filtro") },
+                    shape = MaterialTheme.shapes.small,
+                )
+            }
+            FinanceCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Tarjeta de ejemplo", style = MaterialTheme.typography.titleMedium)
+                    Text("RD$ 1,250.00", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            androidx.compose.material3.OutlinedTextField(
+                value = "Campo de texto",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Ejemplo") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FontFamilySelector(
+    selected: AppFontFamily,
+    onSelect: (AppFontFamily) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.lazy.LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(end = 4.dp),
+        ) {
+            items(AppFontFamily.entries.size) { idx ->
+                val family = AppFontFamily.entries[idx]
+                val isSelected = family == selected
+                val previewTypography = remember(family) { createAppTypography(family) }
+                Surface(
+                    modifier = Modifier
+                        .width(112.dp)
+                        .height(72.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable { onSelect(family) },
+                    shape = MaterialTheme.shapes.small,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(
+                        if (isSelected) 2.dp else 1.dp,
+                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                    ),
+                ) {
+                    Box(Modifier.fillMaxSize()) {
+                        Column(
+                            Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(
+                                "Aa",
+                                style = previewTypography.headlineMedium.copy(fontSize = 22.sp, lineHeight = 22.sp),
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                            )
+                            Text(
+                                family.displayName,
+                                style = previewTypography.labelMedium,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.92f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
+                        }
+                        if (isSelected) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(4.dp)
+                                    .size(18.dp)
+                                    .background(MaterialTheme.colorScheme.onPrimary, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Outlined.Check, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Text(
+            "Vista previa real — la tipografía se aplica en toda la app.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
