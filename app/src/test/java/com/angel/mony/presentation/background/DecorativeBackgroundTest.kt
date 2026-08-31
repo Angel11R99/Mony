@@ -16,4 +16,10 @@ class DecorativeBackgroundTest {
         assertEquals(0f, decorationVisualAlpha(-1f), 0.0001f)
         assertEquals(0.30f, decorationVisualAlpha(2f), 0.0001f)
     }
+
+    @Test
+    fun `medical decoration uses stronger visual alpha`() {
+        assertEquals(0.21f, medicalDecorationVisualAlpha(0.5f), 0.0001f)
+        assertEquals(0.42f, medicalDecorationVisualAlpha(1f), 0.0001f)
+    }
 }
