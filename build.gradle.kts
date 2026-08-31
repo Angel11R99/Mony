@@ -21,11 +21,11 @@ fun readAppVersion(): Pair<Int, String> {
 
 fun updateReadmeVersion(versionName: String) {
     val versionBlock = """<!-- APP_VERSION_START -->
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-v$versionName-6750A4)](https://github.com/Angel11R99/PersonalFinanceTracker/releases/tag/v$versionName)
-[![Descargar](https://img.shields.io/badge/descargar-%C3%BAltima_versi%C3%B3n-6750A4)](https://github.com/Angel11R99/PersonalFinanceTracker/releases/latest)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-v$versionName-6750A4)](https://github.com/Angel11R99/Mony/releases/tag/v$versionName)
+[![Descargar](https://img.shields.io/badge/descargar-%C3%BAltima_versi%C3%B3n-6750A4)](https://github.com/Angel11R99/Mony/releases/latest)
 <!-- APP_VERSION_END -->"""
     val downloadBlock = """<!-- APP_DOWNLOAD_START -->
-Descarga **Mony v$versionName** desde su [release en GitHub](https://github.com/Angel11R99/PersonalFinanceTracker/releases/tag/v$versionName) o consulta [todas las versiones disponibles](https://github.com/Angel11R99/PersonalFinanceTracker/releases).
+Descarga **Mony v$versionName** desde su [release en GitHub](https://github.com/Angel11R99/Mony/releases/tag/v$versionName) o consulta [todas las versiones disponibles](https://github.com/Angel11R99/Mony/releases).
 <!-- APP_DOWNLOAD_END -->"""
     val currentReadme = readmeFile.readText()
     val updatedReadme = currentReadme
