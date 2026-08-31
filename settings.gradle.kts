@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Personal Finance Tracker"
+rootProject.name = "Mony"
 include(":app")
