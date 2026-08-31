@@ -126,4 +126,19 @@ interface ShoppingListDao {
 
     @Query("UPDATE shopping_lists SET status = :status, completedAtEpochMillis = NULL, expenseTransactionId = NULL, payableId = NULL, updatedAtEpochMillis = :updatedAt WHERE id = :id")
     suspend fun reopen(id: Long, status: String, updatedAt: Long): Int
+
+    @Query("SELECT * FROM shopping_lists")
+    suspend fun getAllLists(): List<ShoppingListEntity>
+
+    @Query("SELECT * FROM shopping_list_items")
+    suspend fun getAllItems(): List<ShoppingListItemEntity>
+
+    @Query("SELECT * FROM shopping_adjustments")
+    suspend fun getAllAdjustments(): List<ShoppingAdjustmentEntity>
+
+    @Query("SELECT * FROM known_products")
+    suspend fun getAllKnownProducts(): List<KnownProductEntity>
+
+    @Query("SELECT * FROM product_recognition_aliases")
+    suspend fun getAllAliases(): List<ProductRecognitionAliasEntity>
 }

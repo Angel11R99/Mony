@@ -22,4 +22,7 @@ interface FixedEntryDao {
 
     @Query("SELECT id FROM fixed_entries WHERE lastAddedAtEpochMillis = :addedAt LIMIT 1")
     suspend fun findIdByLastAddedAt(addedAt: Long): Long?
+
+    @Query("SELECT * FROM fixed_entries")
+    suspend fun getAll(): List<FixedEntryEntity>
 }

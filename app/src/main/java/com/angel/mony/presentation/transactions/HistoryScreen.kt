@@ -180,7 +180,7 @@ fun HistoryScreen(
     val isRestoring by viewModel.isRestoring.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/csv")
+        ActivityResultContracts.CreateDocument("application/json")
     ) { uri -> uri?.let(viewModel::exportTo) }
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -269,16 +269,16 @@ fun HistoryScreen(
                 actions = {
                     GlobalOutlinedIconButton(
                         icon = Icons.Outlined.FileDownload,
-                        contentDescription = "Importar respaldo CSV",
-                        onClick = { importLauncher.launch(arrayOf("*/*")) },
+                        contentDescription = "Importar respaldo",
+                        onClick = { importLauncher.launch(arrayOf("*/*", "application/json", "text/csv")) },
                         size = 48.dp,
                     )
                     Spacer(Modifier.width(6.dp))
                     GlobalOutlinedIconButton(
                         icon = Icons.Outlined.FileUpload,
-                        contentDescription = "Exportar historial a CSV",
+                        contentDescription = "Exportar respaldo completo",
                         onClick = {
-                            exportLauncher.launch("movimientos-${LocalDate.now()}.csv")
+                            exportLauncher.launch("mony-respaldo-${LocalDate.now()}.json")
                         },
                         size = 48.dp,
                     )
@@ -543,6 +543,7 @@ fun HistoryScreen(
 
     restorePreview?.let { preview ->
         val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        val bp = preview.backupPreview
         AlertDialog(
             onDismissRequest = { if (!isRestoring) viewModel.cancelRestore() },
             icon = {
@@ -555,7 +556,21 @@ fun HistoryScreen(
             title = { Text("¿Restaurar respaldo?") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${preview.movementsCount} movimientos encontrados en el archivo.")
+                    if (bp != null && !bp.isLegacyCsv) {
+                        Text("Respaldo completo encontrado:")
+                        if (bp.transactionsCount > 0) Text("• ${bp.transactionsCount} movimientos")
+                        if (bp.fixedEntriesCount > 0) Text("• ${bp.fixedEntriesCount} fijos")
+                        if (bp.pendingEntriesCount > 0) Text("• ${bp.pendingEntriesCount} pendientes / recordatorios")
+                        if (bp.shoppingListsCount > 0) Text("• ${bp.shoppingListsCount} listas de compras")
+                        if (bp.savingsGoalsCount > 0) Text("• ${bp.savingsGoalsCount} metas de ahorro")
+                        if (bp.budgetCyclesCount > 0) Text("• ${bp.budgetCyclesCount} ciclos históricos")
+                        if (bp.categoriesCount > 0) Text("• ${bp.categoriesCount} categorías")
+                        if (bp.transactionsCount == 0 && bp.fixedEntriesCount == 0 && bp.pendingEntriesCount == 0) {
+                            Text("El archivo contiene datos de configuración y categorías.")
+                        }
+                    } else {
+                        Text("${preview.movementsCount} movimientos encontrados en el archivo.")
+                    }
                     val rangeText = when {
                         preview.firstDate != null && preview.lastDate != null ->
                             "${preview.firstDate.format(dateFormatter)} – ${preview.lastDate.format(dateFormatter)}"
@@ -563,9 +578,16 @@ fun HistoryScreen(
                     }
                     rangeText?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(
-                        "Las categorías faltantes se crearán y los movimientos que ya existen se omitirán. Los datos actuales no se borrarán.",
+                        "Las categorías faltantes se crearán y los datos que ya existen se omitirán. Los datos actuales no se borrarán.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (bp != null && !bp.isLegacyCsv) {
+                        Text(
+                            "Incluye fijos, pendientes, listas y metas.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
                 }
             },
             confirmButton = {

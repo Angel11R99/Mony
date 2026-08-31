@@ -13,4 +13,7 @@ interface BudgetConfigDao {
 
     @Upsert
     suspend fun upsert(config: BudgetConfigEntity)
+
+    @Query("SELECT * FROM budget_config WHERE id = 1")
+    suspend fun get(): BudgetConfigEntity?
 }

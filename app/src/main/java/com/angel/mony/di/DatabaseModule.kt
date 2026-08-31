@@ -21,6 +21,7 @@ import com.angel.mony.data.repository.RoomFixedEntryRepository
 import com.angel.mony.data.repository.RoomPendingEntryRepository
 import com.angel.mony.data.repository.RoomSavingsRepository
 import com.angel.mony.data.repository.RoomShoppingListRepository
+import com.angel.mony.data.repository.RoomBackupRepository
 import com.angel.mony.data.repository.OpenFoodFactsProductCatalogRepository
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.BudgetRepository
@@ -337,5 +338,6 @@ abstract class RepositoryModule {
     @Binds abstract fun pendingEntries(implementation: RoomPendingEntryRepository): PendingEntryRepository
     @Binds abstract fun savings(implementation: RoomSavingsRepository): SavingsRepository
     @Binds abstract fun shoppingLists(implementation: RoomShoppingListRepository): ShoppingListRepository
+    @Binds abstract fun backup(implementation: RoomBackupRepository): com.angel.mony.domain.repository.BackupRepository
     @Binds abstract fun productCatalog(implementation: OpenFoodFactsProductCatalogRepository): ProductCatalogRepository
 }

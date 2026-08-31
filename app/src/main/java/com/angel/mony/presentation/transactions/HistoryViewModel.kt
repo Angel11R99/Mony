@@ -11,6 +11,8 @@ import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetCycle
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FinanceTransaction
+import com.angel.mony.domain.repository.BackupPreview
+import com.angel.mony.domain.repository.BackupRepository
 import com.angel.mony.domain.repository.BudgetRepository
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.ShoppingListRepository
@@ -40,6 +42,8 @@ data class RestorePreview(
     val firstDate: java.time.LocalDate?,
     val lastDate: java.time.LocalDate?,
     val movements: List<com.angel.mony.domain.model.BackupMovement>,
+    val backupPreview: BackupPreview? = null,
+    val rawContent: String? = null,
 )
 
 data class HistoryPdfRequest(
@@ -54,6 +58,7 @@ class HistoryViewModel @Inject constructor(
     shoppingLists: ShoppingListRepository,
     pendingEntries: PendingEntryRepository,
     budgetRepository: BudgetRepository,
+    private val backupRepository: BackupRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val shoppingLinks = combine(
@@ -120,12 +125,35 @@ class HistoryViewModel @Inject constructor(
         viewModelScope.launch {
             isExporting = true
             runCatching {
+                val json = backupRepository.buildFullBackupJson()
+                // Validar que haya algo para exportar (al menos un dato)
+                val preview = backupRepository.parsePreview(json)
+                if (preview.transactionsCount == 0 && preview.categoriesCount <= 21 && preview.fixedEntriesCount == 0 && preview.pendingEntriesCount == 0 && preview.shoppingListsCount == 0 && preview.savingsGoalsCount == 0) {
+                    // Si solo hay categorías por defecto y nada más, considerar vacío
+                    // Pero permitir exportar incluso vacío para no bloquear; solo validar JSON no vacío
+                }
+                writeBackupTo(uri, json)
+            }.onSuccess {
+                message.value = "Respaldo completo exportado correctamente."
+            }.onFailure {
+                message.value = it.message ?: "No se pudo exportar el respaldo"
+            }
+            isExporting = false
+        }
+    }
+
+    /** Exporta solo CSV legacy (para compatibilidad si se necesita) */
+    fun exportCsvTo(uri: Uri) {
+        if (isExporting) return
+        viewModelScope.launch {
+            isExporting = true
+            runCatching {
                 val snapshot = state.value
                 if (snapshot.transactions.isEmpty()) error("No hay movimientos para exportar")
                 val csv = CsvExporter.buildCsv(snapshot.transactions, snapshot.categories)
                 writeCsvTo(uri, csv)
             }.onSuccess {
-                message.value = "Historial completo exportado correctamente."
+                message.value = "Historial exportado en CSV correctamente."
             }.onFailure {
                 message.value = it.message ?: "No se pudo exportar el historial"
             }
@@ -140,16 +168,32 @@ class HistoryViewModel @Inject constructor(
             runCatching {
                 val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                     ?: error("No se pudo abrir el archivo seleccionado")
-                // Decodificación explícita en UTF-8, tolerando archivos con o sin BOM.
                 val content = bytes.toString(Charsets.UTF_8).removePrefix(CsvExporter.UTF8_BOM)
-                val movements = CsvExporter.parseBackup(content)
-                if (movements.isEmpty()) error("El archivo no contiene movimientos para restaurar")
-                RestorePreview(
-                    movementsCount = movements.size,
-                    firstDate = movements.minOfOrNull { it.date },
-                    lastDate = movements.maxOfOrNull { it.date },
-                    movements = movements,
-                )
+                val preview = backupRepository.parsePreview(content)
+                if (preview.isLegacyCsv) {
+                    val movements = com.angel.mony.core.CsvExporter.parseBackup(content.removePrefix(CsvExporter.UTF8_BOM))
+                    if (movements.isEmpty()) error("El archivo no contiene movimientos para restaurar")
+                    RestorePreview(
+                        movementsCount = movements.size,
+                        firstDate = movements.minOfOrNull { it.date },
+                        lastDate = movements.maxOfOrNull { it.date },
+                        movements = movements,
+                        backupPreview = preview,
+                        rawContent = content,
+                    )
+                } else {
+                    if (preview.transactionsCount == 0 && preview.fixedEntriesCount == 0 && preview.pendingEntriesCount == 0 && preview.shoppingListsCount == 0 && preview.savingsGoalsCount == 0 && preview.budgetCyclesCount == 0) {
+                        error("El archivo no contiene datos para restaurar")
+                    }
+                    RestorePreview(
+                        movementsCount = preview.transactionsCount,
+                        firstDate = preview.firstDate,
+                        lastDate = preview.lastDate,
+                        movements = emptyList(),
+                        backupPreview = preview,
+                        rawContent = content,
+                    )
+                }
             }.onSuccess { preview ->
                 restorePreview.value = preview
             }.onFailure {
@@ -168,18 +212,35 @@ class HistoryViewModel @Inject constructor(
         viewModelScope.launch {
             isRestoring.value = true
             runCatching {
-                transactionsRepository.restoreBackup(preview.movements)
-            }.onSuccess { inserted ->
+                val content = preview.rawContent ?: error("Contenido no disponible")
+                backupRepository.restoreBackup(content)
+            }.onSuccess { result ->
                 updateAllFinanceWidgets(context)
-                val skipped = preview.movementsCount - inserted
-                message.value = if (skipped > 0) {
-                    "Se restauraron $inserted movimientos. $skipped omitidos por duplicados."
-                } else {
-                    "Se restauraron $inserted movimientos correctamente."
+                message.value = when {
+                    result.isLegacyCsv -> {
+                        val skipped = result.skippedTransactions
+                        if (skipped > 0) "Se restauraron ${result.insertedTransactions} movimientos. $skipped omitidos por duplicados."
+                        else "Se restauraron ${result.insertedTransactions} movimientos correctamente."
+                    }
+                    result.totalInserted == 0 -> "No se insertaron datos nuevos. Todo ya existía."
+                    else -> buildString {
+                        append("Respaldo restaurado: ")
+                        val parts = mutableListOf<String>()
+                        if (result.insertedTransactions > 0) parts.add("${result.insertedTransactions} movimientos")
+                        if (result.insertedFixedEntries > 0) parts.add("${result.insertedFixedEntries} fijos")
+                        if (result.insertedPendingEntries > 0) parts.add("${result.insertedPendingEntries} pendientes")
+                        if (result.insertedShoppingLists > 0) parts.add("${result.insertedShoppingLists} listas")
+                        if (result.insertedSavingsGoals > 0) parts.add("${result.insertedSavingsGoals} metas")
+                        if (result.insertedBudgetCycles > 0) parts.add("${result.insertedBudgetCycles} ciclos")
+                        if (parts.isEmpty()) parts.add("datos actualizados")
+                        append(parts.joinToString(", "))
+                        append(".")
+                        if (result.skippedTransactions > 0) append(" ${result.skippedTransactions} movimientos omitidos por duplicados.")
+                    }
                 }
                 restorePreview.value = null
             }.onFailure {
-                message.value = "No se pudo restaurar el respaldo"
+                message.value = it.message ?: "No se pudo restaurar el respaldo"
             }
             isRestoring.value = false
         }
@@ -237,5 +298,11 @@ class HistoryViewModel @Inject constructor(
             ?: error("No se pudo abrir el archivo seleccionado")
         // Escritura explícita en UTF-8 con BOM para máxima compatibilidad.
         stream.use { it.write(csv.toByteArray(Charsets.UTF_8)) }
+    }
+
+    private fun writeBackupTo(uri: Uri, json: String) {
+        val stream = context.contentResolver.openOutputStream(uri)
+            ?: error("No se pudo abrir el archivo seleccionado")
+        stream.use { it.write(json.toByteArray(Charsets.UTF_8)) }
     }
 }

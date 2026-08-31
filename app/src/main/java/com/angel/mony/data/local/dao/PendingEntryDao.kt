@@ -25,4 +25,7 @@ interface PendingEntryDao {
 
     @Query("DELETE FROM pending_entries WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("SELECT * FROM pending_entries")
+    suspend fun getAll(): List<PendingEntryEntity>
 }

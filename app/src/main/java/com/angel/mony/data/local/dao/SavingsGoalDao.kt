@@ -46,4 +46,7 @@ interface SavingsGoalDao {
 
     @Query("DELETE FROM savings_goals WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("SELECT * FROM savings_goals")
+    suspend fun getAll(): List<SavingsGoalEntity>
 }

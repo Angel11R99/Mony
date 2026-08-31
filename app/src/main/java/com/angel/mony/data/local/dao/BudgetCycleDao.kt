@@ -13,4 +13,7 @@ interface BudgetCycleDao {
 
     @Insert
     suspend fun insert(cycle: BudgetCycleEntity)
+
+    @Query("SELECT * FROM budget_cycle_history")
+    suspend fun getAll(): List<BudgetCycleEntity>
 }
