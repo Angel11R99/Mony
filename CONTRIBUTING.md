@@ -15,7 +15,7 @@ Al participar debes respetar la [licencia de Mony](LICENSE.md). Puedes crear un 
 - Implementar funciones previamente discutidas y aprobadas.
 - Revisar código y aportar observaciones técnicas.
 
-Para cambios grandes, abre primero una incidencia y espera confirmación antes de desarrollar la solución.
+Antes de desarrollar cualquier cambio que vaya a enviarse mediante una pull request, abre un issue, comprueba que no exista otro equivalente y espera confirmación. Esto también aplica a correcciones pequeñas, documentación y tareas de mantenimiento.
 
 ## Preparación del proyecto
 
@@ -84,6 +84,21 @@ En sistemas Unix sustituye `.\gradlew.bat` por `./gradlew`.
 Los cambios de lógica de negocio, presupuesto, fechas, validación o cálculos deben incluir pruebas relevantes cuando sea práctico.
 
 ## Pull requests
+
+Toda pull request debe estar vinculada a un issue abierto que se haya creado antes que la PR. Incluye en la descripción una palabra de cierre reconocida por GitHub:
+
+```text
+Closes #123
+```
+
+También puedes utilizar `Fixes #123` o `Resolves #123`. La referencia debe pertenecer a este repositorio. Al fusionar la PR, GitHub cerrará automáticamente el issue relacionado.
+
+Antes de abrir la PR, comprueba que no exista otra PR abierta para el mismo issue. La verificación automática rechazará una PR cuando:
+
+- No incluya una referencia de cierre a un issue.
+- El issue no exista, esté cerrado o se haya creado después que la PR.
+- La referencia apunte a otra pull request en lugar de un issue.
+- Otra PR abierta ya esté vinculada al mismo issue.
 
 Cada pull request debe incluir:
 

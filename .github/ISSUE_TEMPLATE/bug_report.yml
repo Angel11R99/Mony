@@ -1,0 +1,76 @@
+name: Reportar un error
+description: Informa un problema reproducible en Mony.
+title: "[Error]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de reportar, busca entre los issues abiertos y cerrados. Si el problema ya existe, agrega la información útil en ese issue en lugar de crear uno nuevo.
+
+  - type: checkboxes
+    id: duplicate_check
+    attributes:
+      label: Verificación de duplicados
+      options:
+        - label: Busqué entre los issues abiertos y cerrados y no encontré este mismo problema.
+          required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: Versión de Mony
+      description: Indica la versión donde ocurre el problema.
+      placeholder: "Ejemplo: 1.2.3"
+    validations:
+      required: true
+
+  - type: input
+    id: android_version
+    attributes:
+      label: Versión de Android
+      placeholder: "Ejemplo: Android 15"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Dispositivo
+      description: Indica el dispositivo o emulador utilizado.
+      placeholder: "Ejemplo: Pixel 8"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      description: Describe los pasos exactos y mínimos que hacen aparecer el problema.
+      placeholder: |
+        1. Abrir...
+        2. Pulsar...
+        3. Observar...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado
+      description: Explica qué debería ocurrir.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Resultado observado
+      description: Explica qué ocurre realmente.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidencia adicional
+      description: Agrega capturas, grabaciones o mensajes relevantes. No incluyas datos financieros, respaldos, credenciales ni información personal.

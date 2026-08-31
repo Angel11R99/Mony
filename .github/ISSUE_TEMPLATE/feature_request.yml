@@ -1,0 +1,44 @@
+name: Proponer una mejora
+description: Sugiere una mejora o función para Mony antes de implementarla.
+title: "[Mejora]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de proponer una mejora, busca entre los issues abiertos y cerrados. Las mejoras deben discutirse y aprobarse antes de abrir una pull request.
+
+  - type: checkboxes
+    id: duplicate_check
+    attributes:
+      label: Verificación de duplicados
+      options:
+        - label: Busqué entre los issues abiertos y cerrados y no encontré una propuesta equivalente.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema o necesidad
+      description: Describe el problema que deseas resolver, no solo la solución propuesta.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Solución propuesta
+      description: Explica cómo esperas que funcione la mejora.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+      description: Indica otras soluciones o formas de trabajo que hayas evaluado.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto adicional
+      description: Agrega ejemplos, bocetos o referencias. No incluyas datos financieros, respaldos, credenciales ni información personal.
