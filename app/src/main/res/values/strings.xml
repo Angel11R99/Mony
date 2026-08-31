@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">PersonalFinanceTracker</string>
+    <string name="app_name">Mony</string>
 
     <!-- Balance y registro rápido -->
     <string name="widget_finance_name">Balance y registro rápido</string>

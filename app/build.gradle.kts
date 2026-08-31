@@ -6,13 +6,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.personalfinancetracker"
+    namespace = "com.angel.mony"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.example.personalfinancetracker"
+        applicationId = "com.angel.mony"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
