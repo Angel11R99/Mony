@@ -1283,7 +1283,7 @@ private fun Int.toHsv(): FloatArray = FloatArray(3).also { android.graphics.Colo
 private enum class ColorRole { PRIMARY, ACCENT }
 
 private enum class AppearanceSection(val label: String) {
-    THEME_AND_COLOR("Tema y color"),
+    THEME_AND_COLOR("Tema"),
     STYLE("Estilo"),
     BACKGROUND("Fondo"),
     MODULE_BAR("Barra"),
