@@ -34,6 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -95,6 +96,7 @@ import com.angel.mony.ui.theme.AppAppearance
 import com.angel.mony.ui.theme.AppFontFamily
 import com.angel.mony.ui.theme.AppShapeStyle
 import com.angel.mony.ui.theme.AppThemeMode
+import com.angel.mony.ui.theme.BackgroundDecoration
 import com.angel.mony.ui.theme.accentPresets
 import com.angel.mony.ui.theme.createAppShapes
 import com.angel.mony.ui.theme.createAppTypography
@@ -123,6 +125,8 @@ fun SettingsScreen(
     onReset: () -> Unit,
     onShapeStyleChange: (AppShapeStyle) -> Unit,
     onFontFamilyChange: (AppFontFamily) -> Unit,
+    onBackgroundDecorationChange: (BackgroundDecoration) -> Unit,
+    onBackgroundIntensityChange: (Float) -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onAutomaticCloseTimeChange: (LocalTime) -> Unit,
     onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
@@ -147,6 +151,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { ModuleTitle("Ajustes") },
@@ -193,6 +198,8 @@ fun SettingsScreen(
                     onReset = onReset,
                     onShapeStyleChange = onShapeStyleChange,
                     onFontFamilyChange = onFontFamilyChange,
+                    onBackgroundDecorationChange = onBackgroundDecorationChange,
+                    onBackgroundIntensityChange = onBackgroundIntensityChange,
                     onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
                     onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
                     onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
@@ -313,15 +320,55 @@ private fun AppearanceTab(
     onReset: () -> Unit,
     onShapeStyleChange: (AppShapeStyle) -> Unit,
     onFontFamilyChange: (AppFontFamily) -> Unit,
+    onBackgroundDecorationChange: (BackgroundDecoration) -> Unit,
+    onBackgroundIntensityChange: (Float) -> Unit,
     onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
     onModuleBarShowLabelsChange: (Boolean) -> Unit,
     onModuleBarLabelTextSizeChange: (Float) -> Unit,
 ) {
+    var selectedSection by rememberSaveable { mutableStateOf(AppearanceSection.THEME_AND_COLOR) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        item {
+            FinanceCard(Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        "SECCIÓN DE APARIENCIA",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        AppearanceSection.entries.forEach { section ->
+                            FilterChip(
+                                selected = selectedSection == section,
+                                onClick = { selectedSection = section },
+                                label = { Text(section.label) },
+                                leadingIcon = if (selectedSection == section) {
+                                    { Icon(Icons.Outlined.Check, null, Modifier.size(17.dp)) }
+                                } else null,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
+                                shape = MaterialTheme.shapes.small,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        if (selectedSection == AppearanceSection.THEME_AND_COLOR) {
         item { SectionTitle("TEMA", "Elige cuándo usar la versión clara u oscura.") }
         item {
             FlowRow(
@@ -386,6 +433,8 @@ private fun AppearanceTab(
                 }
             }
         }
+        }
+        if (selectedSection == AppearanceSection.STYLE) {
         item { SectionTitle("FORMAS", "Elige la familia geométrica de botones, tarjetas y chips.") }
         item {
             ShapeStyleSelector(
@@ -412,6 +461,63 @@ private fun AppearanceTab(
                 onSelect = onFontFamilyChange,
             )
         }
+        }
+        if (selectedSection == AppearanceSection.BACKGROUND) {
+        item { SectionTitle("FONDO DECORATIVO", "Agrega una decoración sutil detrás del contenido.") }
+        item {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                BackgroundDecoration.entries.forEach { decoration ->
+                    FilterChip(
+                        selected = appearance.backgroundDecoration == decoration,
+                        onClick = { onBackgroundDecorationChange(decoration) },
+                        label = { Text(decoration.label) },
+                        leadingIcon = if (appearance.backgroundDecoration == decoration) {
+                            { Icon(Icons.Outlined.Check, null, Modifier.size(17.dp)) }
+                        } else null,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                        shape = MaterialTheme.shapes.small,
+                    )
+                }
+            }
+        }
+        if (appearance.backgroundDecoration != BackgroundDecoration.NONE) {
+            item {
+                FinanceCard(Modifier.fillMaxWidth()) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Intensidad del fondo", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "${(appearance.backgroundIntensity * 100).toInt()}%",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Slider(
+                            value = appearance.backgroundIntensity,
+                            onValueChange = onBackgroundIntensityChange,
+                            valueRange = 0f..1f,
+                        )
+                    }
+                }
+            }
+        }
+        }
+        if (selectedSection == AppearanceSection.MODULE_BAR) {
         item { SectionTitle("BARRA DE MÓDULOS", "Personaliza la barra de navegación inferior.") }
         item {
             FinanceCard(Modifier.fillMaxWidth()) {
@@ -499,6 +605,7 @@ private fun AppearanceTab(
                     }
                 }
             }
+        }
         }
         item {
             SecondaryButton(
@@ -1175,9 +1282,23 @@ private fun Int.toHsv(): FloatArray = FloatArray(3).also { android.graphics.Colo
 
 private enum class ColorRole { PRIMARY, ACCENT }
 
+private enum class AppearanceSection(val label: String) {
+    THEME_AND_COLOR("Tema y color"),
+    STYLE("Estilo"),
+    BACKGROUND("Fondo"),
+    MODULE_BAR("Barra"),
+}
+
 private val AppThemeMode.label: String
     get() = when (this) {
         AppThemeMode.SYSTEM -> "Sistema"
         AppThemeMode.LIGHT -> "Claro"
         AppThemeMode.DARK -> "Oscuro"
+    }
+
+private val BackgroundDecoration.label: String
+    get() = when (this) {
+        BackgroundDecoration.NONE -> "Ninguno"
+        BackgroundDecoration.MEDICAL -> "Medical"
+        BackgroundDecoration.CATS -> "Cats"
     }

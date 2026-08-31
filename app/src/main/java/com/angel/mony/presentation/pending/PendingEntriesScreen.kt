@@ -200,6 +200,7 @@ fun PendingEntriesScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { ModuleTitle("Recordatorios") },

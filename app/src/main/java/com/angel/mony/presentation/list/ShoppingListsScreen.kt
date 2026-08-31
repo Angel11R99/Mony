@@ -124,6 +124,7 @@ fun ShoppingListsScreen(
     }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { ModuleTitle("Lista") },

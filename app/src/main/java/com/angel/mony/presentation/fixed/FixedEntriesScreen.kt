@@ -151,6 +151,7 @@ fun FixedEntriesScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { ModuleTitle("Fijos") },

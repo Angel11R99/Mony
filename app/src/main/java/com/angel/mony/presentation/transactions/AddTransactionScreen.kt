@@ -113,7 +113,9 @@ fun AddTransactionScreen(
             viewModel.consumeError()
         }
     }
-    Scaffold(topBar = {
+    Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        topBar = {
         TopAppBar(
             title = {
                 ModuleTitle(
@@ -141,7 +143,8 @@ fun AddTransactionScreen(
                 actionIconContentColor = MaterialTheme.colorScheme.onBackground,
             ),
         )
-    }) { padding ->
+        },
+    ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
             contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),

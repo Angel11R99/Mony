@@ -182,6 +182,7 @@ fun StatisticsScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { ModuleTitle("Estadísticas") },

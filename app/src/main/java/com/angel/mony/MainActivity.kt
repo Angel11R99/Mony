@@ -129,6 +129,8 @@ class MainActivity : ComponentActivity() {
                         },
                         onShapeStyleChange = appearancePreferences::setShapeStyle,
                         onFontFamilyChange = appearancePreferences::setFontFamily,
+                        onBackgroundDecorationChange = appearancePreferences::setBackgroundDecoration,
+                        onBackgroundIntensityChange = appearancePreferences::setBackgroundIntensity,
                         onAutomaticCycleCloseChange = cyclePreferences::setAutomaticClose,
                         onAutomaticCloseTimeChange = cyclePreferences::setAutomaticCloseTime,
                         onModuleBarVisibleRoutesChange = moduleBarPreferences::setVisibleRoutes,

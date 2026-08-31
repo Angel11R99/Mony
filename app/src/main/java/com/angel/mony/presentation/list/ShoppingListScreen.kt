@@ -291,6 +291,7 @@ fun ShoppingListScreen(
 
     val details = state.details
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 navigationIcon = { IconButton(onBack, Modifier.size(54.dp)) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver") } },

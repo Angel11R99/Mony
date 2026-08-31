@@ -32,7 +32,9 @@ import com.angel.mony.presentation.savings.SavingsScreen
 import com.angel.mony.presentation.transactions.AddTransactionScreen
 import com.angel.mony.presentation.transactions.HistoryScreen
 import com.angel.mony.presentation.settings.SettingsScreen
+import com.angel.mony.presentation.background.DecorativeBackground
 import com.angel.mony.ui.theme.AppAppearance
+import com.angel.mony.ui.theme.BackgroundDecoration
 import com.angel.mony.ui.theme.AppFontFamily
 import com.angel.mony.ui.theme.AppShapeStyle
 import com.angel.mony.ui.theme.AppThemeMode
@@ -54,6 +56,8 @@ fun FinanceApp(
     onResetAppearance: () -> Unit,
     onShapeStyleChange: (AppShapeStyle) -> Unit,
     onFontFamilyChange: (AppFontFamily) -> Unit,
+    onBackgroundDecorationChange: (BackgroundDecoration) -> Unit,
+    onBackgroundIntensityChange: (Float) -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onAutomaticCloseTimeChange: (LocalTime) -> Unit,
     onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
@@ -89,6 +93,10 @@ fun FinanceApp(
     }
 
     Box(Modifier.fillMaxSize()) {
+        DecorativeBackground(
+            decoration = appearance.backgroundDecoration,
+            intensity = appearance.backgroundIntensity,
+        )
         NavHost(
             navController = navController,
             startDestination = "home",
@@ -189,6 +197,8 @@ fun FinanceApp(
                     onReset = onResetAppearance,
                     onShapeStyleChange = onShapeStyleChange,
                     onFontFamilyChange = onFontFamilyChange,
+                    onBackgroundDecorationChange = onBackgroundDecorationChange,
+                    onBackgroundIntensityChange = onBackgroundIntensityChange,
                     onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
                     onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
                     onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
