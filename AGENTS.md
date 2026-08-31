@@ -4,7 +4,7 @@ Single-module Android app (`:app`) in Kotlin + Jetpack Compose (Material3), Room
 
 The application is a personal finance tracker focused on fast local/offline registration of incomes, expenses, budget-cycle information, fixed entries, pending entries, statistics, and quick actions through Android widgets.
 
-There is currently no README and no CI.
+The project has a Spanish `README.md` and no CI.
 
 All UI text and domain labels are **Spanish**.
 
@@ -150,6 +150,26 @@ Unix-like systems:
 ```bash
 ./gradlew assembleDebug
 ```
+
+The application version is defined only in `version.properties` through `VERSION_CODE` and `VERSION_NAME`. APK outputs follow `Mony-v<version>-<buildType>.apk`; do not restore hardcoded versions in `app/build.gradle.kts`.
+
+To prepare the next patch release, update the README version links, and build the release APK:
+
+Windows:
+
+```bash
+.\gradlew.bat buildNextRelease
+```
+
+Unix-like systems:
+
+```bash
+./gradlew buildNextRelease
+```
+
+`buildNextRelease` increments both Android `VERSION_CODE` and the patch component of semantic `VERSION_NAME` (`MAJOR.MINOR.PATCH`). Normal debug/release builds must not increment versions. For an intentional major or minor release, edit both values in `version.properties`, keep `VERSION_CODE` strictly increasing, and run `syncVersionDocumentation` before building.
+
+Never publish an unsigned APK or commit signing credentials. A GitHub release/tag must use exactly `v<VERSION_NAME>`, matching the README links and APK name.
 
 ## Unit tests
 

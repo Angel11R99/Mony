@@ -1,92 +1,108 @@
 # Mony
 
-A personal finance tracker Android app focused on fast local/offline registration of incomes, expenses, budget-cycle information, fixed entries, pending entries, statistics, and quick actions through Android widgets.
+<!-- APP_VERSION_START -->
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-v1.0.0-6750A4)](https://github.com/Angel11R99/mony/releases/tag/v1.0.0)
+[![Descargar](https://img.shields.io/badge/descargar-%C3%BAltima_versi%C3%B3n-6750A4)](https://github.com/Angel11R99/mony/releases/latest)
+<!-- APP_VERSION_END -->
 
-## Features
+Mony es una aplicación Android de finanzas personales diseñada para registrar y consultar tus movimientos con rapidez. Room mantiene los datos financieros localmente para que las funciones principales sigan disponibles sin conexión a Internet.
 
-- Offline-first: Core functionality works without internet
-- Transaction tracking: Incomes and expenses
-- Budget cycle management
-- Fixed and pending entries
-- Statistics and reports
-- Home screen widgets for quick actions
-- Dominican Peso (DOP / RD$) currency support
-- Material Design 3 (Jetpack Compose)
-- Dependency Injection with Hilt
-- Local database with Room
-- Background work with WorkManager (for fixed entries)
-- Glance app widgets
+## Descargar
 
-## Architecture
+<!-- APP_DOWNLOAD_START -->
+Descarga **Mony v1.0.0** desde su [release en GitHub](https://github.com/Angel11R99/mony/releases/tag/v1.0.0) o consulta [todas las versiones disponibles](https://github.com/Angel11R99/mony/releases).
+<!-- APP_DOWNLOAD_END -->
 
-The app follows a layered architecture similar to Clean Architecture + MVVM:
+## Funciones principales
 
-- **domain**: Business logic and models (pure Kotlin, no Android dependencies)
-- **data**: Data layer (Room database, repositories)
-- **presentation**: UI layer (Jetpack Compose, ViewModels)
-- **navigation**: Navigation graph
-- **ui**: Theming and appearance
-- **widget**: Glance app widgets
-- **di**: Dependency injection (Hilt)
-- **core**: Utilities (money formatting, etc.)
+- Registro, edición, duplicado y eliminación de ingresos y gastos.
+- Presupuestos mensuales o quincenales con ciclos y cierre manual o automático.
+- Historial con filtros, búsqueda y exportación local a CSV y PDF.
+- Estadísticas por período y categoría, comparaciones y límites de gasto.
+- Entradas fijas recurrentes y pagos o cobros pendientes con recordatorios.
+- Metas de ahorro y seguimiento de su progreso.
+- Listas de compra con productos, precios, descuentos, recargos y métodos de pago.
+- Escaneo de códigos de barras y lectura de tickets; la consulta externa de productos es opcional.
+- Categorías personalizables y límites de presupuesto por categoría.
+- Apariencia clara, oscura o según el sistema, con colores configurables.
+- Once widgets para balances, presupuesto, estadísticas, movimientos, accesos rápidos y otros resúmenes.
+- Soporte para pesos dominicanos (`DOP`, `RD$`).
 
-## Technology Stack
+## Privacidad y funcionamiento sin conexión
 
-- Kotlin
-- Android Jetpack:
-  - Compose (UI)
-  - ViewModel
-  - Room (Persistence)
-  - WorkManager (Background tasks)
-  - Navigation
-  - Lifecycle
-- Hilt (Dependency Injection)
-- Glance (App widgets)
-- Material Design 3
-- Coroutines (for asynchronous operations)
+Room es la fuente principal de los datos financieros y las funciones esenciales no requieren una cuenta, un servidor ni conexión a Internet. La consulta de productos por código de barras puede usar un servicio externo de forma opcional. Consulta la [Política de privacidad de Mony](PRIVACY_POLICY.md) para conocer los detalles.
 
-## Getting Started
+## Arquitectura
 
-### Prerequisites
+La aplicación usa una arquitectura por capas similar a Clean Architecture con MVVM:
 
-- Android Studio Arctic Fox or later
-- JDK 11
-- Android SDK 24 (minimum SDK) and SDK 34 (compile SDK)
+- **domain**: modelos y reglas de negocio en Kotlin puro.
+- **data**: base de datos Room, mapeadores e implementaciones de repositorios.
+- **presentation**: pantallas con Jetpack Compose y ViewModels.
+- **navigation**: grafo de navegación principal.
+- **ui**: tema y preferencias de apariencia.
+- **widget**: widgets creados con Glance.
+- **di**: inyección de dependencias con Hilt.
+- **core**: utilidades compartidas, como el formato monetario.
 
-### Installation
+## Tecnologías
 
-1. Clone the repository
-2. Open the project in Android Studio
-3. Wait for Gradle sync to complete
-4. Run the app on an emulator or physical device
+- Kotlin y coroutines con Flow.
+- Jetpack Compose y Material 3.
+- Room.
+- Hilt.
+- Navigation Compose.
+- WorkManager.
+- Glance App Widgets.
+- ML Kit y Google Code Scanner.
 
-### Building
+## Requisitos de desarrollo
 
-To build the debug APK:
+- Android Studio compatible con Android Gradle Plugin 9.
+- JDK 17 o una versión compatible configurada por Android Studio.
+- Android SDK 36; la aplicación admite dispositivos desde Android 7.0 (`minSdk 24`).
+
+## Compilación
+
+En Windows:
+
+```powershell
+.\gradlew.bat assembleDebug
+```
+
+En sistemas Unix:
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-On Windows:
+El APK se genera en `app/build/outputs/apk/debug/` con un nombre como `Mony-v1.0.0-debug.apk`.
 
-```bash
-.\gradlew.bat assembleDebug
+## Preparar la siguiente versión
+
+La versión se administra en `version.properties`. Para incrementar automáticamente el parche (`1.0.0` → `1.0.1`), aumentar `versionCode`, actualizar este README y compilar el APK release, ejecuta:
+
+```powershell
+.\gradlew.bat buildNextRelease
 ```
 
-## Contributing
+El APK release se genera en `app/build/outputs/apk/release/`. Antes de publicarlo debes configurar una firma de producción; no publiques APK sin firmar ni claves privadas en el repositorio.
 
-Bug reports, improvements, and code contributions are welcome and reviewed by the project owner before acceptance. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
+Para cambiar manualmente una versión mayor o menor, edita `VERSION_NAME` y aumenta `VERSION_CODE` en `version.properties`, y después ejecuta:
 
-## License
+```powershell
+.\gradlew.bat syncVersionDocumentation assembleRelease
+```
 
-Mony is source-available. You may inspect, fork, and modify the code for personal use or to contribute to the official project, but redistribution, rebranding, commercial use, and publishing derived versions are not permitted without written authorization. See [LICENSE.md](LICENSE.md).
+## Contribuciones
 
-## Privacy
+Los reportes de errores, mejoras y contribuciones de código son bienvenidos y serán revisados por el propietario del proyecto. Lee [CONTRIBUTING.md](CONTRIBUTING.md) antes de abrir un issue o pull request.
 
-See the [Mony Privacy Policy](PRIVACY_POLICY.md) for details about local data, optional scanning features, backups, and external product lookups.
+## Licencia
 
-## Acknowledgments
+Mony tiene código fuente disponible para inspección y contribuciones. Se permite modificarlo para uso personal o para contribuir al proyecto oficial, pero no redistribuirlo, renombrarlo, usarlo comercialmente ni publicar versiones derivadas sin autorización escrita. Consulta [LICENSE.md](LICENSE.md).
 
-- Inspired by the need for a simple, offline-first personal finance tracker.
-- Built with modern Android development practices.
+## Agradecimientos
+
+- Inspirada en la necesidad de administrar finanzas personales de forma simple y sin conexión.
+- Construida con prácticas modernas de desarrollo Android.

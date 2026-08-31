@@ -1,9 +1,17 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
+
+val appVersionProperties = Properties().apply {
+    rootProject.file("version.properties").inputStream().use(::load)
+}
+val appVersionCode = appVersionProperties.getProperty("VERSION_CODE").toInt()
+val appVersionName = appVersionProperties.getProperty("VERSION_NAME")
 
 android {
     namespace = "com.angel.mony"
@@ -15,8 +23,8 @@ android {
         applicationId = "com.angel.mony"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -40,6 +48,45 @@ android {
         buildConfig = true
     }
     sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        val variantName = variant.name.replaceFirstChar { it.uppercase() }
+        tasks.configureEach {
+            if (name == "assemble$variantName") {
+                doLast {
+                    val outputDirectory = layout.buildDirectory
+                        .dir("outputs/apk/${variant.name}")
+                        .get()
+                        .asFile
+                    val apks = outputDirectory.listFiles()?.filter { it.extension == "apk" }.orEmpty()
+                    val generatedApk = apks.singleOrNull { !it.name.startsWith("Mony-") }
+                    val currentApk = generatedApk ?: apks.singleOrNull {
+                        it.name.startsWith("Mony-v$appVersionName-${variant.buildType}")
+                    } ?: error("No se encontró el APK generado para ${variant.name}.")
+                    val unsignedSuffix = if (currentApk.name.contains("unsigned")) "-unsigned" else ""
+                    val targetApk = outputDirectory.resolve(
+                        "Mony-v$appVersionName-${variant.buildType}$unsignedSuffix.apk"
+                    )
+                    if (generatedApk != null) {
+                        targetApk.delete()
+                        check(generatedApk.renameTo(targetApk)) {
+                            "No se pudo renombrar ${generatedApk.name} como ${targetApk.name}."
+                        }
+                    }
+                    val outputMetadata = outputDirectory.resolve("output-metadata.json")
+                    outputMetadata.writeText(
+                        outputMetadata.readText().replace(
+                            Regex("\"outputFile\": \"[^\"]+\\.apk\""),
+                            "\"outputFile\": \"${targetApk.name}\""
+                        )
+                    )
+                }
+            }
+        }
+    }
 }
 
 ksp {

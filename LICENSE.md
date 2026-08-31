@@ -1,6 +1,6 @@
 # Licencia de código fuente disponible de Mony
 
-Copyright (c) 2026 Angel. Todos los derechos reservados.
+Copyright (c) 2026 Angel Rodriguez. Todos los derechos reservados.
 
 Mony es un proyecto de código fuente disponible. Su código puede consultarse,
 descargarse y modificarse con el propósito de estudiar el proyecto, utilizarlo
