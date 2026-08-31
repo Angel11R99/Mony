@@ -2,6 +2,11 @@ package com.angel.mony.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -103,8 +108,38 @@ fun FinanceApp(
             modifier = Modifier.fillMaxSize().padding(
                 bottom = systemBottomPadding + if (showModuleBar) 84.dp else 0.dp,
             ),
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
+            enterTransition = {
+                if (isModuleTransition(
+                        initialState.destination.route,
+                        targetState.destination.route,
+                    )
+                ) {
+                    fadeIn(
+                        animationSpec = tween(
+                            durationMillis = ModuleEnterDurationMillis,
+                            easing = LinearOutSlowInEasing,
+                        ),
+                    )
+                } else {
+                    EnterTransition.None
+                }
+            },
+            exitTransition = {
+                if (isModuleTransition(
+                        initialState.destination.route,
+                        targetState.destination.route,
+                    )
+                ) {
+                    fadeOut(
+                        animationSpec = tween(
+                            durationMillis = ModuleExitDurationMillis,
+                            easing = FastOutLinearInEasing,
+                        ),
+                    )
+                } else {
+                    ExitTransition.None
+                }
+            },
             popEnterTransition = { EnterTransition.None },
             popExitTransition = { ExitTransition.None },
         ) {
@@ -228,6 +263,13 @@ fun FinanceApp(
 }
 
 internal val topLevelRoutes = setOf("home", "history", "statistics", "fixed", "pending", "savings", "list")
+
+private const val ModuleEnterDurationMillis = 120
+private const val ModuleExitDurationMillis = 80
+
+private fun isModuleTransition(initialRoute: String?, targetRoute: String?): Boolean =
+    initialRoute?.substringBefore('?') in topLevelRoutes &&
+        targetRoute?.substringBefore('?') in topLevelRoutes
 
 internal fun shouldShowModuleBar(route: String?): Boolean = route in topLevelRoutes
 

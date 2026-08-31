@@ -1,7 +1,9 @@
 package com.angel.mony.navigation
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -107,17 +109,33 @@ private fun ModuleItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val selectionAnimation = tween<Float>(
+        durationMillis = ModuleSelectionDurationMillis,
+        easing = FastOutSlowInEasing,
+    )
     val contentColor by animateColorAsState(
         if (selected) MaterialTheme.colorScheme.onPrimary
         else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(
+            durationMillis = ModuleSelectionDurationMillis,
+            easing = FastOutSlowInEasing,
+        ),
         label = "moduleItemColor",
     )
     val containerColor by animateColorAsState(
         if (selected) MaterialTheme.colorScheme.primary
         else Color.Transparent,
+        animationSpec = tween(
+            durationMillis = ModuleSelectionDurationMillis,
+            easing = FastOutSlowInEasing,
+        ),
         label = "moduleItemContainer",
     )
-    val iconScale by animateFloatAsState(if (selected) 1.08f else 1f, label = "moduleIconScale")
+    val iconScale by animateFloatAsState(
+        targetValue = if (selected) 1.06f else 1f,
+        animationSpec = selectionAnimation,
+        label = "moduleIconScale",
+    )
     val itemShape = MaterialTheme.shapes.small
     Column(
         modifier = modifier
@@ -147,3 +165,5 @@ private fun ModuleItem(
         }
     }
 }
+
+private const val ModuleSelectionDurationMillis = 120
