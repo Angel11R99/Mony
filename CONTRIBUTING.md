@@ -1,73 +1,113 @@
-# Reportar fallos de Mony
+# Contribuir a Mony
 
-Este repositorio acepta contribuciones únicamente para informar fallos de la aplicación Mony.
+Las contribuciones a Mony son bienvenidas. Puedes proponer correcciones, mejoras y nuevas funciones mediante el repositorio oficial.
 
-No se solicitan ni se aceptan contribuciones de código, modificaciones, forks destinados a redistribución, pull requests, recursos gráficos, traducciones ni versiones derivadas. Mony es software propietario y todos sus derechos están reservados según lo indicado en [LICENSE.md](LICENSE.md).
+Todo cambio pasa por revisión del titular del proyecto. Enviar una contribución no garantiza que sea aceptada o publicada.
 
-## Antes de reportar un fallo
+Al participar debes respetar la [licencia de Mony](LICENSE.md). Puedes crear un fork y modificar el código para preparar tu contribución, pero no redistribuir Mony, publicar versiones derivadas ni presentar el proyecto como propio.
 
-1. Comprueba que utilizas la versión más reciente disponible de Mony.
-2. Reinicia la aplicación y verifica si el problema continúa.
-3. Revisa las incidencias existentes para evitar reportes duplicados.
-4. Elimina cualquier dato financiero o personal de capturas y registros.
+## Formas de contribuir
 
-## Información necesaria
+- Reportar fallos reproducibles.
+- Corregir errores.
+- Mejorar pruebas y documentación.
+- Proponer mejoras de accesibilidad o experiencia de usuario.
+- Implementar funciones previamente discutidas y aprobadas.
+- Revisar código y aportar observaciones técnicas.
 
-Incluye la siguiente información al crear una incidencia:
+Para cambios grandes, abre primero una incidencia y espera confirmación antes de desarrollar la solución.
 
-- Un título breve y específico.
-- Versión de Mony instalada.
-- Versión de Android.
-- Marca y modelo del dispositivo, o configuración del emulador.
-- Pasos exactos para reproducir el fallo.
-- Resultado esperado.
-- Resultado observado.
-- Frecuencia con la que ocurre.
-- Capturas o grabaciones cuando ayuden a entender el problema.
-- Mensajes de error visibles, sin información privada.
+## Preparación del proyecto
 
-## Formato recomendado
+1. Crea un fork del repositorio.
+2. Crea una rama enfocada en un único cambio.
+3. Abre el proyecto en Android Studio y espera la sincronización de Gradle.
+4. Compila el proyecto antes de comenzar.
 
-```text
-Título: Descripción breve del fallo
+En Windows:
 
-Versión de Mony:
-Versión de Android:
-Dispositivo:
-
-Pasos para reproducir:
-1.
-2.
-3.
-
-Resultado esperado:
-
-Resultado observado:
-
-Frecuencia:
-
-Información adicional:
+```powershell
+.\gradlew.bat assembleDebug
 ```
 
-## Información que no debe publicarse
+En sistemas Unix:
 
-No adjuntes:
+```bash
+./gradlew assembleDebug
+```
 
-- Movimientos financieros reales.
-- Montos, presupuestos o balances personales.
-- Archivos de respaldo o exportaciones de Mony.
-- Fotografías o documentos privados.
-- Direcciones, números telefónicos u otros datos personales.
-- Credenciales, claves, tokens o información de cuentas.
+## Reglas de desarrollo
 
-Si una captura contiene información privada, ocúltala antes de publicarla.
+- Inspecciona la implementación existente antes de modificarla.
+- Mantén cada contribución enfocada y evita refactorizaciones no relacionadas.
+- Conserva la arquitectura actual basada en Kotlin, Compose, ViewModel, repositorios, Room y Hilt.
+- Mantén las funciones financieras principales disponibles sin conexión.
+- Escribe todos los textos visibles en español.
+- Utiliza pesos dominicanos (DOP / RD$) y conserva los montos en centavos enteros.
+- Utiliza el formateador monetario compartido y las utilidades de fecha existentes.
+- No accedas a DAOs directamente desde pantallas o ViewModels.
+- No agregues dependencias innecesarias, publicidad, seguimiento ni servicios remotos no aprobados.
+- Mantén compatibilidad con los temas claro, oscuro y del sistema.
+- Proporciona validación y mensajes comprensibles para acciones importantes.
+- Actualiza los widgets cuando cambien datos que estos muestran.
 
-## Solicitudes de funciones
+## Datos y migraciones
 
-Las incidencias deben utilizarse únicamente para fallos reproducibles. Las solicitudes de nuevas funciones, cambios de diseño o modificaciones del producto pueden cerrarse sin revisión.
+Los datos financieros existentes deben conservarse.
 
-## Seguridad
+Todo cambio en el esquema de Room debe incluir:
 
-No publiques vulnerabilidades que puedan comprometer datos de usuarios. Informa el problema de forma privada al titular del proyecto cuando exista un canal de contacto privado disponible.
+1. Incremento de la versión de la base de datos.
+2. Migración explícita y no destructiva.
+3. Registro de la migración.
+4. Nuevo esquema JSON.
+5. Pruebas o verificación de conservación de datos.
 
-El envío de un reporte no concede derechos sobre Mony, su código, diseño, marca o documentación.
+No utilices `fallbackToDestructiveMigration()`.
+
+## Pruebas
+
+Ejecuta las pruebas unitarias:
+
+```powershell
+.\gradlew.bat testDebugUnitTest
+```
+
+Y verifica la compilación:
+
+```powershell
+.\gradlew.bat assembleDebug
+```
+
+En sistemas Unix sustituye `.\gradlew.bat` por `./gradlew`.
+
+Los cambios de lógica de negocio, presupuesto, fechas, validación o cálculos deben incluir pruebas relevantes cuando sea práctico.
+
+## Pull requests
+
+Cada pull request debe incluir:
+
+- Descripción del problema o mejora.
+- Explicación de la solución.
+- Pasos para verificarla.
+- Pruebas ejecutadas.
+- Capturas o grabaciones para cambios visuales.
+- Consideraciones de migración cuando correspondan.
+
+El titular puede solicitar cambios, rechazar la propuesta o adaptarla antes de incorporarla. Solo el código revisado y aceptado pasa a formar parte de la versión oficial.
+
+## Reportar fallos
+
+Incluye:
+
+- Versión de Mony y de Android.
+- Dispositivo o emulador utilizado.
+- Pasos exactos para reproducir el problema.
+- Resultado esperado y resultado observado.
+- Capturas o mensajes relevantes.
+
+No publiques movimientos financieros, archivos de respaldo, credenciales ni información personal.
+
+## Derechos sobre las contribuciones
+
+Al enviar código, documentación o recursos confirmas que son de tu autoría o que tienes permiso para aportarlos. También aceptas las condiciones de contribución indicadas en [LICENSE.md](LICENSE.md), que permiten integrar y distribuir tu aporte como parte de Mony.

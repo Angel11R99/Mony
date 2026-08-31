@@ -76,11 +76,11 @@ On Windows:
 
 ## Contributing
 
-Only application bug reports are accepted. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue. Code contributions and pull requests are not accepted.
+Bug reports, improvements, and code contributions are welcome and reviewed by the project owner before acceptance. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
 
 ## License
 
-Mony is proprietary software. All rights are reserved; copying, modification, redistribution, or reuse requires prior written authorization. See [LICENSE.md](LICENSE.md) for details.
+Mony is source-available. You may inspect, fork, and modify the code for personal use or to contribute to the official project, but redistribution, rebranding, commercial use, and publishing derived versions are not permitted without written authorization. See [LICENSE.md](LICENSE.md).
 
 ## Privacy
 
