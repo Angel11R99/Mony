@@ -1,4 +1,4 @@
-# Personal Finance Tracker
+# Mony
 
 A personal finance tracker Android app focused on fast local/offline registration of incomes, expenses, budget-cycle information, fixed entries, pending entries, statistics, and quick actions through Android widgets.
 
@@ -76,11 +76,15 @@ On Windows:
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+Only application bug reports are accepted. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue. Code contributions and pull requests are not accepted.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+Mony is proprietary software. All rights are reserved; copying, modification, redistribution, or reuse requires prior written authorization. See [LICENSE.md](LICENSE.md) for details.
+
+## Privacy
+
+See the [Mony Privacy Policy](PRIVACY_POLICY.md) for details about local data, optional scanning features, backups, and external product lookups.
 
 ## Acknowledgments
 
