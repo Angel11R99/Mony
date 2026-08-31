@@ -319,7 +319,7 @@ fun HistoryScreen(
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
-                    contentPadding = PaddingValues(bottom = 20.dp),
+                    contentPadding = PaddingValues(top = 14.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
             item {
