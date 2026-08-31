@@ -15,29 +15,11 @@ body:
         - label: Busqué entre los issues abiertos y cerrados y no encontré este mismo problema.
           required: true
 
-  - type: input
-    id: app_version
+  - type: textarea
+    id: problem
     attributes:
-      label: Versión de Mony
-      description: Indica la versión donde ocurre el problema.
-      placeholder: "Ejemplo: 1.2.3"
-    validations:
-      required: true
-
-  - type: input
-    id: android_version
-    attributes:
-      label: Versión de Android
-      placeholder: "Ejemplo: Android 15"
-    validations:
-      required: true
-
-  - type: input
-    id: device
-    attributes:
-      label: Dispositivo
-      description: Indica el dispositivo o emulador utilizado.
-      placeholder: "Ejemplo: Pixel 8"
+      label: ¿Qué ocurrió?
+      description: Describe brevemente el problema y qué estabas intentando hacer.
     validations:
       required: true
 
@@ -58,16 +40,13 @@ body:
     attributes:
       label: Resultado esperado
       description: Explica qué debería ocurrir.
-    validations:
-      required: true
 
-  - type: textarea
-    id: actual
+  - type: input
+    id: environment
     attributes:
-      label: Resultado observado
-      description: Explica qué ocurre realmente.
-    validations:
-      required: true
+      label: Entorno
+      description: Si lo conoces, indica la versión de Mony, Android y el dispositivo utilizado.
+      placeholder: "Ejemplo: Mony 1.2.3, Android 15, Pixel 8"
 
   - type: textarea
     id: evidence
