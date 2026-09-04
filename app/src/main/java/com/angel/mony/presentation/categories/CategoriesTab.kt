@@ -43,6 +43,7 @@ import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.presentation.components.AmountVisualTransformation
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.FinanceTextField
+import com.angel.mony.presentation.components.FormState
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.presentation.components.sanitizeAmountInput
@@ -259,6 +260,7 @@ private fun CategoryEditorDialog(
                 .orEmpty()
         )
     }
+    val formState = remember { FormState() }
 
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
@@ -271,7 +273,14 @@ private fun CategoryEditorDialog(
                         EditorTypeChip(TransactionType.INCOME, type, { type = it }, Modifier.weight(1f))
                     }
                 }
-                FinanceTextField(name, { name = it }, "Nombre", singleLine = true)
+                FinanceTextField(
+                    name,
+                    { name = it; formState.clearError("name") },
+                    "Nombre",
+                    singleLine = true,
+                    isError = formState.hasError("name"),
+                    errorMessage = formState["name"],
+                )
                 FinanceTextField(
                     limit,
                     { limit = sanitizeAmountInput(it) },
@@ -296,7 +305,12 @@ private fun CategoryEditorDialog(
             }
             PrimaryButton(
                 text = if (isSaving) "Guardando…" else "Guardar",
-                onClick = { onSave(type, name, limit) },
+                onClick = {
+                    formState.clearAll()
+                    if (name.isBlank()) formState.setError("name", "Escribe un nombre")
+                    if (!formState.isValid()) return@PrimaryButton
+                    onSave(type, name, limit)
+                },
                 enabled = !isSaving && name.isNotBlank() &&
                     (category == null || nameChanged || limitChanged),
             )

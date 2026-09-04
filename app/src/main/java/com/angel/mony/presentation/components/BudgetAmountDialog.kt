@@ -27,11 +27,10 @@ fun BudgetAmountDialog(
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
 ) {
-    val context = LocalContext.current
     var amount by remember(currentAmount) {
         mutableStateOf(currentAmount?.let { java.math.BigDecimal.valueOf(it, 2).stripTrailingZeros().toPlainString() }.orEmpty())
     }
-    val valid = MoneyFormatter.parseToCents(amount)?.let { it > 0 } == true
+    val formState = remember { FormState() }
 
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
@@ -48,11 +47,13 @@ fun BudgetAmountDialog(
                 Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FinanceTextField(
                     value = amount,
-                    onValueChange = { amount = sanitizeAmountInput(it) },
+                    onValueChange = { amount = sanitizeAmountInput(it); formState.clearError("amount") },
                     label = "Monto (RD$)",
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     visualTransformation = AmountVisualTransformation,
+                    isError = formState.hasError("amount"),
+                    errorMessage = formState["amount"],
                 )
             }
         },
@@ -60,8 +61,11 @@ fun BudgetAmountDialog(
             PrimaryButton(
                 text = if (isSaving) "Guardando…" else "Guardar",
                 onClick = {
-                    if (valid) onSave(amount)
-                    else context.showToast("El monto debe ser mayor que cero")
+                    formState.clearAll()
+                    val cents = MoneyFormatter.parseToCents(amount)
+                    if (cents == null || cents <= 0) formState.setError("amount", "El monto debe ser mayor que cero")
+                    if (!formState.isValid()) return@PrimaryButton
+                    onSave(amount)
                 },
                 enabled = !isSaving,
             )

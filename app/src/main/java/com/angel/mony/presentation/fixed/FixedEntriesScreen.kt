@@ -54,6 +54,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -95,6 +96,7 @@ import com.angel.mony.presentation.components.AmountVisualTransformation
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.FinanceDetailRow
 import com.angel.mony.presentation.components.FinanceTextField
+import com.angel.mony.presentation.components.FormState
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.presentation.components.GlobalSettingsButton
@@ -980,6 +982,7 @@ private fun FixedEntryDialog(
     var categorySearch by remember(entry, categories) {
         mutableStateOf(categories.firstOrNull { it.id == entry?.categoryId }?.name.orEmpty())
     }
+    val formState = remember { FormState() }
     val availableCategories = categories.filter { it.type == type && it.isActive }.sortedBy(Category::name)
     val matchingCategories = remember(availableCategories, categorySearch, categoryId) {
         if (categoryId != null) availableCategories
@@ -1008,18 +1011,30 @@ private fun FixedEntryDialog(
                         TypeChip(TransactionType.INCOME, type, { type = it }, Modifier.weight(1f))
                     }
                 }
-                item { FinanceTextField(description, { description = it }, "Descripción", singleLine = true) }
+                item {
+                    FinanceTextField(
+                        description,
+                        { description = it; formState.clearError("description") },
+                        "Descripción",
+                        singleLine = true,
+                        isError = formState.hasError("description"),
+                        errorMessage = formState["description"],
+                    )
+                }
                 item {
                     FinanceTextField(
                         amount,
-                        { amount = sanitizeAmountInput(it) },
+                        { amount = sanitizeAmountInput(it); formState.clearError("amount") },
                         "Monto (RD$)",
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         visualTransformation = AmountVisualTransformation,
+                        isError = formState.hasError("amount"),
+                        errorMessage = formState["amount"],
                     )
                 }
                 item {
+                    val categoryError = formState.hasError("category")
                     ExposedDropdownMenuBox(
                         expanded = categoryExpanded,
                         onExpandedChange = { categoryExpanded = it },
@@ -1030,6 +1045,7 @@ private fun FixedEntryDialog(
                                 categorySearch = value
                                 categoryId = null
                                 categoryExpanded = true
+                                formState.clearError("category")
                             },
                             label = { Text("Buscar categoría") },
                             placeholder = { Text("Escribe o selecciona") },
@@ -1060,6 +1076,16 @@ private fun FixedEntryDialog(
                                 .fillMaxWidth(),
                             shape = MaterialTheme.shapes.small,
                             singleLine = true,
+                            isError = categoryError,
+                            supportingText = if (categoryError) {
+                                { Text(formState["category"] ?: "", color = MaterialTheme.colorScheme.error) }
+                            } else null,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = if (categoryError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = if (categoryError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                                errorBorderColor = MaterialTheme.colorScheme.error,
+                                errorLabelColor = MaterialTheme.colorScheme.error,
+                            ),
                         )
                         ExposedDropdownMenu(
                             expanded = categoryExpanded,
@@ -1099,7 +1125,15 @@ private fun FixedEntryDialog(
             }
         },
         confirmButton = {
-            PrimaryButton("Guardar", { onSave(type, description, amount, categoryId, comment, active) })
+            PrimaryButton("Guardar", onClick = {
+                formState.clearAll()
+                if (description.isBlank()) formState.setError("description", "Escribe una descripción")
+                val cents = MoneyFormatter.parseToCents(amount)
+                if (cents == null || cents <= 0) formState.setError("amount", "Ingresa un monto válido")
+                if (categoryId == null) formState.setError("category", "Selecciona una categoría")
+                if (!formState.isValid()) return@PrimaryButton
+                onSave(type, description, amount, categoryId, comment, active)
+            })
         },
         dismissButton = { SecondaryButton("Cancelar", onDismiss) },
         containerColor = MaterialTheme.colorScheme.surfaceVariant,

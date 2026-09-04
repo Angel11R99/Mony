@@ -85,6 +85,7 @@ import com.angel.mony.presentation.components.AmountVisualTransformation
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.FinanceDetailRow
 import com.angel.mony.presentation.components.FinanceTextField
+import com.angel.mony.presentation.components.FormState
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.presentation.components.sanitizeAmountInput
@@ -585,9 +586,19 @@ fun ShoppingListScreen(
     var barcode by remember(data) { mutableStateOf(data.barcode.ifBlank { item?.barcode.orEmpty() }) }
     var notes by remember(data) { mutableStateOf(item?.notes.orEmpty()) }
     var purchased by remember(data) { mutableStateOf(item?.isPurchased ?: data.initialPurchased) }
+    val formState = remember { FormState() }
     AlertDialog(onDismissRequest = dismiss, title = { Text(if (item == null) "Agregar producto" else "Editar producto") }, text = {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.heightIn(max = 520.dp)) {
-            item { FinanceTextField(name, { name = it }, "Nombre", singleLine = true) }
+            item {
+                FinanceTextField(
+                    name,
+                    { name = it; formState.clearError("name") },
+                    "Nombre",
+                    singleLine = true,
+                    isError = formState.hasError("name"),
+                    errorMessage = formState["name"],
+                )
+            }
              item { Row(verticalAlignment = Alignment.CenterVertically) { Text("Cantidad", Modifier.weight(1f)); IconButton({ quantity = (quantity - 1).coerceAtLeast(1) }) { Icon(Icons.Outlined.Remove, "Reducir") }; Text(quantity.toString()); IconButton({ if (quantity < Int.MAX_VALUE) quantity++ }) { Icon(Icons.Outlined.Add, "Aumentar") } } }
             item { MoneyField(estimated, { estimated = it }, "Precio estimado (opcional)") }
             item { MoneyField(actual, { actual = it }, "Precio real (opcional)") }
@@ -605,18 +616,36 @@ fun ShoppingListScreen(
                 item { Text("Código no reconocido. Escribe el nombre o busca en Internet.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
             }
         }
-    }, confirmButton = { TextButton({ save(name, quantity, estimated, actual, barcode, notes, purchased) }, enabled = !saving) { Text("Guardar") } }, dismissButton = { TextButton(dismiss) { Text("Cancelar") } })
+    }, confirmButton = { TextButton({
+        formState.clearAll()
+        if (name.isBlank()) formState.setError("name", "Escribe un nombre")
+        if (!formState.isValid()) return@TextButton
+        save(name, quantity, estimated, actual, barcode, notes, purchased)
+    }, enabled = !saving) { Text("Guardar") } }, dismissButton = { TextButton(dismiss) { Text("Cancelar") } })
 }
 
 @Composable private fun AdjustmentEditorDialog(existing: ShoppingAdjustment?, saving: Boolean, dismiss: () -> Unit, save: (String, Boolean, String) -> Unit) {
     var name by remember(existing?.id) { mutableStateOf(existing?.name.orEmpty()) }
     var positive by remember(existing?.id) { mutableStateOf(existing?.isPositive ?: true) }
     var amount by remember(existing?.id) { mutableStateOf(existing?.amountInCents?.let(::centsInput).orEmpty()) }
+    val formState = remember { FormState() }
     AlertDialog(onDismissRequest = dismiss, title = { Text(if (existing == null) "Agregar ajuste" else "Editar ajuste") }, text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        FinanceTextField(name, { name = it }, "Nombre", singleLine = true)
+        FinanceTextField(
+            name,
+            { name = it; formState.clearError("name") },
+            "Nombre",
+            singleLine = true,
+            isError = formState.hasError("name"),
+            errorMessage = formState["name"],
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { FilterChip(positive, { positive = true }, { Text("Sumar +") }); FilterChip(!positive, { positive = false }, { Text("Restar −") }) }
         MoneyField(amount, { amount = it }, "Monto")
-    } }, confirmButton = { TextButton({ save(name, positive, amount) }, enabled = !saving) { Text("Guardar") } }, dismissButton = { TextButton(dismiss) { Text("Cancelar") } })
+    } }, confirmButton = { TextButton({
+        formState.clearAll()
+        if (name.isBlank()) formState.setError("name", "Escribe un nombre")
+        if (!formState.isValid()) return@TextButton
+        save(name, positive, amount)
+    }, enabled = !saving) { Text("Guardar") } }, dismissButton = { TextButton(dismiss) { Text("Cancelar") } })
 }
 
 @Composable private fun MoneyField(value: String, changed: (String) -> Unit, label: String) = FinanceTextField(

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
@@ -43,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
@@ -71,6 +74,7 @@ fun AddTransactionScreen(
 ) {
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val fieldErrors by viewModel.fieldErrors.collectAsStateWithLifecycle()
     val saving by viewModel.saving.collectAsStateWithLifecycle()
     val editing by viewModel.editingTransaction.collectAsStateWithLifecycle()
     val suggestedCategoryId by viewModel.suggestedCategoryId.collectAsStateWithLifecycle()
@@ -86,6 +90,10 @@ fun AddTransactionScreen(
     var dateSuggestionApplied by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var categoryId by remember { mutableStateOf<Long?>(null) }
+
+    val amountFocusRequester = remember { FocusRequester() }
+    val lazyListState = rememberLazyListState()
+
     LaunchedEffect(editing?.id) {
         editing?.let {
             amount = java.math.BigDecimal.valueOf(it.amountInCents, 2).stripTrailingZeros().toPlainString()
@@ -111,6 +119,20 @@ fun AddTransactionScreen(
         error?.let { message ->
             context.showToast(message)
             viewModel.consumeError()
+        }
+    }
+    LaunchedEffect(fieldErrors) {
+        if (fieldErrors.isNotEmpty()) {
+            val firstErrorField = when {
+                TransactionField.AMOUNT in fieldErrors -> 0
+                TransactionField.CATEGORY in fieldErrors -> 1
+                TransactionField.DATE in fieldErrors -> 3
+                else -> 0
+            }
+            lazyListState.animateScrollToItem(firstErrorField)
+            if (TransactionField.AMOUNT in fieldErrors) {
+                amountFocusRequester.requestFocus()
+            }
         }
     }
     Scaffold(
@@ -146,34 +168,56 @@ fun AddTransactionScreen(
         },
     ) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+            state = lazyListState,
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
             contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             item {
+                val amountError = TransactionField.AMOUNT in fieldErrors
                 FinanceTextField(
                     value = amount,
-                    onValueChange = { amount = sanitizeAmountInput(it) },
+                    onValueChange = {
+                        amount = sanitizeAmountInput(it)
+                        if (amount.isNotBlank() && amountError) {
+                            viewModel.clearFieldError(TransactionField.AMOUNT)
+                        }
+                    },
                     label = "Monto en RD$",
                     placeholder = "0.00",
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(amountFocusRequester),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     visualTransformation = AmountVisualTransformation,
+                    isError = amountError,
+                    errorMessage = fieldErrors[TransactionField.AMOUNT],
                 )
             }
             item {
+                val categoryError = TransactionField.CATEGORY in fieldErrors
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Categoría", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Categoría",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (categoryError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                    )
                     CategorySearchSelect(
                         categories = categories,
                         selectedCategoryId = categoryId,
-                        onCategoryChange = { categoryId = it },
+                        onCategoryChange = {
+                            categoryId = it
+                            if (it != null && categoryError) {
+                                viewModel.clearFieldError(TransactionField.CATEGORY)
+                            }
+                        },
+                        isError = categoryError,
+                        errorMessage = fieldErrors[TransactionField.CATEGORY],
                     )
                 }
             }
             item { Text("Detalles", style = MaterialTheme.typography.titleMedium) }
             item {
+                val dateError = TransactionField.DATE in fieldErrors
                 Box {
                     FinanceTextField(
                         value = date,
@@ -186,9 +230,11 @@ fun AddTransactionScreen(
                             Icon(
                                 imageVector = Icons.Outlined.CalendarMonth,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = if (dateError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                             )
                         },
+                        isError = dateError,
+                        errorMessage = fieldErrors[TransactionField.DATE],
                     )
                     Box(
                         Modifier
@@ -237,6 +283,9 @@ fun AddTransactionScreen(
                             date = LocalDate.ofEpochDay(millis / MILLIS_PER_DAY).toString()
                         }
                         showDatePicker = false
+                        if (TransactionField.DATE in fieldErrors) {
+                            viewModel.clearFieldError(TransactionField.DATE)
+                        }
                     },
                     enabled = datePickerState.selectedDateMillis != null,
                 ) { Text("Aceptar") }
@@ -259,6 +308,8 @@ private fun CategorySearchSelect(
     selectedCategoryId: Long?,
     onCategoryChange: (Long?) -> Unit,
     modifier: Modifier = Modifier,
+    isError: Boolean = false,
+    errorMessage: String? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     // Null while untouched so the field mirrors the current selection;
@@ -307,6 +358,8 @@ private fun CategorySearchSelect(
                 }
             },
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable),
+            isError = isError,
+            errorMessage = errorMessage,
         )
         ExposedDropdownMenu(
             expanded = expanded,

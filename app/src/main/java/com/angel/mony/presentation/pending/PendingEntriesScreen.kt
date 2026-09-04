@@ -3,6 +3,8 @@ package com.angel.mony.presentation.pending
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -62,6 +64,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
@@ -107,6 +110,7 @@ import com.angel.mony.presentation.components.AmountVisualTransformation
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.FinanceDetailRow
 import com.angel.mony.presentation.components.FinanceTextField
+import com.angel.mony.presentation.components.FormState
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.GlobalSettingsButton
 import com.angel.mony.presentation.components.ModuleTitle
@@ -1122,6 +1126,7 @@ private fun PendingEntryDialog(
     var categorySearch by remember(entry, categories) {
         mutableStateOf(categories.firstOrNull { it.id == (entry?.categoryId ?: initialCategoryId) }?.name.orEmpty())
     }
+    val formState = remember { FormState() }
     val availableCategories = remember(categories, type) {
         categories.filter { it.type == type.toTransactionType() && it.isActive }.sortedBy(Category::name)
     }
@@ -1152,18 +1157,30 @@ private fun PendingEntryDialog(
                         PendingTypeChip(PendingType.COLLECTION, type, { type = it }, Modifier.weight(1f))
                     }
                 }
-                item { FinanceTextField(description, { description = it }, "Descripción", singleLine = true) }
+                item {
+                    FinanceTextField(
+                        description,
+                        { description = it; formState.clearError("description") },
+                        "Descripción",
+                        singleLine = true,
+                        isError = formState.hasError("description"),
+                        errorMessage = formState["description"],
+                    )
+                }
                 item {
                     FinanceTextField(
                         amount,
-                        { amount = sanitizeAmountInput(it) },
+                        { amount = sanitizeAmountInput(it); formState.clearError("amount") },
                         "Monto (RD$)",
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         visualTransformation = AmountVisualTransformation,
+                        isError = formState.hasError("amount"),
+                        errorMessage = formState["amount"],
                     )
                 }
                 item {
+                    val categoryError = formState.hasError("category")
                     ExposedDropdownMenuBox(
                         expanded = categoryExpanded,
                         onExpandedChange = { categoryExpanded = it },
@@ -1174,6 +1191,7 @@ private fun PendingEntryDialog(
                                 categorySearch = value
                                 categoryId = null
                                 categoryExpanded = true
+                                formState.clearError("category")
                             },
                             label = { Text("Buscar categoría") },
                             placeholder = { Text("Escribe o selecciona") },
@@ -1204,6 +1222,16 @@ private fun PendingEntryDialog(
                                 .fillMaxWidth(),
                             shape = MaterialTheme.shapes.small,
                             singleLine = true,
+                            isError = categoryError,
+                            supportingText = if (categoryError) {
+                                { Text(formState["category"] ?: "", color = MaterialTheme.colorScheme.error) }
+                            } else null,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = if (categoryError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = if (categoryError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                                errorBorderColor = MaterialTheme.colorScheme.error,
+                                errorLabelColor = MaterialTheme.colorScheme.error,
+                            ),
                         )
                         ExposedDropdownMenu(
                             expanded = categoryExpanded,
@@ -1235,7 +1263,9 @@ private fun PendingEntryDialog(
                         label = "Fecha del pago o cobro",
                         value = date,
                         minimumDate = LocalDate.now(),
-                        onValueChange = { date = it },
+                        onValueChange = { date = it; formState.clearError("date") },
+                        isError = formState.hasError("date"),
+                        errorMessage = formState["date"],
                     )
                 }
                 item {
@@ -1253,7 +1283,15 @@ private fun PendingEntryDialog(
         confirmButton = {
             PrimaryButton(
                 if (isSaving) "Guardando…" else "Guardar",
-                { onSave(type, description, amount, categoryId, comment, date, reminderTime) },
+                onClick = {
+                    formState.clearAll()
+                    if (description.isBlank()) formState.setError("description", "Escribe una descripción")
+                    val cents = MoneyFormatter.parseToCents(amount)
+                    if (cents == null || cents <= 0) formState.setError("amount", "Ingresa un monto válido")
+                    if (categoryId == null) formState.setError("category", "Selecciona una categoría")
+                    if (!formState.isValid()) return@PrimaryButton
+                    onSave(type, description, amount, categoryId, comment, date, reminderTime)
+                },
                 enabled = !isSaving,
             )
         },
@@ -1352,25 +1390,35 @@ private fun PendingDateField(
     value: LocalDate,
     minimumDate: LocalDate? = null,
     onValueChange: (LocalDate) -> Unit,
+    isError: Boolean = false,
+    errorMessage: String? = null,
 ) {
     var showPicker by remember { mutableStateOf(false) }
     val formatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    val borderColor by animateColorAsState(
+        if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+        animationSpec = tween(),
+        label = "dateBorder",
+    )
     Surface(
         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
             .clickable(role = Role.Button) { showPicker = true },
         shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        border = BorderStroke(1.dp, borderColor),
     ) {
         Row(
             Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                Text(label, style = MaterialTheme.typography.labelSmall, color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary)
                 Text(value.format(formatter))
+                if (isError && errorMessage != null) {
+                    Text(errorMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
             }
-            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
         }
     }
     if (showPicker) {

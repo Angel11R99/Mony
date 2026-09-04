@@ -74,6 +74,7 @@ import com.angel.mony.domain.model.ShoppingListStatus
 import com.angel.mony.presentation.components.AmountVisualTransformation
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.FinanceTextField
+import com.angel.mony.presentation.components.FormState
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.GlobalSettingsButton
 import com.angel.mony.presentation.components.ModuleTitle
@@ -522,12 +523,20 @@ private fun DetailedListCard(
 private fun CreateListDialog(isSaving: Boolean, onDismiss: () -> Unit, onCreate: (String, String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var budget by remember { mutableStateOf("") }
+    val formState = remember { FormState() }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Nueva lista") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                FinanceTextField(name, { name = it }, "Nombre", singleLine = true)
+                FinanceTextField(
+                    name,
+                    { name = it; formState.clearError("name") },
+                    "Nombre",
+                    singleLine = true,
+                    isError = formState.hasError("name"),
+                    errorMessage = formState["name"],
+                )
                 FinanceTextField(
                     budget, { budget = sanitizeAmountInput(it) }, "Presupuesto (opcional)",
                     singleLine = true,
@@ -536,7 +545,12 @@ private fun CreateListDialog(isSaving: Boolean, onDismiss: () -> Unit, onCreate:
                 )
             }
         },
-        confirmButton = { TextButton({ onCreate(name, budget) }, enabled = !isSaving) { Text(if (isSaving) "Guardando…" else "Crear") } },
+        confirmButton = { TextButton({
+            formState.clearAll()
+            if (name.isBlank()) formState.setError("name", "Escribe un nombre")
+            if (!formState.isValid()) return@TextButton
+            onCreate(name, budget)
+        }, enabled = !isSaving) { Text(if (isSaving) "Guardando…" else "Crear") } },
         dismissButton = { TextButton(onDismiss, enabled = !isSaving) { Text("Cancelar") } },
     )
 }

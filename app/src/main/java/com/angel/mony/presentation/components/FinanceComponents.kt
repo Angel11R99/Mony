@@ -28,7 +28,10 @@ import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -226,7 +229,15 @@ fun FinanceTextField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingIcon: (@Composable () -> Unit)? = null,
     leadingIcon: (@Composable () -> Unit)? = null,
+    isError: Boolean = false,
+    errorMessage: String? = null,
 ) {
+    val errorColor = MaterialTheme.colorScheme.error
+    val animatedBorderColor by animateColorAsState(
+        targetValue = if (isError) errorColor else Color.Transparent,
+        animationSpec = tween(durationMillis = 200),
+        label = "textFieldBorderColor",
+    )
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -238,11 +249,20 @@ fun FinanceTextField(
         visualTransformation = visualTransformation,
         trailingIcon = trailingIcon,
         leadingIcon = leadingIcon,
+        isError = isError,
+        supportingText = if (isError && errorMessage != null) {
+            { Text(errorMessage, color = errorColor) }
+        } else null,
         modifier = modifier.fillMaxWidth(),
         shape = LocalAppShapes.current.textFieldShape,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            focusedBorderColor = if (isError) errorColor else MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = if (isError) animatedBorderColor else MaterialTheme.colorScheme.outline,
+            errorBorderColor = errorColor,
+            errorLabelColor = errorColor,
+            errorCursorColor = errorColor,
+            errorTextColor = MaterialTheme.colorScheme.onSurface,
+            errorSupportingTextColor = errorColor,
             focusedContainerColor = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             disabledContainerColor = MaterialTheme.colorScheme.surface,
@@ -250,7 +270,7 @@ fun FinanceTextField(
             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
             disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
             cursorColor = MaterialTheme.colorScheme.primary,
-            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            focusedLabelColor = if (isError) errorColor else MaterialTheme.colorScheme.primary,
             unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
             disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),

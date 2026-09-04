@@ -75,6 +75,7 @@ import com.angel.mony.domain.model.SavingsGoalProgress
 import com.angel.mony.presentation.components.AmountVisualTransformation
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.FinanceTextField
+import com.angel.mony.presentation.components.FormState
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.GlobalSettingsButton
 import com.angel.mony.presentation.components.ModuleTitle
@@ -810,26 +811,43 @@ private fun GoalEditorDialog(
                 .orEmpty()
         )
     }
+    val formState = remember { FormState() }
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
         title = { Text(if (existing == null) "Nueva meta" else "Editar meta") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                FinanceTextField(name, { name = it }, "Nombre", singleLine = true)
+                FinanceTextField(
+                    name,
+                    { name = it; formState.clearError("name") },
+                    "Nombre",
+                    singleLine = true,
+                    isError = formState.hasError("name"),
+                    errorMessage = formState["name"],
+                )
                 FinanceTextField(
                     target,
-                    { target = sanitizeAmountInput(it) },
+                    { target = sanitizeAmountInput(it); formState.clearError("target") },
                     "Objetivo (RD$)",
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     visualTransformation = AmountVisualTransformation,
+                    isError = formState.hasError("target"),
+                    errorMessage = formState["target"],
                 )
             }
         },
         confirmButton = {
             PrimaryButton(
                 text = if (isSaving) "Guardando…" else "Guardar",
-                onClick = { onSave(name, target) },
+                onClick = {
+                    formState.clearAll()
+                    if (name.isBlank()) formState.setError("name", "Escribe un nombre")
+                    val cents = MoneyFormatter.parseToCents(target)
+                    if (cents == null || cents <= 0) formState.setError("target", "Ingresa un monto válido")
+                    if (!formState.isValid()) return@PrimaryButton
+                    onSave(name, target)
+                },
                 enabled = !isSaving && name.isNotBlank() && (
                     existing == null ||
                         name.trim() != existing.goal.name ||
@@ -852,6 +870,7 @@ private fun ContributeDialog(
 ) {
     var amount by remember(goal) { mutableStateOf("") }
     var description by remember(goal) { mutableStateOf("") }
+    val formState = remember { FormState() }
     val cents = MoneyFormatter.parseToCents(amount)
     val remaining = (goal.goal.targetAmountInCents - goal.savedInCents).coerceAtLeast(0)
     val showBreakdown = cents != null && cents > 0 && remaining > 0 && cents > remaining
@@ -867,11 +886,13 @@ private fun ContributeDialog(
                 )
                 FinanceTextField(
                     amount,
-                    { amount = sanitizeAmountInput(it) },
+                    { amount = sanitizeAmountInput(it); formState.clearError("amount") },
                     "Monto (RD$)",
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     visualTransformation = AmountVisualTransformation,
+                    isError = formState.hasError("amount"),
+                    errorMessage = formState["amount"],
                 )
                 if (showBreakdown) {
                     FinanceCard(Modifier.fillMaxWidth()) {
@@ -899,7 +920,13 @@ private fun ContributeDialog(
         confirmButton = {
             PrimaryButton(
                 text = if (isSaving) "Registrando…" else "Aportar",
-                onClick = { onConfirm(amount, description) },
+                onClick = {
+                    formState.clearAll()
+                    val c = MoneyFormatter.parseToCents(amount)
+                    if (c == null || c <= 0) formState.setError("amount", "Ingresa un monto válido")
+                    if (!formState.isValid()) return@PrimaryButton
+                    onConfirm(amount, description)
+                },
                 enabled = !isSaving && amount.isNotBlank(),
             )
         },
