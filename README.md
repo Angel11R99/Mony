@@ -32,9 +32,9 @@ Descarga **Mony v1.0.1** desde su [release en GitHub](https://github.com/Angel11
 
 Room es la fuente principal de los datos financieros y las funciones esenciales no requieren una cuenta, un servidor ni conexión a Internet. La consulta de productos por código de barras puede usar un servicio externo de forma opcional. Consulta la [Política de privacidad de Mony](PRIVACY_POLICY.md) para conocer los detalles.
 
-## Arquitectura
+## Arquitectura y tecnologías
 
-La aplicación usa una arquitectura por capas similar a Clean Architecture con MVVM:
+Arquitectura por capas similar a Clean Architecture con MVVM:
 
 - **domain**: modelos y reglas de negocio en Kotlin puro.
 - **data**: base de datos Room, mapeadores e implementaciones de repositorios.
@@ -45,54 +45,26 @@ La aplicación usa una arquitectura por capas similar a Clean Architecture con M
 - **di**: inyección de dependencias con Hilt.
 - **core**: utilidades compartidas, como el formato monetario.
 
-## Tecnologías
-
-- Kotlin y coroutines con Flow.
-- Jetpack Compose y Material 3.
-- Room.
-- Hilt.
-- Navigation Compose.
-- WorkManager.
-- Glance App Widgets.
-- ML Kit y Google Code Scanner.
-
-## Requisitos de desarrollo
-
-- Android Studio compatible con Android Gradle Plugin 9.
-- JDK 17 o una versión compatible configurada por Android Studio.
-- Android SDK 36; la aplicación admite dispositivos desde Android 7.0 (`minSdk 24`).
+Stack: Kotlin, coroutines/Flow, Jetpack Compose + Material 3, Room, Hilt, Navigation Compose, WorkManager, Glance, ML Kit y Google Code Scanner.
 
 ## Compilación
 
-En Windows:
-
 ```powershell
-.\gradlew.bat assembleDebug
+.\gradlew.bat assembleDebug    # Windows
+./gradlew assembleDebug        # Unix
 ```
 
-En sistemas Unix:
-
-```bash
-./gradlew assembleDebug
-```
-
-El APK se genera en `app/build/outputs/apk/debug/` con un nombre como `Mony-v1.0.0-debug.apk`.
+Lee [CONTRIBUTING.md](CONTRIBUTING.md) para instrucciones detalladas de desarrollo y pruebas.
 
 ## Preparar la siguiente versión
 
-La versión se administra en `version.properties`. Para incrementar automáticamente el parche (`1.0.0` → `1.0.1`), aumentar `versionCode`, actualizar este README y compilar el APK release, ejecuta:
+La versión se administra en `version.properties`. Para incrementar automáticamente el parche, aumentar `versionCode` y compilar el APK release:
 
 ```powershell
 .\gradlew.bat buildNextRelease
 ```
 
 El APK release se genera en `app/build/outputs/apk/release/`. Antes de publicarlo debes configurar una firma de producción; no publiques APK sin firmar ni claves privadas en el repositorio.
-
-Para cambiar manualmente una versión mayor o menor, edita `VERSION_NAME` y aumenta `VERSION_CODE` en `version.properties`, y después ejecuta:
-
-```powershell
-.\gradlew.bat syncVersionDocumentation assembleRelease
-```
 
 ## Contribuciones
 
