@@ -1,7 +1,7 @@
 # Mony
 
 <!-- APP_VERSION_START -->
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-v1.0.0-6750A4)](https://github.com/Angel11R99/Mony/releases/tag/v1.0.0)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-v1.0.1-6750A4)](https://github.com/Angel11R99/Mony/releases/tag/v1.0.1)
 [![Descargar](https://img.shields.io/badge/descargar-%C3%BAltima_versi%C3%B3n-6750A4)](https://github.com/Angel11R99/Mony/releases/latest)
 <!-- APP_VERSION_END -->
 
@@ -10,7 +10,7 @@ Mony es una aplicación Android de finanzas personales diseñada para registrar 
 ## Descargar
 
 <!-- APP_DOWNLOAD_START -->
-Descarga **Mony v1.0.0** desde su [release en GitHub](https://github.com/Angel11R99/Mony/releases/tag/v1.0.0) o consulta [todas las versiones disponibles](https://github.com/Angel11R99/Mony/releases).
+Descarga **Mony v1.0.1** desde su [release en GitHub](https://github.com/Angel11R99/Mony/releases/tag/v1.0.1) o consulta [todas las versiones disponibles](https://github.com/Angel11R99/Mony/releases).
 <!-- APP_DOWNLOAD_END -->
 
 ## Funciones principales
