@@ -83,12 +83,14 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Schedule
 import com.angel.mony.presentation.components.FinanceCard
+import com.angel.mony.presentation.components.BudgetAmountDialog
 import com.angel.mony.presentation.categories.CategoriesTab
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.presentation.components.ModuleTitle
 import com.angel.mony.core.showToast
+import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.BudgetPeriod
 import com.angel.mony.domain.model.defaultCycleSchedules
@@ -136,10 +138,13 @@ fun SettingsScreen(
 ) {
     var editingColor by remember { mutableStateOf<ColorRole?>(null) }
     var showingTimePicker by remember { mutableStateOf(false) }
+    var editingBudget by remember { mutableStateOf(false) }
+    var newBudgetPeriod by rememberSaveable { mutableStateOf(BudgetPeriod.FORTNIGHTLY) }
     var selectedTab by rememberSaveable { mutableStateOf(SettingsTab.APPEARANCE) }
     val budget by viewModel.budget.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val isSavingCycles by viewModel.isSavingCycles.collectAsStateWithLifecycle()
+    val isSavingBudget by viewModel.isSavingBudget.collectAsStateWithLifecycle()
     val alertsEnabled by viewModel.alertsEnabled.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -211,14 +216,45 @@ fun SettingsScreen(
                     onPickCloseTime = { showingTimePicker = true },
                     currentSchedules = budget?.cycleSchedules
                         ?: defaultCycleSchedules(budget?.period ?: BudgetPeriod.FORTNIGHTLY),
-                    isSaving = isSavingCycles,
+                    currentPeriod = budget?.period ?: newBudgetPeriod,
+                    budgetAmountInCents = budget?.amountInCents,
+                    isSavingCycles = isSavingCycles,
+                    isSavingBudget = isSavingBudget,
                     alertsEnabled = alertsEnabled,
                     onAlertsEnabledChange = viewModel::setAlertsEnabled,
                     onSchedulesSave = viewModel::updateCycleSchedules,
+                    onPeriodChange = { period ->
+                        if (budget == null) {
+                            newBudgetPeriod = period
+                            editingBudget = true
+                        } else {
+                            viewModel.updateBudgetPeriod(period)
+                        }
+                    },
+                    onEditBudget = { editingBudget = true },
                 )
                 SettingsTab.CATEGORIES -> CategoriesTab()
             }
         }
+    }
+
+    if (editingBudget) {
+        BudgetAmountDialog(
+            currentAmount = budget?.amountInCents,
+            isSaving = isSavingBudget,
+            description = "Configura el monto que quieres administrar en cada ciclo. El tipo y los días se definen en la sección de ciclo financiero.",
+            onDismiss = {
+                editingBudget = false
+                if (budget == null) newBudgetPeriod = BudgetPeriod.FORTNIGHTLY
+            },
+            onSave = { amount ->
+                viewModel.saveBudget(
+                    amount = amount,
+                    period = budget?.period ?: newBudgetPeriod,
+                    onSaved = { editingBudget = false },
+                )
+            },
+        )
     }
 
     editingColor?.let { role ->
@@ -809,6 +845,7 @@ private fun FontFamilySelector(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CyclesTab(
     automaticCycleClose: Boolean,
@@ -816,23 +853,58 @@ private fun CyclesTab(
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onPickCloseTime: () -> Unit,
     currentSchedules: List<BudgetCycleSchedule>,
-    isSaving: Boolean,
+    currentPeriod: BudgetPeriod,
+    budgetAmountInCents: Long?,
+    isSavingCycles: Boolean,
+    isSavingBudget: Boolean,
     alertsEnabled: Boolean,
     onAlertsEnabledChange: (Boolean) -> Unit,
     onSchedulesSave: (List<BudgetCycleSchedule>) -> Unit,
+    onPeriodChange: (BudgetPeriod) -> Unit,
+    onEditBudget: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        item { SectionTitle("CICLOS", "Controla cuándo y a qué hora se cierra el periodo del presupuesto.") }
+        item { SectionTitle("CICLO FINANCIERO", "Define la duración, los días y el cierre de cada período.") }
         item {
             FinanceCard(Modifier.fillMaxWidth()) {
                 Column(
                     Modifier.fillMaxWidth().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    Text("TIPO DE CICLO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                    Text(
+                        "Esta selección se aplica en toda la aplicación. Al cambiarla, los días del ciclo vuelven a sus valores predeterminados.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        BudgetPeriod.entries.forEach { period ->
+                            FilterChip(
+                                selected = currentPeriod == period,
+                                onClick = { onPeriodChange(period) },
+                                enabled = !isSavingBudget,
+                                label = { Text(if (period == BudgetPeriod.MONTHLY) "Mensual" else "Quincenal") },
+                                leadingIcon = if (currentPeriod == period) {
+                                    { Icon(Icons.Outlined.Check, null, Modifier.size(17.dp)) }
+                                } else null,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
+                                shape = MaterialTheme.shapes.small,
+                            )
+                        }
+                    }
+                    HorizontalDivider()
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -875,39 +947,72 @@ private fun CyclesTab(
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
-                    HorizontalDivider()
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Outlined.NotificationsActive,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Alertas de presupuesto", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "Te avisa al alcanzar el 75% del presupuesto y cuando lo superes en el ciclo actual.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = alertsEnabled,
-                            onCheckedChange = onAlertsEnabledChange,
-                        )
-                    }
                 }
             }
         }
         item {
             CycleSchedulesCard(
                 currentSchedules = currentSchedules,
-                isSaving = isSaving,
+                isSaving = isSavingCycles,
                 onSave = onSchedulesSave,
             )
+        }
+        item { SectionTitle("PRESUPUESTO", "Configura cuánto quieres administrar durante cada período.") }
+        item {
+            BudgetSettingsCard(
+                amountInCents = budgetAmountInCents,
+                isSaving = isSavingBudget,
+                alertsEnabled = alertsEnabled,
+                onAlertsEnabledChange = onAlertsEnabledChange,
+                onEdit = onEditBudget,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BudgetSettingsCard(
+    amountInCents: Long?,
+    isSaving: Boolean,
+    alertsEnabled: Boolean,
+    onAlertsEnabledChange: (Boolean) -> Unit,
+    onEdit: () -> Unit,
+) {
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("MONTO DEL PRESUPUESTO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Text(
+                amountInCents?.let(MoneyFormatter::format) ?: "Sin configurar",
+                style = MaterialTheme.typography.headlineMedium,
+                color = if (amountInCents == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+            )
+            PrimaryButton(
+                text = if (amountInCents == null) "Configurar presupuesto" else "Editar presupuesto",
+                onClick = onEdit,
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            HorizontalDivider()
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Outlined.NotificationsActive,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Alertas de presupuesto", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Te avisa al alcanzar el 75% y cuando superes el presupuesto del ciclo actual.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = alertsEnabled, onCheckedChange = onAlertsEnabledChange)
+            }
         }
     }
 }

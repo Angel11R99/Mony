@@ -16,12 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PushPin
@@ -32,8 +28,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,15 +42,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.MoneyFormatter
-import com.angel.mony.core.showToast
 import com.angel.mony.domain.model.BudgetPeriod
 import com.angel.mony.domain.model.BudgetPeriodView
 import com.angel.mony.domain.model.BudgetCycle
@@ -65,8 +56,7 @@ import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.canManuallyCloseBudgetCycle
 import com.angel.mony.domain.model.shouldAutomaticallyCloseBudgetCycle
 import com.angel.mony.presentation.components.FinanceCard
-import com.angel.mony.presentation.components.AmountVisualTransformation
-import com.angel.mony.presentation.components.FinanceTextField
+import com.angel.mony.presentation.components.BudgetAmountDialog
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.presentation.components.GlobalSettingsButton
@@ -77,12 +67,10 @@ import com.angel.mony.presentation.components.LoadingContent
 import com.angel.mony.presentation.components.SkeletonBox
 import com.angel.mony.presentation.components.SkeletonCard
 import com.angel.mony.presentation.components.SkeletonChip
-import com.angel.mony.presentation.components.SkeletonCircle
 import com.angel.mony.presentation.components.SkeletonHost
 import com.angel.mony.presentation.components.SkeletonLine
 import com.angel.mony.presentation.components.SkeletonTransactionRow
 import com.angel.mony.presentation.components.SkeletonTone
-import com.angel.mony.presentation.components.sanitizeAmountInput
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -100,6 +88,7 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val closingCycle by viewModel.closingCycle.collectAsStateWithLifecycle()
+    val isSavingBudget by viewModel.isSavingBudget.collectAsStateWithLifecycle()
     val today = LocalDate.now()
     val manualCloseAvailable = canManuallyCloseBudgetCycle(state.budget, today)
     var editingBudget by remember { mutableStateOf(false) }
@@ -159,18 +148,14 @@ fun HomeScreen(
             item {
                 FinanceCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            SectionLabel(
-                                when {
-                                    state.budget?.period == BudgetPeriod.MONTHLY && state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMO MES"
-                                    state.budget?.period == BudgetPeriod.MONTHLY -> "MES ACTUAL"
-                                    state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMA QUINCENA"
-                                    else -> "QUINCENA ACTUAL"
-                                },
-                            )
-                            Spacer(Modifier.weight(1f))
-                            IconButton(onClick = { editingBudget = true }) { Icon(Icons.Outlined.Edit, "Editar presupuesto") }
-                        }
+                        SectionLabel(
+                            when {
+                                state.budget?.period == BudgetPeriod.MONTHLY && state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMO MES"
+                                state.budget?.period == BudgetPeriod.MONTHLY -> "MES ACTUAL"
+                                state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMA QUINCENA"
+                                else -> "QUINCENA ACTUAL"
+                            },
+                        )
                         PeriodViewSelector(
                             currentPeriod = state.currentPeriod,
                             nextPeriod = state.nextPeriod,
@@ -262,12 +247,13 @@ fun HomeScreen(
     }
 
     if (editingBudget) {
-        BudgetDialog(
+        BudgetAmountDialog(
             currentAmount = state.budget?.amountInCents,
-            currentPeriod = state.budget?.period ?: BudgetPeriod.FORTNIGHTLY,
+            isSaving = isSavingBudget,
+            description = "Define cuánto quieres administrar durante este período. El tipo y los días del ciclo se configuran en Ajustes.",
             onDismiss = { editingBudget = false },
-            onSave = { amount, period ->
-                viewModel.saveBudget(amount, period) { editingBudget = false }
+            onSave = { amount ->
+                viewModel.saveBudget(amount) { editingBudget = false }
             },
         )
     }
@@ -315,11 +301,7 @@ private fun HomeSkeleton() {
                 contentPadding = PaddingValues(18.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    SkeletonLine(Modifier.width(120.dp), height = 11.dp)
-                    Spacer(Modifier.weight(1f))
-                    SkeletonCircle(40.dp)
-                }
+                SkeletonLine(Modifier.width(120.dp), height = 11.dp)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SkeletonBox(Modifier.weight(1f).height(56.dp), MaterialTheme.shapes.small)
                     SkeletonBox(Modifier.weight(1f).height(56.dp), MaterialTheme.shapes.small)
@@ -654,70 +636,4 @@ private fun HistoryAmount(label: String, amount: Long, isExpense: Boolean = fals
             color = if (isExpense) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
         )
     }
-}
-
-@Composable
-private fun BudgetDialog(
-    currentAmount: Long?,
-    currentPeriod: BudgetPeriod,
-    onDismiss: () -> Unit,
-    onSave: (String, BudgetPeriod) -> Unit,
-) {
-    val context = LocalContext.current
-    var amount by remember(currentAmount) {
-        mutableStateOf(currentAmount?.let { java.math.BigDecimal.valueOf(it, 2).stripTrailingZeros().toPlainString() }.orEmpty())
-    }
-    var period by remember(currentPeriod) { mutableStateOf(currentPeriod) }
-    val valid = MoneyFormatter.parseToCents(amount)?.let { it > 0 } == true
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        titleContentColor = MaterialTheme.colorScheme.onSurface,
-        textContentColor = MaterialTheme.colorScheme.onSurface,
-        title = { Text("Tu presupuesto", style = MaterialTheme.typography.headlineMedium) },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    "Indica cuánto ganas y el periodo que quieres controlar. Los días y la hora de cierre se configuran en Ajustes.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                FinanceTextField(
-                    value = amount,
-                    onValueChange = { amount = sanitizeAmountInput(it) },
-                    label = "Monto (RD$)",
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    visualTransformation = AmountVisualTransformation,
-                )
-                BudgetPeriod.entries.forEach { option ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
-                            selected = period == option,
-                            onClick = { period = option },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = MaterialTheme.colorScheme.primary,
-                                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                        )
-                        Text(if (option == BudgetPeriod.MONTHLY) "Mensual" else "Quincenal", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            PrimaryButton(
-                text = "Guardar",
-                onClick = {
-                    if (valid) onSave(amount, period)
-                    else context.showToast("Introduce un monto válido")
-                },
-            )
-        },
-        dismissButton = { SecondaryButton("Cancelar", onDismiss) },
-    )
 }

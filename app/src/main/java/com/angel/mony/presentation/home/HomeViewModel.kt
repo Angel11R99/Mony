@@ -14,12 +14,12 @@ import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.activeBudgetPeriod
 import com.angel.mony.domain.model.belongsToActiveBudgetCycle
 import com.angel.mony.domain.model.budgetPeriodForView
-import com.angel.mony.domain.model.defaultCycleSchedules
 import com.angel.mony.domain.model.nextBudgetPeriod
 import com.angel.mony.domain.model.budgetPeriodToClose
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.BudgetRepository
 import com.angel.mony.domain.repository.TransactionRepository
+import com.angel.mony.domain.usecase.SaveBudget
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.CyclePreferences
 import com.angel.mony.core.showToast
@@ -66,9 +66,11 @@ class HomeViewModel @Inject constructor(
     private val transactions: TransactionRepository,
     private val categories: CategoryRepository,
     private val budgetRepository: BudgetRepository,
+    private val saveBudgetUseCase: SaveBudget,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val closingCycle = MutableStateFlow(false)
+    val isSavingBudget = MutableStateFlow(false)
     private val budgetIncomeMutex = Mutex()
     private val cyclePreferences = CyclePreferences(context)
     private val selectedPeriodView = MutableStateFlow(cyclePreferences.pinnedBudgetView.value)
@@ -156,38 +158,25 @@ class HomeViewModel @Inject constructor(
 
     fun saveBudget(
         amount: String,
-        period: BudgetPeriod,
         onSaved: () -> Unit,
     ) {
         val amountInCents = MoneyFormatter.parseToCents(amount)
-        if (amountInCents == null || amountInCents <= 0) return
+        if (amountInCents == null || amountInCents <= 0 || isSavingBudget.value) return
+        isSavingBudget.value = true
         viewModelScope.launch {
-            budgetIncomeMutex.withLock {
-                val existing = budgetRepository.observe().first()
-                val categoryId = incomeCategoryId() ?: return@withLock
-                val now = Instant.now()
-                val incomeTransactionId = upsertBudgetIncome(
+            runCatching {
+                saveBudgetUseCase(
                     amountInCents = amountInCents,
-                    period = period,
-                    categoryId = categoryId,
-                    existingId = existing?.incomeTransactionId,
-                    date = LocalDate.now(),
-                    now = now,
+                    period = state.value.budget?.period ?: BudgetPeriod.FORTNIGHTLY,
                 )
-                budgetRepository.save(
-                    BudgetConfig(
-                        amountInCents = amountInCents,
-                        period = period,
-                        cycleStart = existing?.cycleStart,
-                        cycleStartedAt = existing?.cycleStartedAt,
-                        incomeTransactionId = incomeTransactionId,
-                        cycleSchedules = existing?.cycleSchedules ?: defaultCycleSchedules(period),
-                    )
-                )
+            }.onSuccess {
+                context.showToast("Presupuesto guardado correctamente")
+                onSaved()
+                runCatching { updateAllFinanceWidgets(context) }
+            }.onFailure {
+                context.showToast(it.message ?: "No se pudo guardar el presupuesto")
             }
-            context.showToast("Presupuesto guardado correctamente")
-            onSaved()
-            viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
+            isSavingBudget.value = false
         }
     }
 
