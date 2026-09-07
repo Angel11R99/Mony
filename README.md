@@ -30,7 +30,7 @@ Descarga **Mony v1.0.1** desde su [release en GitHub](https://github.com/Angel11
 
 ## Privacidad y funcionamiento sin conexión
 
-Room es la fuente principal de los datos financieros y las funciones esenciales no requieren una cuenta, un servidor ni conexión a Internet. La consulta de productos por código de barras puede usar un servicio externo de forma opcional. Consulta la [Política de privacidad de Mony](PRIVACY_POLICY.md) para conocer los detalles.
+Room es la fuente principal de los datos financieros y las funciones esenciales no requieren una cuenta, un servidor ni conexión a Internet. La consulta de productos por código de barras puede usar un servicio externo de forma opcional. Consulta la [Política de privacidad de Mony](docs/PRIVACY_POLICY.md) para conocer los detalles.
 
 ## Arquitectura y tecnologías
 
@@ -54,7 +54,7 @@ Stack: Kotlin, coroutines/Flow, Jetpack Compose + Material 3, Room, Hilt, Naviga
 ./gradlew assembleDebug        # Unix
 ```
 
-Lee [CONTRIBUTING.md](CONTRIBUTING.md) para instrucciones detalladas de desarrollo y pruebas.
+Lee [CONTRIBUTING.md](.github/CONTRIBUTING.md) para instrucciones detalladas de desarrollo y pruebas.
 
 ## Preparar la siguiente versión
 
@@ -68,7 +68,7 @@ El APK release se genera en `app/build/outputs/apk/release/`. Antes de publicarl
 
 ## Contribuciones
 
-Los reportes de errores, mejoras y contribuciones de código son bienvenidos y serán revisados por el propietario del proyecto. Lee [CONTRIBUTING.md](CONTRIBUTING.md) antes de abrir un issue o pull request.
+Los reportes de errores, mejoras y contribuciones de código son bienvenidos y serán revisados por el propietario del proyecto. Lee [CONTRIBUTING.md](.github/CONTRIBUTING.md) antes de abrir un issue o pull request.
 
 ## Licencia
 

@@ -2,7 +2,7 @@
 
 Las contribuciones a Mony son bienvenidas. Puedes proponer correcciones, mejoras y nuevas funciones mediante el repositorio oficial.
 
-Todo cambio pasa por revisión del titular del proyecto. Al participar debes respetar la [licencia de Mony](LICENSE.md). Puedes crear un fork y modificar el código para preparar tu contribución, pero no redistribuir Mony, publicar versiones derivadas ni presentar el proyecto como propio.
+Todo cambio pasa por revisión del titular del proyecto. Al participar debes respetar la [licencia de Mony](../LICENSE.md). Puedes crear un fork y modificar el código para preparar tu contribución, pero no redistribuir Mony, publicar versiones derivadas ni presentar el proyecto como propio.
 
 ## Formas de contribuir
 
@@ -95,4 +95,4 @@ Incluye: versión de Mony y de Android, dispositivo o emulador utilizado, pasos 
 
 ## Derechos sobre las contribuciones
 
-Al enviar código, documentación o recursos confirmas que son de tu autoría o que tienes permiso para aportarlos. También aceptas las condiciones de contribución indicadas en [LICENSE.md](LICENSE.md), que permiten integrar y distribuir tu aporte como parte de Mony.
+Al enviar código, documentación o recursos confirmas que son de tu autoría o que tienes permiso para aportarlos. También aceptas las condiciones de contribución indicadas en [LICENSE.md](../LICENSE.md), que permiten integrar y distribuir tu aporte como parte de Mony.
