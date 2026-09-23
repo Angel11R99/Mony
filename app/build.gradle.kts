@@ -13,10 +13,21 @@ val appVersionProperties = Properties().apply {
 val appVersionCode = appVersionProperties.getProperty("VERSION_CODE").toInt()
 val appVersionName = appVersionProperties.getProperty("VERSION_NAME")
 
+val releaseStoreFile = System.getenv("RELEASE_STORE_FILE")
+
 android {
     namespace = "com.angel.mony"
     compileSdk {
         version = release(36)
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = releaseStoreFile?.let { file(it) }
+            storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+            keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+            keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+        }
     }
 
     defaultConfig {
@@ -36,6 +47,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (releaseStoreFile != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {
