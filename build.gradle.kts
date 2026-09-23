@@ -54,14 +54,22 @@ tasks.register("syncVersionDocumentation") {
 
 val bumpPatchVersion = tasks.register("bumpPatchVersion") {
     group = "versioning"
-    description = "Incrementa VERSION_CODE y la revisión semántica de VERSION_NAME."
+    description = "Incrementa VERSION_CODE y la versión semántica (patch, minor o major) de VERSION_NAME."
     doLast {
+        val bump = project.findProperty("versionBump")?.toString()?.lowercase() ?: "patch"
+        check(bump in setOf("patch", "minor", "major")) {
+            "versionBump debe ser patch, minor o major. Valor recibido: $bump"
+        }
         val (versionCode, versionName) = readAppVersion()
         val parts = versionName.split('.').map(String::toInt)
         check(parts.size == 3) {
             "VERSION_NAME debe usar el formato MAJOR.MINOR.PATCH, por ejemplo 1.0.0."
         }
-        val nextVersionName = "${parts[0]}.${parts[1]}.${parts[2] + 1}"
+        val nextVersionName = when (bump) {
+            "major" -> "${parts[0] + 1}.0.0"
+            "minor" -> "${parts[0]}.${parts[1] + 1}.0"
+            else -> "${parts[0]}.${parts[1]}.${parts[2] + 1}"
+        }
         versionFile.writeText(
             "VERSION_CODE=${versionCode + 1}\nVERSION_NAME=$nextVersionName\n"
         )
