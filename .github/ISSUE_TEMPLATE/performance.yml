@@ -5,12 +5,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        Usa esta plantilla cuando Mony tarde en abrir, se congele, desplace mal la lista de movimientos, o cuando los widgets tarden o consuman mucha batería. Antes de reportar, revisa los issues abiertos y cerrados.
+        Antes de reportar, revisa los issues abiertos y cerrados. Marca opciones y agrega texto solo si quieres.
 
   - type: checkboxes
     id: duplicate_check
     attributes:
-      label: Verificación de duplicados
+      label: Verificación
       options:
         - label: Busqué entre los issues abiertos y cerrados y no encontré un reporte equivalente.
           required: true
@@ -23,50 +23,67 @@ body:
         - Al abrir la app
         - Al registrar un movimiento
         - Al moverse entre secciones
-        - Al revisar el historial
+        - En el historial
         - En estadísticas
         - En widgets
         - En general
     validations:
       required: true
 
-  - type: textarea
-    id: what_happens
+  - type: checkboxes
+    id: symptoms
     attributes:
-      label: ¿Qué comportamiento notas?
-      description: Describe qué se siente lento: la app se congela, tarda en cargar, la lista se mueve mal, etc.
+      label: ¿Qué notas? (marca todo lo que aplica)
+      options:
+        - Tarda en abrir o cargar
+        - Se congela
+        - La lista se mueve mal
+        - Los widgets tardan en actualizar
+        - Consume mucha batería
+        - Se calienta
+        - Otra cosa
+
+  - type: dropdown
+    id: volume
+    attributes:
+      label: ¿Cuántos movimientos tienes aproximadamente?
+      options:
+        - Menos de 500
+        - Entre 500 y 2.000
+        - Entre 2.000 y 5.000
+        - Más de 5.000
+        - No lo sé
     validations:
       required: true
 
-  - type: textarea
-    id: scale
+  - type: checkboxes
+    id: frequency
     attributes:
-      label: Volumen de datos
-      description: Indica aproximadamente cuántos movimientos registrados tienes y hace cuánto empezaste a usar la app. Esto ayuda a reproducir el problema.
-      placeholder: |
-        Ejemplo: "Alrededor de 1.500 movimientos en 8 meses, una entrada fija y una pendiente."
-
-  - type: textarea
-    id: steps
-    attributes:
-      label: Pasos para reproducirlo
-      description: Describe la secuencia exacta con la que aparece el problema.
-      placeholder: |
-        1. Abrir Mony...
-        2. Ir a historial...
-        3. Desplazarse...
-    validations:
-      required: false
+      label: ¿Cuándo ocurre?
+      options:
+        - Siempre
+        - A veces
+        - Solo una vez
 
   - type: input
     id: device
     attributes:
-      label: Dispositivo
-      description: Modelo del dispositivo, versión de Android y de Mony, si lo conoces.
+      label: Dispositivo (si lo conoces, opcional)
       placeholder: "Ejemplo: Moto G54, Android 13, Mony 1.2.3"
 
   - type: textarea
-    id: evidence
+    id: details
     attributes:
-      label: Evidencia adicional
-      description: Agrega grabaciones de pantalla si ayudan. No incluyas datos financieros, respaldos, credenciales ni información personal.
+      label: Detalle (opcional)
+      description: Pasos exactos o cualquier contexto que ayude a reproducirlo.
+      placeholder: |
+        1. Abrir Mony...
+        2. Ir a historial...
+        3. ...
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        Puedes adjuntar grabaciones de pantalla. No incluyas datos financieros, respaldos, credenciales ni información personal.

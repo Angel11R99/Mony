@@ -5,51 +5,80 @@ body:
   - type: markdown
     attributes:
       value: |
-        Antes de reportar, busca entre los issues abiertos y cerrados. Si el problema ya existe, agrega la información útil en ese issue en lugar de crear uno nuevo.
+        Antes de reportar, revisa los issues abiertos y cerrados. No necesitas escribir demasido: marca opciones y agrega texto solo si quieres.
 
   - type: checkboxes
     id: duplicate_check
     attributes:
-      label: Verificación de duplicados
+      label: Verificación
       options:
-        - label: Busqué entre los issues abiertos y cerrados y no encontré este mismo problema.
+        - label: Revisé los issues abiertos y cerrados y no encontré este problema.
           required: true
 
-  - type: textarea
-    id: problem
+  - type: dropdown
+    id: kind
     attributes:
-      label: ¿Qué ocurrió?
-      description: Describe brevemente el problema y qué estabas intentando hacer.
+      label: Tipo de problema
+      options:
+        - La app se cierra o no responde
+        - Una cifra no cuadra
+        - No puedo registrar un movimiento
+        - Algo no se muestra (movimiento, sección)
+        - Problema visual (texto, colores, tema)
+        - Widget con error
+        - Otro
     validations:
       required: true
+
+  - type: checkboxes
+    id: symptoms
+    attributes:
+      label: ¿Qué notas? (marca todo lo que aplica)
+      options:
+        - La app se cerró
+        - Se queda cargando
+        - No puedo guardar algo
+        - Un monto o total sale mal
+        - Un texto se ve cortado o feo
+        - Algo desapareció o se duplicó
+        - Otra cosa
+
+  - type: checkboxes
+    id: frequency
+    attributes:
+      label: ¿Cuándo ocurre?
+      options:
+        - Siempre
+        - A veces
+        - Solo una vez
+
+  - type: input
+    id: one_liner
+    attributes:
+      label: ¿Qué estabas haciendo? (en una línea, opcional)
+      placeholder: "Ejemplo: registrar un gasto de transporte"
+      description: Ayuda mucho, pero es opcional.
 
   - type: textarea
     id: steps
     attributes:
-      label: Pasos para reproducirlo
-      description: Describe los pasos exactos y mínimos que hacen aparecer el problema.
+      label: Pasos (opcional)
+      description: Si los recuerdas, anota rápido cómo llegaste al problema.
       placeholder: |
         1. Abrir...
         2. Pulsar...
-        3. Observar...
+        3. ...
     validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: Resultado esperado
-      description: Explica qué debería ocurrir.
+      required: false
 
   - type: input
     id: environment
     attributes:
-      label: Entorno
-      description: Si lo conoces, indica la versión de Mony, Android y el dispositivo utilizado.
+      label: Entorno (si lo conoces)
+      description: Opcional.
       placeholder: "Ejemplo: Mony 1.2.3, Android 15, Pixel 8"
 
-  - type: textarea
-    id: evidence
+  - type: markdown
     attributes:
-      label: Evidencia adicional
-      description: Agrega capturas, grabaciones o mensajes relevantes. No incluyas datos financieros, respaldos, credenciales ni información personal.
+      value: |
+        Puedes adjuntar capturas o grabaciones al issue. No incluyas datos financieros, respaldos, credenciales ni información personal.

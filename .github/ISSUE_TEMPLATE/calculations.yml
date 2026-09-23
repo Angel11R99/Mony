@@ -5,12 +5,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        Usa esta plantilla cuando una cifra no cuadre: presupuesto del ciclo, lo que queda disponible, estadísticas, límites por categoría, ahorros o historial. Es importante diferenciar el dato esperado del dato mostrado. Antes de reportar, revisa los issues abiertos y cerrados.
+        Antes de reportar, revisa los issues abiertos y cerrados. Marca la zona y las cifras: no hace falta describir todo.
 
   - type: checkboxes
     id: duplicate_check
     attributes:
-      label: Verificación de duplicados
+      label: Verificación
       options:
         - label: Busqué entre los issues abiertos y cerrados y no encontré un reporte equivalente.
           required: true
@@ -32,43 +32,57 @@ body:
     validations:
       required: true
 
-  - type: textarea
+  - type: checkboxes
+    id: symptoms
+    attributes:
+      label: ¿Qué sale mal? (marca todo lo que aplica)
+      options:
+        - Disposible / restante mal calculado
+        - Total de gastos mal
+        - Total de ingresos mal
+        - Porcentajes mal
+        - Límite de categoría mal
+        - Promedios (diario/mensual) mal
+        - Fechas mal (ciclo, inicios)
+        - Otra cifra
+
+  - type: input
     id: expected
     attributes:
-      label: ¿Qué cifra esperabas?
-      description: Explica el cálculo que esperabas ver y sobre qué datos se basa (fechas, montos, categorías en cuestión).
-    validations:
-      required: true
+      label: Cifra esperada (opcional)
+      placeholder: "Ejemplo: RD$ 1.500,00"
 
-  - type: textarea
+  - type: input
     id: actual
     attributes:
-      label: ¿Qué cifra muestra Mony?
-      description: Indica el número o resultado diferente que muestra la app.
-    validations:
-      required: true
+      label: Cifra mostrada (opcional)
+      placeholder: "Ejemplo: RD$ 1.650,00"
 
   - type: textarea
-    id: steps
+    id: context
     attributes:
-      label: Pasos para reproducirlo
-      description: Describe los pasos para llegar al resultado, incluyendo qué movimientos se registraron primero.
-      placeholder: |
-        1. Registrar ingreso de RD$ ... el día ... de la categoría ...
-        2. Registrar gasto de RD$ ...
-        3. Revisar ...
+      label: Contexto (opcional)
+      description: Montos, fechas o movimientos que usaste para calcular lo esperado.
+      placeholder: "Ejemplo: gasté RD$ 500 en transporte el día 3 y RD$ 1.000 en comida."
     validations:
-      required: true
+      required: false
+
+  - type: checkboxes
+    id: reproduce
+    attributes:
+      label: ¿Cuándo ocurre?
+      options:
+        - Siempre
+        - A veces
+        - Solo una vez
 
   - type: input
     id: version
     attributes:
-      label: Versión de Mony y Android
-      description: Si lo conoces, indica la versión de Mony y de Android.
+      label: Versión de Mony y Android (opcional)
       placeholder: "Ejemplo: Mony 1.2.3, Android 15"
 
-  - type: textarea
-    id: evidence
+  - type: markdown
     attributes:
-      label: Evidencia adicional
-      description: Agrega capturas de los movimientos y de la cifra incorrecta. No incluyas datos financieros, respaldos, credenciales ni información personal.
+      value: |
+        Puedes adjuntar capturas. No incluyas datos financieros, respaldos, credenciales ni información personal.

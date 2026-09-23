@@ -1,16 +1,16 @@
 name: Reportar un problema o idea de widgets
-description: Fallos, dudas o ideas sobre los widgets de Mony (presupuesto, gastos, rápido, etc.).
+description: Fallos, dudas o ideas sobre los widgets de Mony.
 title: "[Widget]: "
 body:
   - type: markdown
     attributes:
       value: |
-        Usa esta plantilla para cualquier cosa relacionada con los widgets: que no actualicen, que muestren datos incorrectos, rediseños o nuevas ideas. Antes de reportar, revisa los issues abiertos y cerrados.
+        Antes de reportar, revisa los issues abiertos y cerrados. Marca opciones y agrega texto solo si quieres.
 
   - type: checkboxes
     id: duplicate_check
     attributes:
-      label: Verificación de duplicados
+      label: Verificación
       options:
         - label: Busqué entre los issues abiertos y cerrados y no encontré un reporte equivalente.
           required: true
@@ -28,43 +28,60 @@ body:
     validations:
       required: true
 
-  - type: input
+  - type: checkboxes
     id: widget_name
     attributes:
-      label: Widget
-      description: Indica qué widget (por ejemplo, presupuesto, ingresos/gastos, recientes, acceso rápido, etc.).
-    validations:
-      required: true
+      label: ¿Qué widget? (marca todos los que apliquen)
+      options:
+        - Progreso del presupuesto
+        - Límites por categoría
+        - Gasto diario
+        - Ingresos y gastos
+        - Acceso rápido
+        - Movimientos recientes
+        - Compromisos fijos
+        - Recordatorios pendientes
+        - Metas de ahorro
+        - Estadísticas
+        - No sé / otro
+
+  - type: checkboxes
+    id: symptoms
+    attributes:
+      label: ¿Qué notas? (marca todo lo que aplica)
+      options:
+        - Muestra datos viejos
+        - Un monto sale mal
+        - No responde al tocarlo
+        - Se ve cortado o feo
+        - Tarda mucho en actualizar
+        - Otra cosa
+
+  - type: input
+    id: one_liner
+    attributes:
+      label: ¿Qué pasaba? (en una línea, opcional)
+      placeholder: "Ejemplo: registré un gasto y el widget sigue con el total de ayer"
 
   - type: textarea
-    id: description
+    id: details
     attributes:
-      label: Descripción
-      description: Explica qué ocurre o qué propones. Incluye el comportamiento con la frecuencia de actualización del widget.
-    validations:
-      required: true
-
-  - type: textarea
-    id: steps
-    attributes:
-      label: Pasos para reproducirlo
-      description: Si es un error, describe los pasos exactos que lo hacen aparecer.
+      label: Detalle (opcional)
+      description: Pasos para reproducirlo o descripción de tu idea.
       placeholder: |
         1. Agregar el widget...
-        2. Registrar un gasto...
-        3. Observar...
+        2. Registrar...
+        3. ...
     validations:
       required: false
 
   - type: input
-    id: launcher
+    id: device
     attributes:
-      label: Dispositivo y lanzador
-      description: Modelo del dispositivo y lanzador (launcher) usado, si lo conoces.
+      label: Dispositivo y lanzador (si lo conoces, opcional)
       placeholder: "Ejemplo: Pixel 8, lanzador de stock"
 
-  - type: textarea
-    id: evidence
+  - type: markdown
     attributes:
-      label: Evidencia adicional
-      description: Agrega capturas o grabaciones del widget. No incluyas datos financieros, respaldos, credenciales ni información personal.
+      value: |
+        Puedes adjuntar capturas del widget. No incluyas datos financieros, respaldos, credenciales ni información personal.

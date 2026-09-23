@@ -5,40 +5,63 @@ body:
   - type: markdown
     attributes:
       value: |
-        Antes de proponer una mejora, busca entre los issues abiertos y cerrados. Las mejoras deben discutirse y aprobarse antes de abrir una pull request.
+        Antes de proponer una mejora, revisa los issues abiertos y cerrados. Lo más útil es un resumen corto; el detalle es opcional.
 
   - type: checkboxes
     id: duplicate_check
     attributes:
-      label: Verificación de duplicados
+      label: Verificación
       options:
         - label: Busqué entre los issues abiertos y cerrados y no encontré una propuesta equivalente.
           required: true
 
-  - type: textarea
-    id: problem
+  - type: dropdown
+    id: area
     attributes:
-      label: Problema o necesidad
-      description: Describe el problema que deseas resolver, no solo la solución propuesta.
+      label: Sección
+      options:
+        - Inicio
+        - Registrar gastos o ingresos
+        - Historial
+        - Estadísticas
+        - Entradas fijas
+        - Entradas pendientes
+        - Límites de categoría
+        - Ajustes
+        - Widgets
+        - Global / otra
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: what_for
+    attributes:
+      label: ¿Qué te ayudaría a lograr? (marca todo lo que aplica)
+      options:
+        - Que sea más rápido de usar
+        - Que la información sea más clara
+        - Que algo nuevo sea posible
+        - Evitar errores al registrar
+        - Mejor aspecto visual
+        - Mejor accesibilidad
+
+  - type: input
+    id: summary
+    attributes:
+      label: Resumen de la mejora (una línea)
+      placeholder: "Ejemplo: poder repetir un gasto mensual que ya registré"
     validations:
       required: true
 
   - type: textarea
-    id: proposal
+    id: details
     attributes:
-      label: Solución propuesta
-      description: Explica cómo esperas que funcione la mejora.
+      label: Detalle (opcional)
+      description: Describe cómo esperas que funcione y qué alternativas consideraste, solo si quieres.
     validations:
-      required: true
+      required: false
 
-  - type: textarea
-    id: alternatives
+  - type: markdown
     attributes:
-      label: Alternativas consideradas
-      description: Indica otras soluciones o formas de trabajo que hayas evaluado.
-
-  - type: textarea
-    id: context
-    attributes:
-      label: Contexto adicional
-      description: Agrega ejemplos, bocetos o referencias. No incluyas datos financieros, respaldos, credenciales ni información personal.
+      value: |
+        Puedes adjuntar bocetos o capturas. No incluyas datos financieros, respaldos, credenciales ni información personal.

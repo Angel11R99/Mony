@@ -5,33 +5,45 @@ body:
   - type: markdown
     attributes:
       value: |
-        Antes de preguntar, revisa los issues abiertos y cerrados por si la duda ya fue respondida. Las preguntas se responden en el propio issue y ayudan a mejorar la documentación y las pantallas de la app.
+        Revisa los issues abiertos y cerrados por si tu duda ya fue respondida. Solo necesitas la sección y una línea; el detalle es opcional.
 
-  - type: checkboxes
-    id: duplicate_check
+  - type: dropdown
+    id: area
     attributes:
-      label: Verificación de duplicados
+      label: ¿Sobre qué sección?
       options:
-        - label: Busqué entre los issues abiertos y cerrados y no encontré la respuesta a mi duda.
-          required: true
-
-  - type: textarea
-    id: question
-    attributes:
-      label: Tu pregunta
-      description: Escribe la duda con el mayor detalle posible y, si aplica, qué intentaste hacer.
+        - Inicio
+        - Registrar gastos o ingresos
+        - Historial
+        - Estadísticas
+        - Entradas fijas
+        - Entradas pendientes
+        - Límites de categoría
+        - Ciclo y presupuesto
+        - Ajustes
+        - Widgets
+        - Otro
     validations:
       required: true
 
   - type: input
-    id: section
+    id: question
     attributes:
-      label: Sección relacionada
-      description: Indica la pantalla o función sobre la que preguntas (inicio, historial, estadísticas, fijos, pendientes, ajustes, widgets, etc.).
+      label: Tu pregunta (una línea)
+      placeholder: "Ejemplo: ¿los gastos fijos se descuentan del presupuesto del mes?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: more
+    attributes:
+      label: Más contexto (opcional)
+      description: Explica qué intentaste hacer o el momento en que te surgió la duda.
+    validations:
+      required: false
 
   - type: input
     id: version
     attributes:
-      label: Versión de Mony y Android
-      description: Si lo conoces, indica la versión de Mony y de Android.
+      label: Versión de Mony y Android (si lo conoces, opcional)
       placeholder: "Ejemplo: Mony 1.2.3, Android 15"

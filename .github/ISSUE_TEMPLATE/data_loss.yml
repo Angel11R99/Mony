@@ -1,16 +1,16 @@
 name: Reportar pérdida o problemas con los datos
-description: Movimientos que desaparecen, aparecen duplicados o se corrompen, o problemas tras actualizar la app.
+description: Movimientos que desaparecen, se duplican o se corrompen, o problemas tras actualizar la app.
 title: "[Datos]: "
 body:
   - type: markdown
     attributes:
       value: |
-        Este canal es para problemas graves con la información guardada: movimientos que faltan, duplicados, registros que cambian solos o daños después de una actualización. Antes de reportar, revisa los issues abiertos y cerrados.
+        Este canal es para problemas graves con la información guardada. Marca opciones y agrega texto solo si quieres. Antes de reportar, revisa los issues abiertos y cerrados.
 
   - type: checkboxes
     id: duplicate_check
     attributes:
-      label: Verificación de duplicados
+      label: Verificación
       options:
         - label: Busqué entre los issues abiertos y cerrados y no encontré un reporte equivalente.
           required: true
@@ -23,38 +23,56 @@ body:
         - Movimientos que desaparecen
         - Movimientos duplicados
         - Montos o categorías que cambian solos
-        - Problemas después de actualizar la app
+        - Problema después de actualizar la app
         - La app no abre tras actualizar
-        - Límites de categoría o presupuesto perdidos
+        - Presupuesto o límites perdidos
         - Otro
     validations:
       required: true
 
-  - type: textarea
-    id: what_happened
+  - type: checkboxes
+    id: affected
     attributes:
-      label: ¿Qué ocurrió?
-      description: Describe qué datos se vieron afectados, qué se esperaba y qué hay ahora.
+      label: ¿Qué datos se vieron afectados? (marca todo lo que aplica)
+      options:
+        - Gastos
+        - Ingresos
+        - Presupuesto / ciclo
+        - Límites de categoría
+        - Entradas fijas
+        - Entradas pendientes
+        - Metas de ahorro
+        - Textos o ajustes
+        - Todo
+
+  - type: dropdown
+    id: timing
+    attributes:
+      label: ¿Cuándo empezó?
+      options:
+        - Tras actualizar Mony
+        - Tras cerrar el ciclo
+        - Tras reinstalar la app
+        - De un momento a otro, sin cambio claro
+        - No lo sé
     validations:
       required: true
 
   - type: input
-    id: versions
+    id: what_happened
     attributes:
-      label: Versión anterior y versión actual
-      description: Si el problema apareció tras una actualización, indica la versión de Mony anterior y la nueva.
-      placeholder: "Ejemplo: Mony 1.1.0 → 1.2.3"
+      label: ¿Qué pasó? (en una línea, opcional)
+      placeholder: "Ejemplo: después de actualizar, me faltan los gastos de la semana pasada"
 
   - type: textarea
-    id: steps
+    id: details
     attributes:
-      label: Pasos para reproducirlo
-      description: Describe qué estabas haciendo justo antes de notar el problema.
+      label: Detalle (opcional)
+      description: Qué estabas haciendo justo antes, versión anterior y actual si la conoces, y cualquier detalle útil.
     validations:
       required: false
 
-  - type: textarea
-    id: evidence
+  - type: markdown
     attributes:
-      label: Evidencia adicional
-      description: Agrega capturas o mensajes relevantes. NO incluyas respaldos de la base de datos, datos financieros, credenciales ni información personal: estos no deben publicarse en el issue.
+      value: |
+        IMPORTANTE: NO publiques respaldos de la base de datos, datos financieros, credenciales ni información personal. Las capturas o mensajes útiles sí pueden adjuntarse.

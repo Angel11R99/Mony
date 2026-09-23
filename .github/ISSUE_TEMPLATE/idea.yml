@@ -1,46 +1,66 @@
 name: Compartir una idea
-description: Propón una idea para Mony, como hacer la interfaz más intuitiva, sin necesidad de que sea una función concreta.
+description: Propón una idea para Mony, como hacer la interfaz más intuitiva, en un par de clics.
 title: "[Idea]: "
 body:
   - type: markdown
     attributes:
       value: |
-        Este espacio está pensado para ideas en cualquier etapa: desde un simple "esto se siente complicado" hasta una propuesta completa. No hace falta ser técnico ni saber qué mecanismo la resolvería. Antes de escribir, revisa los issues abiertos y cerrados por si la idea ya existe.
+        Este espacio es para ideas en cualquier etapa, incluso si no están pulidas. No necesitas saber cómo se implementaría: con marcar opciones basta. Antes de escribir, revisa los issues abiertos y cerrados.
 
   - type: checkboxes
     id: duplicate_check
     attributes:
-      label: Verificación de duplicados
+      label: Verificación
       options:
         - label: Busqué entre los issues abiertos y cerrados y no encontré una idea equivalente.
           required: true
 
-  - type: textarea
-    id: idea
-    attributes:
-      label: Tu idea
-      description: Describe la idea con tus propias palabras, aunque no esté pulida.
-      placeholder: |
-        Ejemplo: "Hacer que la pantalla de inicio muestre la información más importante sin tener que entrar en cada sección."
-    validations:
-      required: true
-
-  - type: textarea
-    id: motivation
-    attributes:
-      label: ¿Qué te llevó a pensarla?
-      description: Cuenta el momento o la situación donde sentiste que Mony podía ayudarte mejor. Esto sirve para entender el problema real detrás de la idea.
-    validations:
-      required: true
-
-  - type: textarea
+  - type: dropdown
     id: area
     attributes:
-      label: Sección relacionada
-      description: Indica dónde aplicaría (inicio, historial, estadísticas, fijos, pendientes, ajustes, widgets, etc.). Si no estás seguro, déjalo vacío.
+      label: ¿Dónde aplicaría?
+      options:
+        - Inicio
+        - Registrar gastos o ingresos
+        - Historial
+        - Estadísticas
+        - Entradas fijas
+        - Entradas pendientes
+        - Límites de categoría
+        - Ajustes
+        - Widgets
+        - En toda la app
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: direction
+    attributes:
+      label: ¿Qué dirección toma tu idea? (marca todo lo que aplica)
+      options:
+        - Hacerlo más intuitivo
+        - Información más clara
+        - Menos pasos para hacer algo
+        - Mejor apariencia
+        - Personalización
+        - Accesibilidad
+        - Otra
+
+  - type: input
+    id: summary
+    attributes:
+      label: Resumen de tu idea (una línea, opcional)
+      placeholder: "Ejemplo: que el saldo del mes se vea de un vistazo"
 
   - type: textarea
-    id: references
+    id: details
     attributes:
-      label: Referencias visuales
-      description: Agrega bocetos, capturas o ejemplos de otras apps que se acerquen a lo que imaginas. No incluyas datos financieros, respaldos, credenciales ni información personal.
+      label: Cuéntala con más detalle (opcional)
+      description: Agrega ejemplos, bocetos o referencias de otras apps si quieres.
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        No incluyas datos financieros, respaldos, credenciales ni información personal.
