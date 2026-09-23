@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -61,6 +63,15 @@ data class HomeUiState(
     val isReady: Boolean = false,
 )
 
+private data class HomePeriodState(
+    val budget: BudgetConfig?,
+    val period: DateRange,
+    val currentPeriod: DateRange,
+    val nextPeriod: DateRange,
+    val selectedView: BudgetPeriodView,
+    val pinnedView: BudgetPeriodView,
+)
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val transactions: TransactionRepository,
@@ -88,17 +99,35 @@ class HomeViewModel @Inject constructor(
         currentDate,
     ) { pinned, selected, today -> Triple(pinned, selected, today) }
 
-    val state = combine(
-        transactions.observeAll(),
-        categories.observeAll(),
+    private val homePeriodState = combine(
         budgetRepository.observe(),
-        budgetRepository.observeHistory(),
         periodViewState,
-    ) { all, categoryList, budget, history, (pinnedView, selectedView, today) ->
+    ) { budget, (pinnedView, selectedView, today) ->
         val currentPeriod = budgetPeriodForView(budget, BudgetPeriodView.CURRENT, today)
         val nextPeriod = budgetPeriodForView(budget, BudgetPeriodView.NEXT, today)
-        val period = if (selectedView == BudgetPeriodView.CURRENT) currentPeriod else nextPeriod
-        val periodTransactions = all.filter { it.belongsToActiveBudgetCycle(budget, period) }
+        HomePeriodState(
+            budget = budget,
+            period = if (selectedView == BudgetPeriodView.CURRENT) currentPeriod else nextPeriod,
+            currentPeriod = currentPeriod,
+            nextPeriod = nextPeriod,
+            selectedView = selectedView,
+            pinnedView = pinnedView,
+        )
+    }.distinctUntilChanged()
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val periodTransactions = homePeriodState.flatMapLatest { periodState ->
+        transactions.observeByPeriod(periodState.period).map { items ->
+            items.filter { it.belongsToActiveBudgetCycle(periodState.budget, periodState.period) }
+        }
+    }
+
+    val state = combine(
+        periodTransactions,
+        categories.observeAll(),
+        budgetRepository.observeHistory(),
+        homePeriodState,
+    ) { periodTransactions, categoryList, history, periodState ->
         val byId = categoryList.associateBy(Category::id)
         val income = periodTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amountInCents }
         val expense = periodTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amountInCents }
@@ -111,12 +140,12 @@ class HomeViewModel @Inject constructor(
                 .groupBy { it.categoryId }
                 .mapNotNull { (id, items) -> byId[id]?.let { CategorySpending(it, items.sumOf(FinanceTransaction::amountInCents)) } }
                 .sortedByDescending(CategorySpending::amountInCents),
-            period = period,
-            currentPeriod = currentPeriod,
-            nextPeriod = nextPeriod,
-            selectedPeriodView = selectedView,
-            pinnedPeriodView = pinnedView,
-            budget = budget,
+            period = periodState.period,
+            currentPeriod = periodState.currentPeriod,
+            nextPeriod = periodState.nextPeriod,
+            selectedPeriodView = periodState.selectedView,
+            pinnedPeriodView = periodState.pinnedView,
+            budget = periodState.budget,
             cycleHistory = history,
             isReady = true,
         )
@@ -209,7 +238,7 @@ class HomeViewModel @Inject constructor(
             closingCycle.value = true
             val now = Instant.now()
             val nextStart = nextBudgetPeriod(budget, periodToClose.endInclusive).start
-            val cycleTransactions = transactions.observeAll().first().filter {
+            val cycleTransactions = transactions.observeByPeriod(periodToClose).first().filter {
                 it.belongsToActiveBudgetCycle(budget, periodToClose)
             }
             val closedCycle = BudgetCycle(

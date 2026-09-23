@@ -16,6 +16,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE dateEpochDay BETWEEN :start AND :end ORDER BY dateEpochDay DESC, createdAtEpochMillis DESC")
     fun observeByPeriod(start: Long, end: Long): Flow<List<TransactionEntity>>
 
+    @Query("SELECT * FROM transactions ORDER BY dateEpochDay DESC, createdAtEpochMillis DESC LIMIT :limit")
+    suspend fun getRecent(limit: Int): List<TransactionEntity>
+
     @Query("SELECT * FROM transactions WHERE savingsGoalId = :goalId ORDER BY dateEpochDay DESC, createdAtEpochMillis DESC")
     fun observeBySavingsGoal(goalId: Long): Flow<List<TransactionEntity>>
 

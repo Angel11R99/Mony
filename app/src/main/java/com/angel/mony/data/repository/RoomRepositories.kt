@@ -73,6 +73,7 @@ class RoomTransactionRepository @Inject constructor(
     ).map { items -> items.map { it.toDomain() } }
     override fun observeBySavingsGoal(goalId: Long) =
         dao.observeBySavingsGoal(goalId).map { items -> items.map { it.toDomain() } }
+    override suspend fun getRecent(limit: Int) = dao.getRecent(limit).map { it.toDomain() }
     override suspend fun get(id: Long) = dao.get(id)?.toDomain()
     override suspend fun create(transaction: FinanceTransaction) = dao.insert(transaction.toEntity())
     override suspend fun update(transaction: FinanceTransaction) {

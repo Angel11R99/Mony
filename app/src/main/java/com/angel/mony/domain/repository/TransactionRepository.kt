@@ -9,6 +9,7 @@ interface TransactionRepository {
     fun observeAll(): Flow<List<FinanceTransaction>>
     fun observeByPeriod(period: DateRange): Flow<List<FinanceTransaction>>
     fun observeBySavingsGoal(goalId: Long): Flow<List<FinanceTransaction>>
+    suspend fun getRecent(limit: Int): List<FinanceTransaction>
     suspend fun get(id: Long): FinanceTransaction?
     suspend fun create(transaction: FinanceTransaction): Long
     suspend fun update(transaction: FinanceTransaction)

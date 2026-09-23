@@ -226,8 +226,17 @@ fun HistoryScreen(
     val sorted = remember(filtered, state.categories, sort) {
         sortTransactions(filtered, state.categories, sort)
     }
-    val incomeTotal = filtered.filter { it.type == TransactionType.INCOME }.sumOf(FinanceTransaction::amountInCents)
-    val expenseTotal = filtered.filter { it.type == TransactionType.EXPENSE }.sumOf(FinanceTransaction::amountInCents)
+    val (incomeTotal, expenseTotal) = remember(filtered) {
+        var income = 0L
+        var expense = 0L
+        filtered.forEach { transaction ->
+            when (transaction.type) {
+                TransactionType.INCOME -> income += transaction.amountInCents
+                TransactionType.EXPENSE -> expense += transaction.amountInCents
+            }
+        }
+        income to expense
+    }
 
     val pdfDateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     fun buildPdfRequest(allHistory: Boolean): HistoryPdfRequest {

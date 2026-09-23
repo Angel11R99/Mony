@@ -153,17 +153,19 @@ data class FixedLine(
 
 internal suspend fun loadCoreSnapshot(context: Context): WidgetCoreSnapshot {
     val entryPoint = entryPoint(context)
-    val transactions = entryPoint.transactions().observeAll().first()
-    val categoriesById = loadCategories(entryPoint)
+    val transactionRepository = entryPoint.transactions()
     val budget = entryPoint.budgets().observe().first()
     val pinnedView = CyclePreferences(context).pinnedBudgetView.value
     val period = budgetPeriodForView(budget, pinnedView)
     val today = LocalDate.now()
-    val periodTransactions = transactions.filter { it.belongsToActiveBudgetCycle(budget, period) }
+    val periodTransactions = transactionRepository.observeByPeriod(period).first()
+        .filter { it.belongsToActiveBudgetCycle(budget, period) }
+    val recentTransactions = transactionRepository.getRecent(RECENT_MOVEMENTS_LIMIT)
+    val categoriesById = loadCategories(entryPoint)
 
     val previousCycleExpense = budget?.let { config ->
         val previousPeriod = previousBudgetPeriod(config, today)
-        transactions
+        transactionRepository.observeByPeriod(previousPeriod).first()
             .filter {
                 it.type == TransactionType.EXPENSE &&
                     it.belongsToActiveBudgetCycle(config, previousPeriod)
@@ -193,23 +195,25 @@ internal suspend fun loadCoreSnapshot(context: Context): WidgetCoreSnapshot {
         budget = budget,
         period = period,
         today = today,
-        availableInCents = availableForBudget(budget, transactions, period),
+        availableInCents = availableForBudget(budget, periodTransactions, period),
         incomeInCents = periodTransactions
             .filter { it.type == TransactionType.INCOME }
             .sumOf(FinanceTransaction::amountInCents),
         expenseInCents = totalExpenses,
         transactionCount = periodTransactions.size,
-        latestExpense = transactions.firstOrNull {
-            it.type == TransactionType.EXPENSE && it.belongsToActiveBudgetCycle(budget, period)
-        },
-        recent = transactions.take(RECENT_MOVEMENTS_LIMIT).map { it.toMovementLine(categoriesById) },
+        latestExpense = periodTransactions.firstOrNull { it.type == TransactionType.EXPENSE },
+        recent = recentTransactions.map { it.toMovementLine(categoriesById) },
         topExpenseCategories = expensesByCategory.take(TOP_CATEGORIES_LIMIT).map { slice ->
             slice.copy(
                 fraction = if (totalExpenses > 0) slice.amountInCents.toFloat() / totalExpenses else 0f,
             )
         },
         previousCycleExpenseInCents = previousCycleExpense,
-        todayExpenseInCents = transactions
+        todayExpenseInCents = (if (today in period.start..period.endInclusive) {
+            periodTransactions
+        } else {
+            transactionRepository.observeByPeriod(DateRange(today, today)).first()
+        })
             .filter {
                 it.type == TransactionType.EXPENSE && it.date == today
             }

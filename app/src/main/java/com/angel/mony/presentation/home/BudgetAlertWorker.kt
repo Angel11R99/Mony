@@ -47,10 +47,10 @@ class BudgetAlertWorker(
             BudgetAlertEntryPoint::class.java,
         )
         val budget = entryPoint.budgets().observe().first() ?: return@runCatching
-        val transactions = entryPoint.transactions().observeAll().first()
 
         val today = LocalDate.now()
         val period = activeBudgetPeriod(budget, today)
+        val transactions = entryPoint.transactions().observeByPeriod(period).first()
         val percent = budgetUsagePercent(budget, transactions, period)
         val currentLevel = BudgetAlertLevel.forUsagePercent(percent)
         val previousLevel = preferences.lastLevel(period.start.toEpochDay())
