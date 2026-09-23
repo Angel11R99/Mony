@@ -2,8 +2,13 @@ package com.angel.mony.presentation.transactions
 
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.Category
+import com.angel.mony.domain.model.BudgetConfig
+import com.angel.mony.domain.model.BudgetCycleSchedule
+import com.angel.mony.domain.model.BudgetPeriod
+import com.angel.mony.domain.model.DateRange
 import com.angel.mony.domain.model.TransactionType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
@@ -37,6 +42,26 @@ class HistoryFilterTest {
         )
 
         assertEquals(listOf(1L, 2L), result.map(FinanceTransaction::id))
+    }
+
+    @Test fun `history starts with the configured current fortnight`() {
+        val budget = BudgetConfig(
+            amountInCents = 2_500_000,
+            period = BudgetPeriod.FORTNIGHTLY,
+            cycleSchedules = listOf(
+                BudgetCycleSchedule(15, 29),
+                BudgetCycleSchedule(30, 14),
+            ),
+        )
+
+        val filter = currentHistoryCycleFilter(budget, LocalDate.of(2026, 9, 23))
+
+        assertEquals(
+            DateRange(LocalDate.of(2026, 9, 15), LocalDate.of(2026, 9, 29)),
+            filter.range,
+        )
+        assertTrue(filter.label.startsWith("Actual: 15 "))
+        assertTrue(filter.label.endsWith("29 sept 2026"))
     }
 
     @Test fun `remembers latest category separately for expense and income`() {

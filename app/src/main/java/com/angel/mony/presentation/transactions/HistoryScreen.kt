@@ -163,6 +163,7 @@ fun HistoryScreen(
     var sort by rememberSaveable { mutableStateOf(HistorySort.NEWEST) }
     var query by rememberSaveable { mutableStateOf("") }
     var cycleFilter by rememberSaveable(stateSaver = historyCycleFilterSaver) { mutableStateOf<HistoryCycleFilter>(HistoryCycleFilter.All) }
+    var cycleFilterInitialized by rememberSaveable { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
     var draftType by remember { mutableStateOf(typeFilter) }
     var draftCategoryId by remember { mutableStateOf(categoryId) }
@@ -203,8 +204,13 @@ fun HistoryScreen(
     val cycleOptions = remember(state.budget, state.cycleHistory) {
         buildHistoryCycleOptions(state.budget, state.cycleHistory)
     }
-    LaunchedEffect(cycleOptions) {
-        if (cycleFilter != HistoryCycleFilter.All && cycleOptions.none { it.label == cycleFilter.label && it.range == cycleFilter.range }) {
+    LaunchedEffect(state.isReady, cycleOptions) {
+        if (!state.isReady) return@LaunchedEffect
+        if (!cycleFilterInitialized) {
+            cycleFilter = currentHistoryCycleFilter(state.budget)
+            draftCycle = cycleFilter
+            cycleFilterInitialized = true
+        } else if (cycleFilter != HistoryCycleFilter.All && cycleOptions.none { it.label == cycleFilter.label && it.range == cycleFilter.range }) {
             cycleFilter = HistoryCycleFilter.All
         }
     }
@@ -1106,28 +1112,32 @@ internal fun sortTransactions(
     }
 }
 
+internal fun currentHistoryCycleFilter(
+    budget: com.angel.mony.domain.model.BudgetConfig?,
+    today: LocalDate = LocalDate.now(),
+): HistoryCycleFilter.Custom {
+    val formatter = DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.forLanguageTag("es-DO"))
+    val current = com.angel.mony.domain.model.activeBudgetPeriod(budget, today)
+    return HistoryCycleFilter.Custom(
+        current,
+        "Actual: ${current.start.format(formatter)} – ${current.endInclusive.format(formatter)}",
+    )
+}
+
 private fun buildHistoryCycleOptions(
     budget: com.angel.mony.domain.model.BudgetConfig?,
     history: List<com.angel.mony.domain.model.BudgetCycle>,
 ): List<HistoryCycleFilter> {
     val formatter = DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.forLanguageTag("es-DO"))
     val options = mutableListOf<HistoryCycleFilter>(HistoryCycleFilter.All)
-    budget?.let {
-        val current = com.angel.mony.domain.model.activeBudgetPeriod(it, LocalDate.now())
-        val prev = com.angel.mony.domain.model.previousBudgetPeriod(it, LocalDate.now())
-        options.add(
-            HistoryCycleFilter.Custom(
-                current,
-                "Actual: ${current.start.format(formatter)} – ${current.endInclusive.format(formatter)}",
-            ),
-        )
-        options.add(
-            HistoryCycleFilter.Custom(
-                prev,
-                "Anterior: ${prev.start.format(formatter)} – ${prev.endInclusive.format(formatter)}",
-            ),
-        )
-    }
+    options.add(currentHistoryCycleFilter(budget))
+    val prev = com.angel.mony.domain.model.previousBudgetPeriod(budget, LocalDate.now())
+    options.add(
+        HistoryCycleFilter.Custom(
+            prev,
+            "Anterior: ${prev.start.format(formatter)} – ${prev.endInclusive.format(formatter)}",
+        ),
+    )
     history.forEach { cycle ->
         val range = com.angel.mony.domain.model.DateRange(cycle.startDate, cycle.endDate)
         val label = "Hist: ${range.start.format(formatter)} – ${range.endInclusive.format(formatter)}"
