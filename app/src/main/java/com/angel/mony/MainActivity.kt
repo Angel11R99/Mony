@@ -136,10 +136,12 @@ class MainActivity : ComponentActivity() {
                             },
                             onPrimaryChange = {
                                 appearancePreferences.setPrimaryColor(it)
+                                applicationContext.showToast("Color principal actualizado")
                                 lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
                             },
                             onAccentChange = {
                                 appearancePreferences.setAccentColor(it)
+                                applicationContext.showToast("Color secundario actualizado")
                                 lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
                             },
                             onResetAppearance = {

@@ -105,6 +105,8 @@ fun SettingsScreen(
             onThemeChange = onThemeChange,
             onEditPrimary = { editingColor = ColorRole.PRIMARY },
             onEditAccent = { editingColor = ColorRole.ACCENT },
+            onPrimaryChange = onPrimaryChange,
+            onAccentChange = onAccentChange,
             onReset = onReset,
             onShapeStyleChange = onShapeStyleChange,
             onFontFamilyChange = onFontFamilyChange,

@@ -86,6 +86,8 @@ fun AppearanceSettingsScreen(
     onThemeChange: (AppThemeMode) -> Unit,
     onEditPrimary: () -> Unit,
     onEditAccent: () -> Unit,
+    onPrimaryChange: (Int) -> Unit,
+    onAccentChange: (Int) -> Unit,
     onReset: () -> Unit,
     onShapeStyleChange: (AppShapeStyle) -> Unit,
     onFontFamilyChange: (AppFontFamily) -> Unit,
@@ -290,12 +292,12 @@ fun AppearanceSettingsScreen(
             isDarkTheme = isDarkTheme,
             onDismiss = { onEditingColorChange(null) },
             onSelect = { argb ->
-                onEditingColorChange(null)
                 if (role == ColorRole.PRIMARY) {
-                    onEditPrimary()
+                    onPrimaryChange(argb)
                 } else {
-                    onEditAccent()
+                    onAccentChange(argb)
                 }
+                onEditingColorChange(null)
             },
         )
     }
