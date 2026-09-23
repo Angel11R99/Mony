@@ -10,17 +10,25 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.getValue
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.core.CyclePreferences
 import com.angel.mony.core.showToast
 import com.angel.mony.navigation.FinanceApp
 import com.angel.mony.navigation.FloatingModuleBarPreferences
+import com.angel.mony.presentation.startup.AppStartupState
+import com.angel.mony.presentation.startup.AppStartupViewModel
+import com.angel.mony.presentation.startup.StartupScreen
 import com.angel.mony.ui.theme.PersonalFinanceTrackerTheme
 import com.angel.mony.ui.theme.AppearancePreferences
 import com.angel.mony.ui.theme.AppThemeMode
@@ -76,71 +84,83 @@ class MainActivity : ComponentActivity() {
                 fontFamily = appearance.fontFamily,
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    val startupViewModel: AppStartupViewModel = hiltViewModel()
+                    val startupState by startupViewModel.state.collectAsStateWithLifecycle()
                     val initialType = intent.getStringExtra(EXTRA_TRANSACTION_TYPE)
                         ?.let { runCatching { TransactionType.valueOf(it) }.getOrNull() }
                     val initialEditId = intent.getLongExtra(EXTRA_EDIT_TRANSACTION_ID, -1L)
                         .takeIf { it >= 0L }
-                    FinanceApp(
-                        isDarkTheme = useDarkTheme,
-                        moduleBarConfig = moduleBarConfig,
-                        // When an edit was requested the type extra only selects
-                        // the editor route; the add flow must not trigger too.
-                        initialType = if (initialEditId == null) initialType else null,
-                        initialDestination = intent.getStringExtra(EXTRA_DESTINATION),
-                        initialEdit = if (initialEditId != null && initialType != null) {
-                            initialEditId to initialType
-                        } else {
-                            null
-                        },
-                        appearance = appearance,
-                        automaticCycleClose = automaticCycleClose,
-                        automaticCloseTime = automaticCloseTime,
-                        onThemeChange = {
-                            val targetDark = when (it) {
-                                AppThemeMode.SYSTEM -> systemDark
-                                AppThemeMode.LIGHT -> false
-                                AppThemeMode.DARK -> true
-                            }
-                            val result = appearancePreferences.setThemeModeWithAutoCorrection(it, targetDark)
-                            lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
-                            if (result.anyChanged) {
-                                val message = when {
-                                    result.primaryChanged && result.accentChanged ->
-                                        "Tema cambiado. Colores ajustados automáticamente por contraste."
-                                    result.primaryChanged ->
-                                        "Tema cambiado. Color principal ajustado automáticamente por contraste."
-                                    else ->
-                                        "Tema cambiado. Color secundario ajustado automáticamente por contraste."
+                    AnimatedContent(
+                        targetState = startupState,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        label = "startup-content",
+                    ) { state ->
+                        if (state != AppStartupState.Ready) {
+                            StartupScreen(state = state, onRetry = startupViewModel::retry)
+                            return@AnimatedContent
+                        }
+                        FinanceApp(
+                            isDarkTheme = useDarkTheme,
+                            moduleBarConfig = moduleBarConfig,
+                            // When an edit was requested the type extra only selects
+                            // the editor route; the add flow must not trigger too.
+                            initialType = if (initialEditId == null) initialType else null,
+                            initialDestination = intent.getStringExtra(EXTRA_DESTINATION),
+                            initialEdit = if (initialEditId != null && initialType != null) {
+                                initialEditId to initialType
+                            } else {
+                                null
+                            },
+                            appearance = appearance,
+                            automaticCycleClose = automaticCycleClose,
+                            automaticCloseTime = automaticCloseTime,
+                            onThemeChange = {
+                                val targetDark = when (it) {
+                                    AppThemeMode.SYSTEM -> systemDark
+                                    AppThemeMode.LIGHT -> false
+                                    AppThemeMode.DARK -> true
                                 }
-                                applicationContext.showToast(message)
-                            }
-                        },
-                        onPrimaryChange = {
-                            appearancePreferences.setPrimaryColor(it)
-                            lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
-                        },
-                        onAccentChange = {
-                            appearancePreferences.setAccentColor(it)
-                            lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
-                        },
-                        onResetAppearance = {
-                            appearancePreferences.reset()
-                            lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
-                        },
-                        onShapeStyleChange = appearancePreferences::setShapeStyle,
-                        onFontFamilyChange = appearancePreferences::setFontFamily,
-                        onBackgroundDecorationChange = appearancePreferences::setBackgroundDecoration,
-                        onBackgroundIntensityChange = appearancePreferences::setBackgroundIntensity,
-                        onAutomaticCycleCloseChange = cyclePreferences::setAutomaticClose,
-                        onAutomaticCloseTimeChange = cyclePreferences::setAutomaticCloseTime,
-                        onModuleBarVisibleRoutesChange = moduleBarPreferences::setVisibleRoutes,
-                        onModuleBarShowLabelsChange = moduleBarPreferences::setShowLabels,
-                        onModuleBarLabelTextSizeChange = moduleBarPreferences::setLabelTextSize,
-                        onModuleTransitionStyleChange = {
-                            moduleBarPreferences.setTransitionStyle(it)
-                            applicationContext.showToast("Animación de navegación actualizada")
-                        },
-                    )
+                                val result = appearancePreferences.setThemeModeWithAutoCorrection(it, targetDark)
+                                lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
+                                if (result.anyChanged) {
+                                    val message = when {
+                                        result.primaryChanged && result.accentChanged ->
+                                            "Tema cambiado. Colores ajustados automáticamente por contraste."
+                                        result.primaryChanged ->
+                                            "Tema cambiado. Color principal ajustado automáticamente por contraste."
+                                        else ->
+                                            "Tema cambiado. Color secundario ajustado automáticamente por contraste."
+                                    }
+                                    applicationContext.showToast(message)
+                                }
+                            },
+                            onPrimaryChange = {
+                                appearancePreferences.setPrimaryColor(it)
+                                lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
+                            },
+                            onAccentChange = {
+                                appearancePreferences.setAccentColor(it)
+                                lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
+                            },
+                            onResetAppearance = {
+                                appearancePreferences.reset()
+                                lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
+                            },
+                            onShapeStyleChange = appearancePreferences::setShapeStyle,
+                            onFontFamilyChange = appearancePreferences::setFontFamily,
+                            onBackgroundDecorationChange = appearancePreferences::setBackgroundDecoration,
+                            onBackgroundIntensityChange = appearancePreferences::setBackgroundIntensity,
+                            onAutomaticCycleCloseChange = cyclePreferences::setAutomaticClose,
+                            onAutomaticCloseTimeChange = cyclePreferences::setAutomaticCloseTime,
+                            onModuleBarVisibleRoutesChange = moduleBarPreferences::setVisibleRoutes,
+                            onModuleBarShowLabelsChange = moduleBarPreferences::setShowLabels,
+                            onModuleBarLabelTextSizeChange = moduleBarPreferences::setLabelTextSize,
+                            onModuleTransitionStyleChange = {
+                                moduleBarPreferences.setTransitionStyle(it)
+                                applicationContext.showToast("Animación de navegación actualizada")
+                            },
+                        )
+                    }
                 }
             }
         }
