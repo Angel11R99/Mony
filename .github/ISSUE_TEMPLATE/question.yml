@@ -1,0 +1,37 @@
+name: Hacer una pregunta
+description: Duda sobre cómo funciona Mony, qué significa algo o qué hacer en una situación.
+title: "[Pregunta]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de preguntar, revisa los issues abiertos y cerrados por si la duda ya fue respondida. Las preguntas se responden en el propio issue y ayudan a mejorar la documentación y las pantallas de la app.
+
+  - type: checkboxes
+    id: duplicate_check
+    attributes:
+      label: Verificación de duplicados
+      options:
+        - label: Busqué entre los issues abiertos y cerrados y no encontré la respuesta a mi duda.
+          required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Tu pregunta
+      description: Escribe la duda con el mayor detalle posible y, si aplica, qué intentaste hacer.
+    validations:
+      required: true
+
+  - type: input
+    id: section
+    attributes:
+      label: Sección relacionada
+      description: Indica la pantalla o función sobre la que preguntas (inicio, historial, estadísticas, fijos, pendientes, ajustes, widgets, etc.).
+
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Mony y Android
+      description: Si lo conoces, indica la versión de Mony y de Android.
+      placeholder: "Ejemplo: Mony 1.2.3, Android 15"

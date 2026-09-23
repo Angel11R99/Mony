@@ -1,0 +1,46 @@
+name: Compartir una idea
+description: Propón una idea para Mony, como hacer la interfaz más intuitiva, sin necesidad de que sea una función concreta.
+title: "[Idea]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Este espacio está pensado para ideas en cualquier etapa: desde un simple "esto se siente complicado" hasta una propuesta completa. No hace falta ser técnico ni saber qué mecanismo la resolvería. Antes de escribir, revisa los issues abiertos y cerrados por si la idea ya existe.
+
+  - type: checkboxes
+    id: duplicate_check
+    attributes:
+      label: Verificación de duplicados
+      options:
+        - label: Busqué entre los issues abiertos y cerrados y no encontré una idea equivalente.
+          required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Tu idea
+      description: Describe la idea con tus propias palabras, aunque no esté pulida.
+      placeholder: |
+        Ejemplo: "Hacer que la pantalla de inicio muestre la información más importante sin tener que entrar en cada sección."
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: ¿Qué te llevó a pensarla?
+      description: Cuenta el momento o la situación donde sentiste que Mony podía ayudarte mejor. Esto sirve para entender el problema real detrás de la idea.
+    validations:
+      required: true
+
+  - type: textarea
+    id: area
+    attributes:
+      label: Sección relacionada
+      description: Indica dónde aplicaría (inicio, historial, estadísticas, fijos, pendientes, ajustes, widgets, etc.). Si no estás seguro, déjalo vacío.
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Referencias visuales
+      description: Agrega bocetos, capturas o ejemplos de otras apps que se acerquen a lo que imaginas. No incluyas datos financieros, respaldos, credenciales ni información personal.

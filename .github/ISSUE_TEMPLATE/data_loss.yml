@@ -1,0 +1,60 @@
+name: Reportar pérdida o problemas con los datos
+description: Movimientos que desaparecen, aparecen duplicados o se corrompen, o problemas tras actualizar la app.
+title: "[Datos]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Este canal es para problemas graves con la información guardada: movimientos que faltan, duplicados, registros que cambian solos o daños después de una actualización. Antes de reportar, revisa los issues abiertos y cerrados.
+
+  - type: checkboxes
+    id: duplicate_check
+    attributes:
+      label: Verificación de duplicados
+      options:
+        - label: Busqué entre los issues abiertos y cerrados y no encontré un reporte equivalente.
+          required: true
+
+  - type: dropdown
+    id: problem_type
+    attributes:
+      label: Tipo de problema
+      options:
+        - Movimientos que desaparecen
+        - Movimientos duplicados
+        - Montos o categorías que cambian solos
+        - Problemas después de actualizar la app
+        - La app no abre tras actualizar
+        - Límites de categoría o presupuesto perdidos
+        - Otro
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: ¿Qué ocurrió?
+      description: Describe qué datos se vieron afectados, qué se esperaba y qué hay ahora.
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versión anterior y versión actual
+      description: Si el problema apareció tras una actualización, indica la versión de Mony anterior y la nueva.
+      placeholder: "Ejemplo: Mony 1.1.0 → 1.2.3"
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      description: Describe qué estabas haciendo justo antes de notar el problema.
+    validations:
+      required: false
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidencia adicional
+      description: Agrega capturas o mensajes relevantes. NO incluyas respaldos de la base de datos, datos financieros, credenciales ni información personal: estos no deben publicarse en el issue.

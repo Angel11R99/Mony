@@ -1,0 +1,70 @@
+name: Reportar un problema o idea de widgets
+description: Fallos, dudas o ideas sobre los widgets de Mony (presupuesto, gastos, rápido, etc.).
+title: "[Widget]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Usa esta plantilla para cualquier cosa relacionada con los widgets: que no actualicen, que muestren datos incorrectos, rediseños o nuevas ideas. Antes de reportar, revisa los issues abiertos y cerrados.
+
+  - type: checkboxes
+    id: duplicate_check
+    attributes:
+      label: Verificación de duplicados
+      options:
+        - label: Busqué entre los issues abiertos y cerrados y no encontré un reporte equivalente.
+          required: true
+
+  - type: dropdown
+    id: widget_kind
+    attributes:
+      label: Tipo
+      options:
+        - Error o datos incorrectos
+        - No se actualiza
+        - Idea o rediseño
+        - Apariencia o tema
+        - Pregunta
+    validations:
+      required: true
+
+  - type: input
+    id: widget_name
+    attributes:
+      label: Widget
+      description: Indica qué widget (por ejemplo, presupuesto, ingresos/gastos, recientes, acceso rápido, etc.).
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción
+      description: Explica qué ocurre o qué propones. Incluye el comportamiento con la frecuencia de actualización del widget.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      description: Si es un error, describe los pasos exactos que lo hacen aparecer.
+      placeholder: |
+        1. Agregar el widget...
+        2. Registrar un gasto...
+        3. Observar...
+    validations:
+      required: false
+
+  - type: input
+    id: launcher
+    attributes:
+      label: Dispositivo y lanzador
+      description: Modelo del dispositivo y lanzador (launcher) usado, si lo conoces.
+      placeholder: "Ejemplo: Pixel 8, lanzador de stock"
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidencia adicional
+      description: Agrega capturas o grabaciones del widget. No incluyas datos financieros, respaldos, credenciales ni información personal.
