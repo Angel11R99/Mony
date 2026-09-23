@@ -38,13 +38,13 @@ body:
     attributes:
       label: ¿Qué dirección toma tu idea? (marca todo lo que aplica)
       options:
-        - Hacerlo más intuitivo
-        - Información más clara
-        - Menos pasos para hacer algo
-        - Mejor apariencia
-        - Personalización
-        - Accesibilidad
-        - Otra
+        - label: Hacerlo más intuitivo
+        - label: Información más clara
+        - label: Menos pasos para hacer algo
+        - label: Mejor apariencia
+        - label: Personalización
+        - label: Accesibilidad
+        - label: Otra
 
   - type: input
     id: summary

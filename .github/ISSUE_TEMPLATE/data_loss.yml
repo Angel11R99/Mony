@@ -35,15 +35,15 @@ body:
     attributes:
       label: ¿Qué datos se vieron afectados? (marca todo lo que aplica)
       options:
-        - Gastos
-        - Ingresos
-        - Presupuesto / ciclo
-        - Límites de categoría
-        - Entradas fijas
-        - Entradas pendientes
-        - Metas de ahorro
-        - Textos o ajustes
-        - Todo
+        - label: Gastos
+        - label: Ingresos
+        - label: Presupuesto / ciclo
+        - label: Límites de categoría
+        - label: Entradas fijas
+        - label: Entradas pendientes
+        - label: Metas de ahorro
+        - label: Textos o ajustes
+        - label: Todo
 
   - type: dropdown
     id: timing

@@ -33,29 +33,29 @@ body:
     attributes:
       label: ¿Qué widget? (marca todos los que apliquen)
       options:
-        - Progreso del presupuesto
-        - Límites por categoría
-        - Gasto diario
-        - Ingresos y gastos
-        - Acceso rápido
-        - Movimientos recientes
-        - Compromisos fijos
-        - Recordatorios pendientes
-        - Metas de ahorro
-        - Estadísticas
-        - No sé / otro
+        - label: Progreso del presupuesto
+        - label: Límites por categoría
+        - label: Gasto diario
+        - label: Ingresos y gastos
+        - label: Acceso rápido
+        - label: Movimientos recientes
+        - label: Compromisos fijos
+        - label: Recordatorios pendientes
+        - label: Metas de ahorro
+        - label: Estadísticas
+        - label: No sé / otro
 
   - type: checkboxes
     id: symptoms
     attributes:
       label: ¿Qué notas? (marca todo lo que aplica)
       options:
-        - Muestra datos viejos
-        - Un monto sale mal
-        - No responde al tocarlo
-        - Se ve cortado o feo
-        - Tarda mucho en actualizar
-        - Otra cosa
+        - label: Muestra datos viejos
+        - label: Un monto sale mal
+        - label: No responde al tocarlo
+        - label: Se ve cortado o feo
+        - label: Tarda mucho en actualizar
+        - label: Otra cosa
 
   - type: input
     id: one_liner

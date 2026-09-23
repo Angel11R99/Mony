@@ -37,14 +37,14 @@ body:
     attributes:
       label: ¿Qué sale mal? (marca todo lo que aplica)
       options:
-        - Disposible / restante mal calculado
-        - Total de gastos mal
-        - Total de ingresos mal
-        - Porcentajes mal
-        - Límite de categoría mal
-        - Promedios (diario/mensual) mal
-        - Fechas mal (ciclo, inicios)
-        - Otra cifra
+        - label: Disponible / restante mal calculado
+        - label: Total de gastos mal
+        - label: Total de ingresos mal
+        - label: Porcentajes mal
+        - label: Límite de categoría mal
+        - label: Promedios (diario/mensual) mal
+        - label: Fechas mal (ciclo, inicios)
+        - label: Otra cifra
 
   - type: input
     id: expected
@@ -67,7 +67,7 @@ body:
     validations:
       required: false
 
-  - type: checkboxes
+  - type: dropdown
     id: reproduce
     attributes:
       label: ¿Cuándo ocurre?

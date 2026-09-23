@@ -38,12 +38,12 @@ body:
     attributes:
       label: ¿Qué te ayudaría a lograr? (marca todo lo que aplica)
       options:
-        - Que sea más rápido de usar
-        - Que la información sea más clara
-        - Que algo nuevo sea posible
-        - Evitar errores al registrar
-        - Mejor aspecto visual
-        - Mejor accesibilidad
+        - label: Que sea más rápido de usar
+        - label: Que la información sea más clara
+        - label: Que algo nuevo sea posible
+        - label: Evitar errores al registrar
+        - label: Mejor aspecto visual
+        - label: Mejor accesibilidad
 
   - type: input
     id: summary

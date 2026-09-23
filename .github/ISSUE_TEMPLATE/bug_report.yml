@@ -35,15 +35,15 @@ body:
     attributes:
       label: ¿Qué notas? (marca todo lo que aplica)
       options:
-        - La app se cerró
-        - Se queda cargando
-        - No puedo guardar algo
-        - Un monto o total sale mal
-        - Un texto se ve cortado o feo
-        - Algo desapareció o se duplicó
-        - Otra cosa
+        - label: La app se cerró
+        - label: Se queda cargando
+        - label: No puedo guardar algo
+        - label: Un monto o total sale mal
+        - label: Un texto se ve cortado o feo
+        - label: Algo desapareció o se duplicó
+        - label: Otra cosa
 
-  - type: checkboxes
+  - type: dropdown
     id: frequency
     attributes:
       label: ¿Cuándo ocurre?

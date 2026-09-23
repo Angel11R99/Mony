@@ -35,13 +35,13 @@ body:
     attributes:
       label: ¿Qué notas? (marca todo lo que aplica)
       options:
-        - Tarda en abrir o cargar
-        - Se congela
-        - La lista se mueve mal
-        - Los widgets tardan en actualizar
-        - Consume mucha batería
-        - Se calienta
-        - Otra cosa
+        - label: Tarda en abrir o cargar
+        - label: Se congela
+        - label: La lista se mueve mal
+        - label: Los widgets tardan en actualizar
+        - label: Consume mucha batería
+        - label: Se calienta
+        - label: Otra cosa
 
   - type: dropdown
     id: volume
@@ -56,7 +56,7 @@ body:
     validations:
       required: true
 
-  - type: checkboxes
+  - type: dropdown
     id: frequency
     attributes:
       label: ¿Cuándo ocurre?
