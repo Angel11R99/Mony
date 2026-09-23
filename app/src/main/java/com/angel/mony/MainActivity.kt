@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Surface
@@ -26,6 +27,7 @@ import com.angel.mony.core.CyclePreferences
 import com.angel.mony.core.showToast
 import com.angel.mony.navigation.FinanceApp
 import com.angel.mony.navigation.FloatingModuleBarPreferences
+import com.angel.mony.presentation.components.AppToastHost
 import com.angel.mony.presentation.startup.AppStartupState
 import com.angel.mony.presentation.startup.AppStartupViewModel
 import com.angel.mony.presentation.startup.StartupScreen
@@ -84,22 +86,23 @@ class MainActivity : ComponentActivity() {
                 fontFamily = appearance.fontFamily,
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    val startupViewModel: AppStartupViewModel = hiltViewModel()
-                    val startupState by startupViewModel.state.collectAsStateWithLifecycle()
-                    val initialType = intent.getStringExtra(EXTRA_TRANSACTION_TYPE)
-                        ?.let { runCatching { TransactionType.valueOf(it) }.getOrNull() }
-                    val initialEditId = intent.getLongExtra(EXTRA_EDIT_TRANSACTION_ID, -1L)
-                        .takeIf { it >= 0L }
-                    AnimatedContent(
-                        targetState = startupState,
-                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        label = "startup-content",
-                    ) { state ->
-                        if (state != AppStartupState.Ready) {
-                            StartupScreen(state = state, onRetry = startupViewModel::retry)
-                            return@AnimatedContent
-                        }
-                        FinanceApp(
+                    Box(Modifier.fillMaxSize()) {
+                        val startupViewModel: AppStartupViewModel = hiltViewModel()
+                        val startupState by startupViewModel.state.collectAsStateWithLifecycle()
+                        val initialType = intent.getStringExtra(EXTRA_TRANSACTION_TYPE)
+                            ?.let { runCatching { TransactionType.valueOf(it) }.getOrNull() }
+                        val initialEditId = intent.getLongExtra(EXTRA_EDIT_TRANSACTION_ID, -1L)
+                            .takeIf { it >= 0L }
+                        AnimatedContent(
+                            targetState = startupState,
+                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            label = "startup-content",
+                        ) { state ->
+                            if (state != AppStartupState.Ready) {
+                                StartupScreen(state = state, onRetry = startupViewModel::retry)
+                                return@AnimatedContent
+                            }
+                            FinanceApp(
                             isDarkTheme = useDarkTheme,
                             moduleBarConfig = moduleBarConfig,
                             // When an edit was requested the type extra only selects
@@ -161,7 +164,9 @@ class MainActivity : ComponentActivity() {
                                 moduleBarPreferences.setTransitionStyle(it)
                                 applicationContext.showToast("Animación de navegación actualizada")
                             },
-                        )
+                            )
+                        }
+                        AppToastHost()
                     }
                 }
             }
