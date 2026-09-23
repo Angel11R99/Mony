@@ -53,7 +53,9 @@ import com.angel.mony.domain.model.BudgetPeriodView
 import com.angel.mony.domain.model.BudgetCycle
 import com.angel.mony.domain.model.DateRange
 import com.angel.mony.domain.model.TransactionType
+import com.angel.mony.domain.model.budgetPeriodToClose
 import com.angel.mony.domain.model.canManuallyCloseBudgetCycle
+import com.angel.mony.domain.model.nextBudgetPeriod
 import com.angel.mony.domain.model.shouldAutomaticallyCloseBudgetCycle
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.BudgetAmountDialog
@@ -91,6 +93,8 @@ fun HomeScreen(
     val isSavingBudget by viewModel.isSavingBudget.collectAsStateWithLifecycle()
     val today = LocalDate.now()
     val manualCloseAvailable = canManuallyCloseBudgetCycle(state.budget, today)
+    val cycleToClose = state.budget?.let { budgetPeriodToClose(it, today) } ?: state.currentPeriod
+    val cycleAfterClose = state.budget?.let { nextBudgetPeriod(it, cycleToClose.endInclusive) } ?: state.nextPeriod
     var editingBudget by remember { mutableStateOf(false) }
     var confirmingClose by remember { mutableStateOf(false) }
     var showingHistory by remember { mutableStateOf(false) }
@@ -102,6 +106,7 @@ fun HomeScreen(
         state.budget?.cycleStart,
         state.budget?.period,
         state.budget?.cycleSchedules,
+        state.currentPeriod,
     ) {
         if (automaticCycleClose && shouldAutomaticallyCloseBudgetCycle(state.budget, LocalDateTime.now(), automaticCloseTime)) {
             viewModel.closeCurrentCycle {}
@@ -260,8 +265,8 @@ fun HomeScreen(
 
     if (confirmingClose) {
         CloseCycleDialog(
-            currentPeriod = state.currentPeriod,
-            nextPeriod = state.nextPeriod,
+            currentPeriod = cycleToClose,
+            nextPeriod = cycleAfterClose,
             closingCycle = closingCycle,
             onDismiss = { if (!closingCycle) confirmingClose = false },
             onConfirm = { viewModel.closeCurrentCycle { confirmingClose = false } },

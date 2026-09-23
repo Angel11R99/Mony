@@ -141,16 +141,32 @@ class HomeViewModel @Inject constructor(
                 val linkedIncome = budget.incomeTransactionId?.let { transactions.get(it) }
                 if (linkedIncome == null) {
                     val categoryId = incomeCategoryId() ?: return@withLock
+                    val initialPeriod = activeBudgetPeriod(budget)
+                    val startedAt = Instant.now()
                     val transactionId = upsertBudgetIncome(
                         amountInCents = budget.amountInCents,
                         period = budget.period,
                         categoryId = categoryId,
                         existingId = null,
-                        date = budget.cycleStart ?: activeBudgetPeriod(budget).start,
-                        now = Instant.now(),
+                        date = budget.cycleStart ?: initialPeriod.start,
+                        now = startedAt,
                     )
-                    budgetRepository.save(budget.copy(incomeTransactionId = transactionId))
+                    budgetRepository.save(
+                        budget.copy(
+                            cycleStart = budget.cycleStart ?: initialPeriod.start,
+                            cycleStartedAt = budget.cycleStartedAt ?: startedAt,
+                            incomeTransactionId = transactionId,
+                        )
+                    )
                     runCatching { updateAllFinanceWidgets(context) }
+                } else if (budget.cycleStart == null) {
+                    val incomePeriod = activeBudgetPeriod(budget, linkedIncome.date)
+                    budgetRepository.save(
+                        budget.copy(
+                            cycleStart = incomePeriod.start,
+                            cycleStartedAt = budget.cycleStartedAt ?: linkedIncome.createdAt,
+                        )
+                    )
                 }
             }
         }
@@ -185,14 +201,14 @@ class HomeViewModel @Inject constructor(
         if (closingCycle.value) return
         val today = LocalDate.now()
         val periodToClose = budgetPeriodToClose(budget, today)
-        if (periodToClose.endInclusive != today) {
+        if (periodToClose.endInclusive.isAfter(today)) {
             context.showToast("Este ciclo todavía no ha llegado a su día de cierre")
             return
         }
         viewModelScope.launch {
             closingCycle.value = true
             val now = Instant.now()
-            val nextStart = nextBudgetPeriod(budget, today).start
+            val nextStart = nextBudgetPeriod(budget, periodToClose.endInclusive).start
             val cycleTransactions = transactions.observeAll().first().filter {
                 it.belongsToActiveBudgetCycle(budget, periodToClose)
             }

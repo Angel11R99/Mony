@@ -147,7 +147,7 @@ fun canManuallyCloseBudgetCycle(
     today: LocalDate = LocalDate.now(),
 ): Boolean {
     if (budget == null || budget.cycleStart?.let { !it.isBefore(today) } == true) return false
-    return activeBudgetPeriod(budget, today).endInclusive == today
+    return !budgetPeriodToClose(budget, today).endInclusive.isAfter(today)
 }
 
 fun shouldAutomaticallyCloseBudgetCycle(
@@ -157,11 +157,12 @@ fun shouldAutomaticallyCloseBudgetCycle(
 ): Boolean {
     if (budget == null || budget.cycleStart?.let { !it.isBefore(now.toLocalDate()) } == true) return false
     val today = now.toLocalDate()
-    return activeBudgetPeriod(budget, today).endInclusive == today &&
-        !now.toLocalTime().isBefore(closeTime)
+    val periodToClose = budgetPeriodToClose(budget, today)
+    return periodToClose.endInclusive.isBefore(today) ||
+        (periodToClose.endInclusive == today && !now.toLocalTime().isBefore(closeTime))
 }
 
 fun budgetPeriodToClose(
     budget: BudgetConfig,
     today: LocalDate = LocalDate.now(),
-): DateRange = activeBudgetPeriod(budget, today)
+): DateRange = activeBudgetPeriod(budget, budget.cycleStart ?: today)

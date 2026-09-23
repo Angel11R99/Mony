@@ -275,6 +275,26 @@ class BudgetCycleTest {
         ))
     }
 
+    @Test fun `overdue cycle remains eligible for automatic close`() {
+        val config = customScheduleConfig().copy(cycleStart = LocalDate.of(2026, 8, 15))
+
+        assertTrue(shouldAutomaticallyCloseBudgetCycle(
+            config,
+            LocalDateTime.of(2026, 8, 30, 8, 0),
+            LocalTime.of(15, 0),
+        ))
+        assertEquals(
+            DateRange(LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 29)),
+            budgetPeriodToClose(config, LocalDate.of(2026, 8, 30)),
+        )
+    }
+
+    @Test fun `overdue cycle remains eligible for manual close`() {
+        val config = customScheduleConfig().copy(cycleStart = LocalDate.of(2026, 8, 15))
+
+        assertTrue(canManuallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 30)))
+    }
+
     @Test fun `period to close keeps configured inclusive boundaries`() {
         val config = customScheduleConfig()
 

@@ -4,6 +4,7 @@ import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetPeriod
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
+import com.angel.mony.domain.model.activeBudgetPeriod
 import com.angel.mony.domain.model.defaultCycleSchedules
 import com.angel.mony.domain.repository.BudgetRepository
 import com.angel.mony.domain.repository.CategoryRepository
@@ -27,6 +28,20 @@ class SaveBudget @Inject constructor(
             ?: incomeCategories.firstOrNull()?.id
             ?: error("No hay una categoría de ingreso disponible")
         val now = Instant.now()
+        val today = LocalDate.now()
+        val periodChanged = existing != null && existing.period != period
+        val cycleSchedules = if (existing == null || periodChanged) {
+            defaultCycleSchedules(period)
+        } else {
+            existing.cycleSchedules
+        }
+        val initializesCycle = existing?.cycleStart == null || periodChanged
+        val configuredBudget = BudgetConfig(
+            amountInCents = amountInCents,
+            period = period,
+            cycleSchedules = cycleSchedules,
+        )
+        val initialPeriod = activeBudgetPeriod(configuredBudget, today)
         val existingIncome = existing?.incomeTransactionId?.let { transactions.get(it) }
         val income = FinanceTransaction(
             id = existingIncome?.id ?: 0,
@@ -34,7 +49,7 @@ class SaveBudget @Inject constructor(
             type = TransactionType.INCOME,
             categoryId = existingIncome?.categoryId ?: categoryId,
             description = if (period == BudgetPeriod.MONTHLY) "Ingreso mensual" else "Ingreso quincenal",
-            date = existingIncome?.date ?: LocalDate.now(),
+            date = if (initializesCycle) initialPeriod.start else existingIncome?.date ?: today,
             createdAt = existingIncome?.createdAt ?: now,
             updatedAt = now,
         )
@@ -49,14 +64,10 @@ class SaveBudget @Inject constructor(
             BudgetConfig(
                 amountInCents = amountInCents,
                 period = period,
-                cycleStart = existing?.cycleStart,
-                cycleStartedAt = existing?.cycleStartedAt,
+                cycleStart = if (initializesCycle) initialPeriod.start else existing?.cycleStart,
+                cycleStartedAt = if (initializesCycle) now else existing?.cycleStartedAt,
                 incomeTransactionId = incomeTransactionId,
-                cycleSchedules = if (existing == null || existing.period != period) {
-                    defaultCycleSchedules(period)
-                } else {
-                    existing.cycleSchedules
-                },
+                cycleSchedules = cycleSchedules,
             )
         )
     }
