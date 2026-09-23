@@ -167,7 +167,9 @@ Unix-like systems:
 ./gradlew buildNextRelease
 ```
 
-`buildNextRelease` increments both Android `VERSION_CODE` and the patch component of semantic `VERSION_NAME` (`MAJOR.MINOR.PATCH`). Normal debug/release builds must not increment versions. For an intentional major or minor release, edit both values in `version.properties`, keep `VERSION_CODE` strictly increasing, and run `syncVersionDocumentation` before building.
+`buildNextRelease` increments both Android `VERSION_CODE` and the patch component of semantic `VERSION_NAME` (`MAJOR.MINOR.PATCH`). Normal debug/release builds must not increment versions. For an intentional major or minor release, edit both values in `version.properties`, keep `VERSION_CODE` strictly increasing, and run `syncVersionDocumentation` before building. Alternatively, use `-PversionBump=minor` or `-PversionBump=major` to prepare a minor or major release without editing files manually.
+
+The GitHub Actions `Release` workflow (`workflow_dispatch`) exposes a `version_bump` input (`patch`/`minor`/`major`, default `patch`) selected from the "Run workflow" button, so release versions are computed from `version.properties` and published without local changes.
 
 Never publish an unsigned APK or commit signing credentials. A GitHub release/tag must use exactly `v<VERSION_NAME>`, matching the README links and APK name.
 
