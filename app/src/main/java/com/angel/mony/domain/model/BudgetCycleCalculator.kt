@@ -83,6 +83,10 @@ fun FinanceTransaction.belongsToActiveBudgetCycle(
     period: DateRange,
 ): Boolean {
     if (date !in period.start..period.endInclusive) return false
+    // El ingreso del presupuesto (salario configurado) pertenece a este ciclo por diseño:
+    // aunque se haya creado antes de `cycleStartedAt` (datos migrados o recreados),
+    // siempre debe contar como ingreso del periodo donde cae su fecha.
+    if (budget?.incomeTransactionId?.let { it == id } == true) return true
     val boundary = budget?.cycleStartedAt?.takeIf { budget.cycleStart == period.start } ?: return true
     // La fecha es la fuente de verdad para agrupar por ciclo.
     // El límite `cycleStartedAt` solo debe excluir movimientos creados antes del inicio

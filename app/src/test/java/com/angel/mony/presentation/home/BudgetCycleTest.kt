@@ -170,6 +170,72 @@ class BudgetCycleTest {
         )
     }
 
+    @Test fun `linked budget income counts on opening day even when created before the cycle opened`() {
+        val boundary = Instant.parse("2026-08-01T12:00:00Z")
+        val incomeId = 99L
+        val config = BudgetConfig(
+            amountInCents = 100_000,
+            period = BudgetPeriod.FORTNIGHTLY,
+            cycleStart = LocalDate.of(2026, 8, 1),
+            cycleStartedAt = boundary,
+            incomeTransactionId = incomeId,
+        )
+        val period = activeBudgetPeriod(config, LocalDate.of(2026, 8, 1))
+        val salary = transaction(
+            id = incomeId,
+            date = LocalDate.of(2026, 8, 1),
+            amountInCents = 50_000,
+            createdAt = Instant.parse("2026-07-31T18:00:00Z"),
+            type = TransactionType.INCOME,
+        )
+
+        assertTrue(salary.belongsToActiveBudgetCycle(config, period))
+    }
+
+    @Test fun `unlinked income created before the opening is still excluded by the boundary`() {
+        val boundary = Instant.parse("2026-08-01T12:00:00Z")
+        val config = BudgetConfig(
+            amountInCents = 100_000,
+            period = BudgetPeriod.FORTNIGHTLY,
+            cycleStart = LocalDate.of(2026, 8, 1),
+            cycleStartedAt = boundary,
+        )
+        val period = activeBudgetPeriod(config, LocalDate.of(2026, 8, 1))
+        val manualIncome = transaction(
+            id = 7L,
+            date = LocalDate.of(2026, 8, 1),
+            amountInCents = 10_000,
+            createdAt = Instant.parse("2026-08-01T11:59:59Z"),
+            type = TransactionType.INCOME,
+        )
+
+        assertFalse(manualIncome.belongsToActiveBudgetCycle(config, period))
+    }
+
+    @Test fun `linked budget income stays constrained to the period of its date`() {
+        val boundary = Instant.parse("2026-08-01T12:00:00Z")
+        val incomeId = 99L
+        val config = BudgetConfig(
+            amountInCents = 100_000,
+            period = BudgetPeriod.FORTNIGHTLY,
+            cycleStart = LocalDate.of(2026, 8, 1),
+            cycleStartedAt = boundary,
+            incomeTransactionId = incomeId,
+        )
+        val current = activeBudgetPeriod(config, LocalDate.of(2026, 8, 1))
+        val next = nextBudgetPeriod(config, LocalDate.of(2026, 8, 1))
+        val nextCycleSalary = transaction(
+            id = incomeId,
+            date = LocalDate.of(2026, 8, 16),
+            amountInCents = 50_000,
+            createdAt = boundary,
+            type = TransactionType.INCOME,
+        )
+
+        assertFalse(nextCycleSalary.belongsToActiveBudgetCycle(config, current))
+        assertTrue(nextCycleSalary.belongsToActiveBudgetCycle(config, next))
+    }
+
     @Test fun `manual close is available only on inclusive closing day`() {
         val config = customScheduleConfig()
 
@@ -237,10 +303,11 @@ class BudgetCycleTest {
         date: LocalDate,
         amountInCents: Long,
         createdAt: Instant = Instant.parse("2026-08-13T12:00:00Z"),
+        type: TransactionType = TransactionType.EXPENSE,
     ) = FinanceTransaction(
         id = id,
         amountInCents = amountInCents,
-        type = TransactionType.EXPENSE,
+        type = type,
         categoryId = 1,
         description = null,
         date = date,
