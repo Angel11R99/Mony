@@ -7,6 +7,10 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,6 +72,7 @@ fun FinanceApp(
     onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
     onModuleBarShowLabelsChange: (Boolean) -> Unit,
     onModuleBarLabelTextSizeChange: (Float) -> Unit,
+    onModuleTransitionStyleChange: (ModuleTransitionStyle) -> Unit,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -109,39 +114,53 @@ fun FinanceApp(
                 bottom = systemBottomPadding + if (showModuleBar) 84.dp else 0.dp,
             ),
             enterTransition = {
-                if (isModuleTransition(
-                        initialState.destination.route,
-                        targetState.destination.route,
-                    )
-                ) {
-                    fadeIn(
-                        animationSpec = tween(
-                            durationMillis = ModuleEnterDurationMillis,
-                            easing = LinearOutSlowInEasing,
-                        ),
+                val initialRoute = initialState.destination.route
+                val targetRoute = targetState.destination.route
+                if (isModuleTransition(initialRoute, targetRoute)) {
+                    moduleEnterTransition(
+                        style = moduleBarConfig.transitionStyle,
+                        forward = isForwardModuleTransition(initialRoute, targetRoute),
                     )
                 } else {
                     EnterTransition.None
                 }
             },
             exitTransition = {
-                if (isModuleTransition(
-                        initialState.destination.route,
-                        targetState.destination.route,
-                    )
-                ) {
-                    fadeOut(
-                        animationSpec = tween(
-                            durationMillis = ModuleExitDurationMillis,
-                            easing = FastOutLinearInEasing,
-                        ),
+                val initialRoute = initialState.destination.route
+                val targetRoute = targetState.destination.route
+                if (isModuleTransition(initialRoute, targetRoute)) {
+                    moduleExitTransition(
+                        style = moduleBarConfig.transitionStyle,
+                        forward = isForwardModuleTransition(initialRoute, targetRoute),
                     )
                 } else {
                     ExitTransition.None
                 }
             },
-            popEnterTransition = { EnterTransition.None },
-            popExitTransition = { ExitTransition.None },
+            popEnterTransition = {
+                val initialRoute = initialState.destination.route
+                val targetRoute = targetState.destination.route
+                if (isModuleTransition(initialRoute, targetRoute)) {
+                    moduleEnterTransition(
+                        style = moduleBarConfig.transitionStyle,
+                        forward = isForwardModuleTransition(initialRoute, targetRoute),
+                    )
+                } else {
+                    EnterTransition.None
+                }
+            },
+            popExitTransition = {
+                val initialRoute = initialState.destination.route
+                val targetRoute = targetState.destination.route
+                if (isModuleTransition(initialRoute, targetRoute)) {
+                    moduleExitTransition(
+                        style = moduleBarConfig.transitionStyle,
+                        forward = isForwardModuleTransition(initialRoute, targetRoute),
+                    )
+                } else {
+                    ExitTransition.None
+                }
+            },
         ) {
             composable("home") {
                 HomeScreen(
@@ -239,6 +258,7 @@ fun FinanceApp(
                     onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
                     onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
                     onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
+                    onModuleTransitionStyleChange = onModuleTransitionStyleChange,
                 )
             }
             composable("savings") {
@@ -264,12 +284,54 @@ fun FinanceApp(
 
 internal val topLevelRoutes = setOf("home", "history", "statistics", "fixed", "pending", "savings", "list")
 
-private const val ModuleEnterDurationMillis = 120
-private const val ModuleExitDurationMillis = 80
+private const val ModuleEnterDurationMillis = 220
+private const val ModuleExitDurationMillis = 160
 
 private fun isModuleTransition(initialRoute: String?, targetRoute: String?): Boolean =
     initialRoute?.substringBefore('?') in topLevelRoutes &&
         targetRoute?.substringBefore('?') in topLevelRoutes
+
+internal fun isForwardModuleTransition(initialRoute: String?, targetRoute: String?): Boolean {
+    val initialIndex = moduleDestinations.indexOfFirst { it.route == initialRoute?.substringBefore('?') }
+    val targetIndex = moduleDestinations.indexOfFirst { it.route == targetRoute?.substringBefore('?') }
+    return initialIndex < 0 || targetIndex < 0 || targetIndex >= initialIndex
+}
+
+internal fun moduleEnterTransition(
+    style: ModuleTransitionStyle,
+    forward: Boolean,
+): EnterTransition = when (style) {
+    ModuleTransitionStyle.NONE -> EnterTransition.None
+    ModuleTransitionStyle.FADE -> fadeIn(
+        animationSpec = tween(ModuleEnterDurationMillis, easing = LinearOutSlowInEasing),
+    )
+    ModuleTransitionStyle.SLIDE -> slideInHorizontally(
+        animationSpec = tween(ModuleEnterDurationMillis, easing = LinearOutSlowInEasing),
+        initialOffsetX = { width -> if (forward) width / 3 else -width / 3 },
+    ) + fadeIn(animationSpec = tween(ModuleEnterDurationMillis))
+    ModuleTransitionStyle.SCALE -> scaleIn(
+        initialScale = 0.94f,
+        animationSpec = tween(ModuleEnterDurationMillis, easing = LinearOutSlowInEasing),
+    ) + fadeIn(animationSpec = tween(ModuleEnterDurationMillis))
+}
+
+internal fun moduleExitTransition(
+    style: ModuleTransitionStyle,
+    forward: Boolean,
+): ExitTransition = when (style) {
+    ModuleTransitionStyle.NONE -> ExitTransition.None
+    ModuleTransitionStyle.FADE -> fadeOut(
+        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutLinearInEasing),
+    )
+    ModuleTransitionStyle.SLIDE -> slideOutHorizontally(
+        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutLinearInEasing),
+        targetOffsetX = { width -> if (forward) -width / 4 else width / 4 },
+    ) + fadeOut(animationSpec = tween(ModuleExitDurationMillis))
+    ModuleTransitionStyle.SCALE -> scaleOut(
+        targetScale = 0.98f,
+        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutLinearInEasing),
+    ) + fadeOut(animationSpec = tween(ModuleExitDurationMillis))
+}
 
 internal fun shouldShowModuleBar(route: String?): Boolean = route in topLevelRoutes
 

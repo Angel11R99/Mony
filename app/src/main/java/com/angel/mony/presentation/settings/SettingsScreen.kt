@@ -42,6 +42,7 @@ import com.angel.mony.ui.theme.AppFontFamily
 import com.angel.mony.ui.theme.AppShapeStyle
 import com.angel.mony.ui.theme.AppThemeMode
 import com.angel.mony.ui.theme.BackgroundDecoration
+import com.angel.mony.navigation.ModuleTransitionStyle
 
 import java.time.LocalTime
 
@@ -69,6 +70,7 @@ fun SettingsScreen(
     onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
     onModuleBarShowLabelsChange: (Boolean) -> Unit,
     onModuleBarLabelTextSizeChange: (Float) -> Unit,
+    onModuleTransitionStyleChange: (ModuleTransitionStyle) -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     var currentGroup by rememberSaveable { mutableStateOf(SettingsGroup.MAIN) }
@@ -117,6 +119,7 @@ fun SettingsScreen(
             onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
             onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
             onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
+            onModuleTransitionStyleChange = onModuleTransitionStyleChange,
         )
         SettingsGroup.FINANCE -> FinanceSettingsScreen(
             automaticCycleClose = automaticCycleClose,
@@ -212,8 +215,8 @@ private fun SettingsMainScreen(
                 SettingsGroupRow(
                     icon = Icons.Outlined.Tune,
                     title = "Navegación",
-                    description = "Barra y módulos visibles",
-                    summary = "$visibleCount módulos",
+                    description = "Barra, módulos y animaciones",
+                    summary = "$visibleCount módulos · ${moduleBarConfig.transitionStyle.label}",
                     onClick = { onGroupClick(SettingsGroup.NAVIGATION) },
                 )
             }

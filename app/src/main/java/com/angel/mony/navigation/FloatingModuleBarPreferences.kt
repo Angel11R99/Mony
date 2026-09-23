@@ -4,10 +4,18 @@ import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
+enum class ModuleTransitionStyle(val label: String, val description: String) {
+    NONE("Sin animación", "Cambia de módulo inmediatamente y reduce el trabajo visual."),
+    FADE("Fundido", "Suaviza el cambio con una transición discreta."),
+    SLIDE("Deslizamiento", "Mueve el contenido según la posición del módulo."),
+    SCALE("Escala", "Acerca suavemente el módulo seleccionado."),
+}
+
 data class FloatingModuleBarConfig(
     val visibleRoutes: Set<String> = setOf("home", "fixed", "pending", "savings", "list", "statistics", "history"),
     val showLabels: Boolean = true,
     val labelTextSize: Float = 10f,
+    val transitionStyle: ModuleTransitionStyle = ModuleTransitionStyle.FADE,
 )
 
 class FloatingModuleBarPreferences(context: Context) {
@@ -24,11 +32,14 @@ class FloatingModuleBarPreferences(context: Context) {
 
     fun setLabelTextSize(size: Float) = update(mutableConfig.value.copy(labelTextSize = size.coerceIn(MIN_TEXT_SIZE, MAX_TEXT_SIZE)))
 
+    fun setTransitionStyle(style: ModuleTransitionStyle) = update(mutableConfig.value.copy(transitionStyle = style))
+
     private fun update(value: FloatingModuleBarConfig) {
         preferences.edit()
             .putStringSet(KEY_VISIBLE_ROUTES, value.visibleRoutes)
             .putBoolean(KEY_SHOW_LABELS, value.showLabels)
             .putFloat(KEY_LABEL_TEXT_SIZE, value.labelTextSize)
+            .putString(KEY_TRANSITION_STYLE, value.transitionStyle.name)
             .apply()
         mutableConfig.value = value
     }
@@ -44,6 +55,7 @@ class FloatingModuleBarPreferences(context: Context) {
         private const val KEY_VISIBLE_ROUTES = "visible_routes"
         private const val KEY_SHOW_LABELS = "show_labels"
         private const val KEY_LABEL_TEXT_SIZE = "label_text_size"
+        private const val KEY_TRANSITION_STYLE = "transition_style"
 
         fun load(context: Context): FloatingModuleBarConfig = read(
             context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -55,6 +67,9 @@ class FloatingModuleBarPreferences(context: Context) {
             ),
             showLabels = preferences.getBoolean(KEY_SHOW_LABELS, true),
             labelTextSize = preferences.getFloat(KEY_LABEL_TEXT_SIZE, 10f),
+            transitionStyle = preferences.getString(KEY_TRANSITION_STYLE, null)
+                ?.let { runCatching { ModuleTransitionStyle.valueOf(it) }.getOrNull() }
+                ?: ModuleTransitionStyle.FADE,
         )
 
         internal fun includeListInLegacyDefaults(stored: Set<String>?): Set<String> = when (stored) {

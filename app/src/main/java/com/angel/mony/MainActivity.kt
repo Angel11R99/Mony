@@ -136,6 +136,10 @@ class MainActivity : ComponentActivity() {
                         onModuleBarVisibleRoutesChange = moduleBarPreferences::setVisibleRoutes,
                         onModuleBarShowLabelsChange = moduleBarPreferences::setShowLabels,
                         onModuleBarLabelTextSizeChange = moduleBarPreferences::setLabelTextSize,
+                        onModuleTransitionStyleChange = {
+                            moduleBarPreferences.setTransitionStyle(it)
+                            applicationContext.showToast("Animación de navegación actualizada")
+                        },
                     )
                 }
             }

@@ -41,4 +41,15 @@ class FloatingModuleBarTest {
         assertTrue(isValidInitialDestination("list"))
         assertFalse(isValidInitialDestination("list/42"))
     }
+
+    @Test fun `module transition follows bar order`() {
+        assertTrue(isForwardModuleTransition("home", "statistics"))
+        assertFalse(isForwardModuleTransition("history", "fixed"))
+        assertTrue(isForwardModuleTransition("list?query=arroz", "statistics"))
+    }
+
+    @Test fun `fade remains the default transition and none is available`() {
+        assertEquals(ModuleTransitionStyle.FADE, FloatingModuleBarConfig().transitionStyle)
+        assertTrue(ModuleTransitionStyle.entries.contains(ModuleTransitionStyle.NONE))
+    }
 }
