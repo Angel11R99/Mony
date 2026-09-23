@@ -79,24 +79,9 @@ private fun BudgetCycleSchedule.toDateRange(openingMonth: YearMonth): DateRange 
 private fun YearMonth.atClampedDay(day: Int): LocalDate = atDay(day.coerceAtMost(lengthOfMonth()))
 
 fun FinanceTransaction.belongsToActiveBudgetCycle(
-    budget: BudgetConfig?,
+    @Suppress("UNUSED_PARAMETER") budget: BudgetConfig?,
     period: DateRange,
-): Boolean {
-    if (date !in period.start..period.endInclusive) return false
-    // El ingreso del presupuesto (salario configurado) pertenece a este ciclo por diseño:
-    // aunque se haya creado antes de `cycleStartedAt` (datos migrados o recreados),
-    // siempre debe contar como ingreso del periodo donde cae su fecha.
-    if (budget?.incomeTransactionId?.let { it == id } == true) return true
-    val boundary = budget?.cycleStartedAt?.takeIf { budget.cycleStart == period.start } ?: return true
-    // La fecha es la fuente de verdad para agrupar por ciclo.
-    // El límite `cycleStartedAt` solo debe excluir movimientos creados antes del inicio
-    // cuando su fecha coincide exactamente con el día de apertura (evita arrastrar
-    // movimientos del ciclo anterior con la misma fecha). Los movimientos con fecha
-    // posterior a la apertura pertenecen al ciclo por su fecha, aunque se hayan
-    // creado antes del cierre del ciclo anterior (p.ej. un gasto con fecha futura).
-    if (date.isAfter(period.start)) return true
-    return !createdAt.isBefore(boundary)
-}
+): Boolean = date in period.start..period.endInclusive
 
 fun availableForBudget(
     budget: BudgetConfig?,

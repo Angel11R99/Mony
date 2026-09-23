@@ -15,7 +15,6 @@ import com.angel.mony.domain.model.PendingType
 import com.angel.mony.domain.model.SavingsGoalProgress
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.availableForBudget
-import com.angel.mony.domain.model.belongsToActiveBudgetCycle
 import com.angel.mony.domain.model.budgetPeriodForView
 import com.angel.mony.domain.model.previousBudgetPeriod
 import com.angel.mony.domain.repository.BudgetRepository
@@ -159,17 +158,13 @@ internal suspend fun loadCoreSnapshot(context: Context): WidgetCoreSnapshot {
     val period = budgetPeriodForView(budget, pinnedView)
     val today = LocalDate.now()
     val periodTransactions = transactionRepository.observeByPeriod(period).first()
-        .filter { it.belongsToActiveBudgetCycle(budget, period) }
     val recentTransactions = transactionRepository.getRecent(RECENT_MOVEMENTS_LIMIT)
     val categoriesById = loadCategories(entryPoint)
 
     val previousCycleExpense = budget?.let { config ->
         val previousPeriod = previousBudgetPeriod(config, today)
         transactionRepository.observeByPeriod(previousPeriod).first()
-            .filter {
-                it.type == TransactionType.EXPENSE &&
-                    it.belongsToActiveBudgetCycle(config, previousPeriod)
-            }
+            .filter { it.type == TransactionType.EXPENSE }
             .sumOf(FinanceTransaction::amountInCents)
     }
 

@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -117,9 +116,7 @@ class HomeViewModel @Inject constructor(
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val periodTransactions = homePeriodState.flatMapLatest { periodState ->
-        transactions.observeByPeriod(periodState.period).map { items ->
-            items.filter { it.belongsToActiveBudgetCycle(periodState.budget, periodState.period) }
-        }
+        transactions.observeByPeriod(periodState.period)
     }
 
     val state = combine(

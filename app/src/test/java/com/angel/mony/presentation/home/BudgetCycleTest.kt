@@ -150,7 +150,7 @@ class BudgetCycleTest {
         assertTrue(nextTransaction.belongsToActiveBudgetCycle(config, next))
     }
 
-    @Test fun `creation boundary excludes earlier same day transactions`() {
+    @Test fun `opening day uses transaction date even when created before cycle setup`() {
         val boundary = Instant.parse("2026-08-01T12:00:00Z")
         val config = BudgetConfig(
             amountInCents = 100_000,
@@ -160,7 +160,7 @@ class BudgetCycleTest {
         )
         val period = activeBudgetPeriod(config, LocalDate.of(2026, 8, 1))
 
-        assertFalse(
+        assertTrue(
             transaction(1, LocalDate.of(2026, 8, 1), 10_000, Instant.parse("2026-08-01T11:59:59Z"))
                 .belongsToActiveBudgetCycle(config, period),
         )
@@ -192,7 +192,7 @@ class BudgetCycleTest {
         assertTrue(salary.belongsToActiveBudgetCycle(config, period))
     }
 
-    @Test fun `unlinked income created before the opening is still excluded by the boundary`() {
+    @Test fun `unlinked income on opening day is included by its date`() {
         val boundary = Instant.parse("2026-08-01T12:00:00Z")
         val config = BudgetConfig(
             amountInCents = 100_000,
@@ -209,7 +209,7 @@ class BudgetCycleTest {
             type = TransactionType.INCOME,
         )
 
-        assertFalse(manualIncome.belongsToActiveBudgetCycle(config, period))
+        assertTrue(manualIncome.belongsToActiveBudgetCycle(config, period))
     }
 
     @Test fun `linked budget income stays constrained to the period of its date`() {

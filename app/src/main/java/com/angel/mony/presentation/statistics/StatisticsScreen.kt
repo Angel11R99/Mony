@@ -77,8 +77,6 @@ import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.TransactionType
-import com.angel.mony.domain.model.activeBudgetPeriod
-import com.angel.mony.domain.model.belongsToActiveBudgetCycle
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.angel.mony.presentation.components.FinanceCard
@@ -138,19 +136,9 @@ fun StatisticsScreen(
             )
     }
     val isBudgetCycleFilter = selectedCycle != null || range == StatisticsRange.CURRENT_BUDGET
-    val periodTransactions = remember(state.transactions, state.budget, isBudgetCycleFilter, period) {
-        val activePeriod = activeBudgetPeriod(state.budget)
-        if (!isBudgetCycleFilter ||
-            period.startDate != activePeriod.start ||
-            period.endDate != activePeriod.endInclusive
-        ) state.transactions
-        else {
-            state.transactions.filter { it.belongsToActiveBudgetCycle(state.budget, activePeriod) }
-        }
-    }
-    val report = remember(periodTransactions, state.categories, period) {
+    val report = remember(state.transactions, state.categories, period) {
         calculateStatistics(
-            transactions = periodTransactions,
+            transactions = state.transactions,
             categories = state.categories,
             startDate = period.startDate,
             endDate = period.endDate,
@@ -166,7 +154,7 @@ fun StatisticsScreen(
     }
     val previousReport = previousPeriod?.let { previous ->
         calculateStatistics(
-            transactions = periodTransactions,
+            transactions = state.transactions,
             categories = state.categories,
             startDate = previous.startDate,
             endDate = previous.endDate,
