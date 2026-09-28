@@ -4,19 +4,43 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /**
- * Resolución de períodos quincenales.
+ * Modo en el que opera el módulo según el ciclo de cobro del usuario.
+ *
+ * [FORTNIGHTLY] parte el mes en dos períodos (1ra y 2da quincena).
+ * [MONTHLY] trata el mes como un único período: quien cobra por mes no tiene
+ * "primera ni segunda quincena".
+ */
+enum class FortnightPeriodStyle {
+    FORTNIGHTLY,
+    MONTHLY,
+}
+
+/** Modo del módulo según la configuración presupuestaria del usuario. */
+fun fortnightPeriodStyle(budget: BudgetConfig?): FortnightPeriodStyle =
+    when (budget?.period) {
+        BudgetPeriod.MONTHLY -> FortnightPeriodStyle.MONTHLY
+        else -> FortnightPeriodStyle.FORTNIGHTLY
+    }
+
+/**
+ * Resolución de períodos del módulo.
  *
  * Reutiliza los mismos [BudgetCycleSchedule] y el mismo clamp de días que
- * [BudgetCycleCalculator], de modo que el módulo Quincena nunca redefina qué
- * significa "quincena": si el usuario configuró un ciclo personalizado, ambos
- * módulos coinciden.
+ * [BudgetCycleCalculator], de modo que el módulo nunca redefina qué significa
+ * "quincena": si el usuario configuró un ciclo personalizado, ambos módulos
+ * coinciden.
+ *
+ * Para un presupuesto mensual solo existe un período por mes: se toma el
+ * primer ciclo configurado (o su default de 1-al fin de mes), nunca dos.
  */
 fun fortnightSchedules(budget: BudgetConfig?): List<BudgetCycleSchedule> {
-    if (budget == null || budget.period != BudgetPeriod.FORTNIGHTLY) {
-        return defaultCycleSchedules(BudgetPeriod.FORTNIGHTLY)
+    if (budget == null) return defaultCycleSchedules(BudgetPeriod.FORTNIGHTLY)
+    val schedules = budget.cycleSchedules.distinct().ifEmpty {
+        defaultCycleSchedules(budget.period)
     }
-    return budget.cycleSchedules.distinct().ifEmpty {
-        defaultCycleSchedules(BudgetPeriod.FORTNIGHTLY)
+    return when (fortnightPeriodStyle(budget)) {
+        FortnightPeriodStyle.MONTHLY -> listOf(schedules.first())
+        FortnightPeriodStyle.FORTNIGHTLY -> schedules
     }
 }
 

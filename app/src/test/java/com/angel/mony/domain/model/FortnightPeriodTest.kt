@@ -55,13 +55,58 @@ class FortnightPeriodTest {
     }
 
     @Test
-    fun `un presupuesto mensual no altera la definicion de quincena`() {
+    fun `un presupuesto mensual genera un solo periodo por mes`() {
         val budget = BudgetConfig(amountInCents = 50_000L, period = BudgetPeriod.MONTHLY)
 
+        assertEquals(FortnightPeriodStyle.MONTHLY, fortnightPeriodStyle(budget))
         assertEquals(
-            defaultSchedules,
+            listOf(BudgetCycleSchedule(openingDay = 1, closingDay = 31)),
             fortnightSchedules(budget),
         )
+        assertEquals(
+            DateRange(LocalDate.parse("2026-10-01"), LocalDate.parse("2026-10-31")),
+            fortnightPeriodContaining(LocalDate.parse("2026-10-12"), budget),
+        )
+        assertEquals(
+            FortnightSlot.FIRST,
+            fortnightSlotFor(DateRange(LocalDate.parse("2026-10-01"), LocalDate.parse("2026-10-31")), budget),
+        )
+    }
+
+    @Test
+    fun `un usuario mensual navega mes a mes sin primera ni segunda quincena`() {
+        val budget = BudgetConfig(amountInCents = 50_000L, period = BudgetPeriod.MONTHLY)
+        val current = fortnightPeriodContaining(LocalDate.parse("2026-10-12"), budget)
+
+        assertEquals(
+            DateRange(LocalDate.parse("2026-11-01"), LocalDate.parse("2026-11-30")),
+            nextFortnightPeriod(current, budget),
+        )
+        assertEquals(
+            DateRange(LocalDate.parse("2026-09-01"), LocalDate.parse("2026-09-30")),
+            previousFortnightPeriod(current, budget),
+        )
+    }
+
+    @Test
+    fun `un ciclo mensual personalizado se respeta como un solo periodo`() {
+        val budget = BudgetConfig(
+            amountInCents = 50_000L,
+            period = BudgetPeriod.MONTHLY,
+            cycleSchedules = listOf(BudgetCycleSchedule(openingDay = 26, closingDay = 25)),
+        )
+        val period = DateRange(LocalDate.parse("2026-10-26"), LocalDate.parse("2026-11-25"))
+
+        assertEquals(period, fortnightPeriodContaining(LocalDate.parse("2026-11-02"), budget))
+        assertEquals(
+            DateRange(LocalDate.parse("2026-11-26"), LocalDate.parse("2026-12-25")),
+            nextFortnightPeriod(period, budget),
+        )
+        assertEquals(
+            DateRange(LocalDate.parse("2026-09-26"), LocalDate.parse("2026-10-25")),
+            previousFortnightPeriod(period, budget),
+        )
+        assertEquals(FortnightPeriodStyle.MONTHLY, fortnightPeriodStyle(budget))
     }
 
     @Test
