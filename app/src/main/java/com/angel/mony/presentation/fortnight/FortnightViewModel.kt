@@ -232,8 +232,12 @@ class FortnightViewModel @Inject constructor(
             return
         }
         val budget = MoneyFormatter.parseToCents(planBudgetText.value)
+        if (planBudgetText.value.isBlank()) {
+            message.value = if (monthlyMode) "Indica el presupuesto del mes." else "Indica el presupuesto de la quincena."
+            return
+        }
         if (budget == null || budget < 0) {
-            message.value = "El monto debe ser mayor que cero."
+            message.value = "El presupuesto debe ser mayor que cero."
             return
         }
         val now = Instant.now()
@@ -267,7 +271,7 @@ class FortnightViewModel @Inject constructor(
         }
         val items = fromTemplates + fromCategories
         if (items.isEmpty()) {
-            message.value = "Selecciona al menos un concepto para planificar."
+            message.value = "Selecciona al menos una categoría o plantilla antes de continuar."
             return
         }
         viewModelScope.launch {
@@ -348,11 +352,11 @@ class FortnightViewModel @Inject constructor(
         val amount = draft.amountInCents
         val categoryId = draft.categoryId
         when {
-            description.isEmpty() -> message.value = "Escribe una descripción."
-            amount == null || amount < 0 -> message.value = "El monto debe ser mayor que cero."
-            categoryId == null -> message.value = "Selecciona una categoría."
+            description.isEmpty() -> message.value = "Indica la descripción del concepto."
+            amount == null || amount < 0 -> message.value = "Indica el monto planificado del concepto."
+            categoryId == null -> message.value = "Selecciona una categoría antes de continuar."
             draft.type == FortnightItemType.SAVINGS && draft.savingsGoalId == null ->
-                message.value = "Selecciona la meta de ahorro."
+                message.value = "Selecciona la meta de ahorro antes de continuar."
             else -> {
                 val details = uiState.details ?: return
                 val now = Instant.now()
@@ -452,7 +456,7 @@ class FortnightViewModel @Inject constructor(
         val draft = if (allowOverpayment) mutableOverpayment.value else mutablePaymentDraft.value
         val amount = draft?.amountInCents
         if (draft == null || amount == null) {
-            message.value = "El monto debe ser mayor que cero."
+            message.value = "Indica el monto del abono."
             return
         }
         viewModelScope.launch {
@@ -472,7 +476,7 @@ class FortnightViewModel @Inject constructor(
                         runCatching { updateAllFinanceWidgets(context) }
                     }
                     is FortnightPaymentResult.Overpayment -> mutableOverpayment.value = draft
-                    FortnightPaymentResult.InvalidAmount -> message.value = "El monto debe ser mayor que cero."
+                    FortnightPaymentResult.InvalidAmount -> message.value = "El monto del abono debe ser mayor que cero."
                     FortnightPaymentResult.ClosedPlan -> {
                         message.value = periodIsClosed()
                         cancelPayment()

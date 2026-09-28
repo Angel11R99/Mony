@@ -961,7 +961,7 @@ private fun PaymentDialog(
                     label = "Monto del abono",
                     singleLine = true,
                     isError = draft.amountText.isNotBlank() && !isValid,
-                    errorMessage = "El monto debe ser mayor que cero.",
+                    errorMessage = "Indica un monto de abono mayor que cero.",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     visualTransformation = AmountVisualTransformation,
                 )

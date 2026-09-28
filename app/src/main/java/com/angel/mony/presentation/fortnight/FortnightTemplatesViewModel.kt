@@ -109,8 +109,8 @@ class FortnightTemplatesViewModel @Inject constructor(
         val first = current.firstAmountText.takeIf { it.isNotBlank() }?.let(MoneyFormatter::parseToCents)
         val second = current.secondAmountText.takeIf { it.isNotBlank() }?.let(MoneyFormatter::parseToCents)
         when {
-            description.isEmpty() -> message.value = "Escribe una descripción."
-            categoryId == null -> message.value = "Selecciona una categoría."
+            description.isEmpty() -> message.value = "Indica la descripción de la plantilla."
+            categoryId == null -> message.value = "Selecciona una categoría antes de continuar."
             (first != null && first < 0) || (second != null && second < 0) ->
                 message.value = "El monto debe ser mayor que cero."
             state.value.isMonthly && first == null ->
