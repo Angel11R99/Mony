@@ -77,9 +77,16 @@ fun PrimaryButton(
 }
 
 @Composable
-fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun SecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    leadingIcon: ImageVector? = null,
+    enabled: Boolean = true,
+) {
     OutlinedButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.heightIn(min = 54.dp),
         shape = LocalAppShapes.current.buttonShape,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
@@ -88,6 +95,10 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
     ) {
+        if (leadingIcon != null) {
+            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,

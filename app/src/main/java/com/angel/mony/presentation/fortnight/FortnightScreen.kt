@@ -33,7 +33,6 @@ import androidx.compose.material.icons.outlined.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -641,40 +640,34 @@ private fun PlanActions(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (isClosed) {
-            SecondaryAction("Reabrir quincena", Icons.Outlined.LockOpen, onReopenPlan, enabled)
+            SecondaryButton(
+                text = "Reabrir quincena",
+                onClick = onReopenPlan,
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = Icons.Outlined.LockOpen,
+                enabled = enabled,
+            )
             Text(
                 "Esta quincena está cerrada. Reábrela para volver a registrar abonos.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            SecondaryAction("Cerrar quincena", Icons.Outlined.Lock, onClosePlan, enabled)
+            SecondaryButton(
+                text = "Cerrar quincena",
+                onClick = onClosePlan,
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = Icons.Outlined.Lock,
+                enabled = enabled,
+            )
         }
-        SecondaryAction(
+        SecondaryButton(
             text = "Eliminar plan",
-            icon = Icons.Outlined.Delete,
             onClick = onDeletePlan,
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = Icons.Outlined.Delete,
             enabled = enabled && !isClosed,
         )
-    }
-}
-
-@Composable
-private fun SecondaryAction(
-    text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit,
-    enabled: Boolean,
-) {
-    androidx.compose.material3.OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-    ) {
-        Icon(icon, null, Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.labelLarge)
     }
 }
 
