@@ -4,6 +4,10 @@ import com.angel.mony.data.local.entity.BudgetConfigEntity
 import com.angel.mony.data.local.entity.BudgetCycleEntity
 import com.angel.mony.data.local.entity.CategoryEntity
 import com.angel.mony.data.local.entity.FixedEntryEntity
+import com.angel.mony.data.local.entity.FortnightPaymentEntity
+import com.angel.mony.data.local.entity.FortnightPlanEntity
+import com.angel.mony.data.local.entity.FortnightPlanItemEntity
+import com.angel.mony.data.local.entity.FortnightTemplateEntity
 import com.angel.mony.data.local.entity.KnownProductEntity
 import com.angel.mony.data.local.entity.PendingEntryEntity
 import com.angel.mony.data.local.entity.ProductRecognitionAliasEntity
@@ -29,6 +33,10 @@ data class FullBackupSnapshot(
     val shoppingAdjustments: List<ShoppingAdjustmentEntity>,
     val knownProducts: List<KnownProductEntity> = emptyList(),
     val productAliases: List<ProductRecognitionAliasEntity> = emptyList(),
+    val fortnightTemplates: List<FortnightTemplateEntity> = emptyList(),
+    val fortnightPlans: List<FortnightPlanEntity> = emptyList(),
+    val fortnightItems: List<FortnightPlanItemEntity> = emptyList(),
+    val fortnightPayments: List<FortnightPaymentEntity> = emptyList(),
 )
 
 sealed class ParsedBackup {
@@ -37,7 +45,7 @@ sealed class ParsedBackup {
 }
 
 object FullBackupExporter {
-    const val CURRENT_VERSION = 2
+    const val CURRENT_VERSION = 3
 
     fun isJsonBackup(content: String): Boolean {
         val trimmed = content.trim()
@@ -234,6 +242,70 @@ object FullBackupExporter {
                     if (p.barcode != null) put("barcode", p.barcode) else put("barcode", JSONObject.NULL)
                     put("confirmationCount", p.confirmationCount)
                     put("lastUsedAtEpochMillis", p.lastUsedAtEpochMillis)
+                })
+            }
+        })
+
+        root.put("fortnightTemplates", JSONArray().apply {
+            snapshot.fortnightTemplates.forEach { t ->
+                put(JSONObject().apply {
+                    put("id", t.id)
+                    put("description", t.description)
+                    if (t.firstFortnightAmountInCents != null) put("firstFortnightAmountInCents", t.firstFortnightAmountInCents) else put("firstFortnightAmountInCents", JSONObject.NULL)
+                    if (t.secondFortnightAmountInCents != null) put("secondFortnightAmountInCents", t.secondFortnightAmountInCents) else put("secondFortnightAmountInCents", JSONObject.NULL)
+                    put("categoryId", t.categoryId)
+                    put("type", t.type)
+                    if (t.note != null) put("note", t.note) else put("note", JSONObject.NULL)
+                    put("isActive", t.isActive)
+                    put("createdAtEpochMillis", t.createdAtEpochMillis)
+                    put("updatedAtEpochMillis", t.updatedAtEpochMillis)
+                })
+            }
+        })
+
+        root.put("fortnightPlans", JSONArray().apply {
+            snapshot.fortnightPlans.forEach { p ->
+                put(JSONObject().apply {
+                    put("id", p.id)
+                    put("startDateEpochDay", p.startDateEpochDay)
+                    put("endDateEpochDay", p.endDateEpochDay)
+                    put("slot", p.slot)
+                    put("budgetInCents", p.budgetInCents)
+                    put("status", p.status)
+                    put("createdAtEpochMillis", p.createdAtEpochMillis)
+                    if (p.closedAtEpochMillis != null) put("closedAtEpochMillis", p.closedAtEpochMillis) else put("closedAtEpochMillis", JSONObject.NULL)
+                })
+            }
+        })
+
+        root.put("fortnightItems", JSONArray().apply {
+            snapshot.fortnightItems.forEach { i ->
+                put(JSONObject().apply {
+                    put("id", i.id)
+                    put("planId", i.planId)
+                    if (i.templateId != null) put("templateId", i.templateId) else put("templateId", JSONObject.NULL)
+                    put("description", i.description)
+                    put("plannedAmountInCents", i.plannedAmountInCents)
+                    put("categoryId", i.categoryId)
+                    put("type", i.type)
+                    if (i.savingsGoalId != null) put("savingsGoalId", i.savingsGoalId) else put("savingsGoalId", JSONObject.NULL)
+                    if (i.note != null) put("note", i.note) else put("note", JSONObject.NULL)
+                    put("position", i.position)
+                    put("createdAtEpochMillis", i.createdAtEpochMillis)
+                    put("updatedAtEpochMillis", i.updatedAtEpochMillis)
+                })
+            }
+        })
+
+        root.put("fortnightPayments", JSONArray().apply {
+            snapshot.fortnightPayments.forEach { p ->
+                put(JSONObject().apply {
+                    put("id", p.id)
+                    put("itemId", p.itemId)
+                    put("amountInCents", p.amountInCents)
+                    put("dateEpochDay", p.dateEpochDay)
+                    if (p.transactionId != null) put("transactionId", p.transactionId) else put("transactionId", JSONObject.NULL)
+                    put("createdAtEpochMillis", p.createdAtEpochMillis)
                 })
             }
         })
@@ -496,6 +568,86 @@ object FullBackupExporter {
             }
         }
 
+        val fortnightTemplates = mutableListOf<FortnightTemplateEntity>()
+        root.optJSONArray("fortnightTemplates")?.let { arr ->
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                fortnightTemplates.add(
+                    FortnightTemplateEntity(
+                        id = o.optLong("id"),
+                        description = o.getString("description"),
+                        firstFortnightAmountInCents = o.optLongOrNull("firstFortnightAmountInCents"),
+                        secondFortnightAmountInCents = o.optLongOrNull("secondFortnightAmountInCents"),
+                        categoryId = o.getLong("categoryId"),
+                        type = o.getString("type"),
+                        note = o.optStringOrNull("note"),
+                        isActive = o.optBoolean("isActive", true),
+                        createdAtEpochMillis = o.getLong("createdAtEpochMillis"),
+                        updatedAtEpochMillis = o.getLong("updatedAtEpochMillis"),
+                    )
+                )
+            }
+        }
+
+        val fortnightPlans = mutableListOf<FortnightPlanEntity>()
+        root.optJSONArray("fortnightPlans")?.let { arr ->
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                fortnightPlans.add(
+                    FortnightPlanEntity(
+                        id = o.optLong("id"),
+                        startDateEpochDay = o.getLong("startDateEpochDay"),
+                        endDateEpochDay = o.getLong("endDateEpochDay"),
+                        slot = o.optString("slot", "FIRST"),
+                        budgetInCents = o.getLong("budgetInCents"),
+                        status = o.optString("status", "OPEN"),
+                        createdAtEpochMillis = o.getLong("createdAtEpochMillis"),
+                        closedAtEpochMillis = o.optLongOrNull("closedAtEpochMillis"),
+                    )
+                )
+            }
+        }
+
+        val fortnightItems = mutableListOf<FortnightPlanItemEntity>()
+        root.optJSONArray("fortnightItems")?.let { arr ->
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                fortnightItems.add(
+                    FortnightPlanItemEntity(
+                        id = o.optLong("id"),
+                        planId = o.getLong("planId"),
+                        templateId = o.optLongOrNull("templateId"),
+                        description = o.getString("description"),
+                        plannedAmountInCents = o.getLong("plannedAmountInCents"),
+                        categoryId = o.getLong("categoryId"),
+                        type = o.getString("type"),
+                        savingsGoalId = o.optLongOrNull("savingsGoalId"),
+                        note = o.optStringOrNull("note"),
+                        position = o.optInt("position", 0),
+                        createdAtEpochMillis = o.getLong("createdAtEpochMillis"),
+                        updatedAtEpochMillis = o.getLong("updatedAtEpochMillis"),
+                    )
+                )
+            }
+        }
+
+        val fortnightPayments = mutableListOf<FortnightPaymentEntity>()
+        root.optJSONArray("fortnightPayments")?.let { arr ->
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                fortnightPayments.add(
+                    FortnightPaymentEntity(
+                        id = o.optLong("id"),
+                        itemId = o.getLong("itemId"),
+                        amountInCents = o.getLong("amountInCents"),
+                        dateEpochDay = o.getLong("dateEpochDay"),
+                        transactionId = o.optLongOrNull("transactionId"),
+                        createdAtEpochMillis = o.getLong("createdAtEpochMillis"),
+                    )
+                )
+            }
+        }
+
         return FullBackupSnapshot(
             categories = categories,
             transactions = transactions,
@@ -509,6 +661,10 @@ object FullBackupExporter {
             shoppingAdjustments = shoppingAdjustments,
             knownProducts = knownProducts,
             productAliases = productAliases,
+            fortnightTemplates = fortnightTemplates,
+            fortnightPlans = fortnightPlans,
+            fortnightItems = fortnightItems,
+            fortnightPayments = fortnightPayments,
         )
     }
 }

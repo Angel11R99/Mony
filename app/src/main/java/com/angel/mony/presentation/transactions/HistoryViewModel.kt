@@ -232,6 +232,8 @@ class HistoryViewModel @Inject constructor(
                         if (result.insertedShoppingLists > 0) parts.add("${result.insertedShoppingLists} listas")
                         if (result.insertedSavingsGoals > 0) parts.add("${result.insertedSavingsGoals} metas")
                         if (result.insertedBudgetCycles > 0) parts.add("${result.insertedBudgetCycles} ciclos")
+                        if (result.insertedFortnightPlans > 0) parts.add("${result.insertedFortnightPlans} quincenas")
+                        if (result.insertedFortnightPayments > 0) parts.add("${result.insertedFortnightPayments} abonos quincenales")
                         if (parts.isEmpty()) parts.add("datos actualizados")
                         append(parts.joinToString(", "))
                         append(".")

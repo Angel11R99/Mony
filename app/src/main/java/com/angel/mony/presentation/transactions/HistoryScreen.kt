@@ -580,6 +580,8 @@ fun HistoryScreen(
                         if (bp.shoppingListsCount > 0) Text("• ${bp.shoppingListsCount} listas de compras")
                         if (bp.savingsGoalsCount > 0) Text("• ${bp.savingsGoalsCount} metas de ahorro")
                         if (bp.budgetCyclesCount > 0) Text("• ${bp.budgetCyclesCount} ciclos históricos")
+                        if (bp.fortnightPlansCount > 0) Text("• ${bp.fortnightPlansCount} planes de quincena")
+                        if (bp.fortnightPaymentsCount > 0) Text("• ${bp.fortnightPaymentsCount} abonos de quincena")
                         if (bp.categoriesCount > 0) Text("• ${bp.categoriesCount} categorías")
                         if (bp.transactionsCount == 0 && bp.fixedEntriesCount == 0 && bp.pendingEntriesCount == 0) {
                             Text("El archivo contiene datos de configuración y categorías.")
@@ -599,7 +601,7 @@ fun HistoryScreen(
                     )
                     if (bp != null && !bp.isLegacyCsv) {
                         Text(
-                            "Incluye fijos, pendientes, listas y metas.",
+                            "Incluye fijos, pendientes, listas, metas y quincenas.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelSmall,
                         )

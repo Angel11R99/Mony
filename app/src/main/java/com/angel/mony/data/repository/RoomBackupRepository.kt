@@ -8,6 +8,9 @@ import com.angel.mony.data.local.dao.BudgetConfigDao
 import com.angel.mony.data.local.dao.BudgetCycleDao
 import com.angel.mony.data.local.dao.CategoryDao
 import com.angel.mony.data.local.dao.FixedEntryDao
+import com.angel.mony.data.local.dao.FortnightPaymentDao
+import com.angel.mony.data.local.dao.FortnightPlanDao
+import com.angel.mony.data.local.dao.FortnightTemplateDao
 import com.angel.mony.data.local.dao.PendingEntryDao
 import com.angel.mony.data.local.dao.SavingsGoalDao
 import com.angel.mony.data.local.dao.ShoppingListDao
@@ -16,6 +19,10 @@ import com.angel.mony.data.local.database.FinanceDatabase
 import com.angel.mony.data.local.entity.BudgetConfigEntity
 import com.angel.mony.data.local.entity.BudgetCycleEntity
 import com.angel.mony.data.local.entity.CategoryEntity
+import com.angel.mony.data.local.entity.FortnightPaymentEntity
+import com.angel.mony.data.local.entity.FortnightPlanEntity
+import com.angel.mony.data.local.entity.FortnightPlanItemEntity
+import com.angel.mony.data.local.entity.FortnightTemplateEntity
 import com.angel.mony.data.local.entity.SavingsGoalEntity
 import com.angel.mony.data.local.entity.ShoppingAdjustmentEntity
 import com.angel.mony.data.local.entity.ShoppingListEntity
@@ -38,6 +45,9 @@ class RoomBackupRepository @Inject constructor(
     private val budgetCycleDao: BudgetCycleDao,
     private val savingsGoalDao: SavingsGoalDao,
     private val shoppingListDao: ShoppingListDao,
+    private val fortnightTemplateDao: FortnightTemplateDao,
+    private val fortnightPlanDao: FortnightPlanDao,
+    private val fortnightPaymentDao: FortnightPaymentDao,
 ) : BackupRepository {
 
     override suspend fun buildFullBackupJson(): String {
@@ -54,6 +64,10 @@ class RoomBackupRepository @Inject constructor(
             shoppingAdjustments = shoppingListDao.getAllAdjustments(),
             knownProducts = shoppingListDao.getAllKnownProducts(),
             productAliases = shoppingListDao.getAllAliases(),
+            fortnightTemplates = fortnightTemplateDao.getAllTemplates(),
+            fortnightPlans = fortnightPlanDao.getAllPlans(),
+            fortnightItems = fortnightPlanDao.getAllItems(),
+            fortnightPayments = fortnightPaymentDao.getAllPayments(),
         )
         return FullBackupExporter.buildFullBackupJson(snapshot)
     }
@@ -86,6 +100,7 @@ class RoomBackupRepository @Inject constructor(
                     allDates.add(LocalDate.ofEpochDay(it.startDateEpochDay))
                     allDates.add(LocalDate.ofEpochDay(it.endDateEpochDay))
                 }
+                s.fortnightPayments.forEach { allDates.add(LocalDate.ofEpochDay(it.dateEpochDay)) }
                 BackupPreview(
                     version = FullBackupExporter.CURRENT_VERSION,
                     isLegacyCsv = false,
@@ -96,6 +111,8 @@ class RoomBackupRepository @Inject constructor(
                     savingsGoalsCount = s.savingsGoals.size,
                     shoppingListsCount = s.shoppingLists.size,
                     budgetCyclesCount = s.budgetCycles.size,
+                    fortnightPlansCount = s.fortnightPlans.size,
+                    fortnightPaymentsCount = s.fortnightPayments.size,
                     firstDate = allDates.minOrNull(),
                     lastDate = allDates.maxOrNull(),
                 )
@@ -116,6 +133,8 @@ class RoomBackupRepository @Inject constructor(
         var insertedSavings = 0
         var insertedShoppingLists = 0
         var insertedBudgetCycles = 0
+        var insertedFortnightPlans = 0
+        var insertedFortnightPayments = 0
 
         // 1. Categorías: map oldId -> newId
         val existingCategories = categoryDao.getAll()
@@ -238,6 +257,29 @@ class RoomBackupRepository @Inject constructor(
             }
         }
 
+        // 4b. Plantillas de quincena: dedup por descripción+type+categoría
+        val existingTemplates = fortnightTemplateDao.getAllTemplates()
+        val templateKeyToId = existingTemplates.associate { templateDedupKey(it) to it.id }.toMutableMap()
+        val templateIdMap = mutableMapOf<Long, Long>()
+        for (template in snapshot.fortnightTemplates) {
+            val newCategoryId = resolveCategoryId(template.categoryId)
+            val key = templateDedupKey(template, newCategoryId)
+            val existingId = templateKeyToId[key]
+            if (existingId != null) {
+                templateIdMap[template.id] = existingId
+                continue
+            }
+            val newId = fortnightTemplateDao.insertTemplate(
+                template.copy(
+                    id = 0,
+                    categoryId = newCategoryId,
+                    updatedAtEpochMillis = System.currentTimeMillis(),
+                )
+            )
+            templateKeyToId[key] = newId
+            templateIdMap[template.id] = newId
+        }
+
         // 5. BudgetCycles dedup por start+end
         val existingCycles = budgetCycleDao.getAll()
         val cycleKeySet = existingCycles.mapTo(mutableSetOf()) { "${it.startDateEpochDay}|${it.endDateEpochDay}" }
@@ -247,6 +289,37 @@ class RoomBackupRepository @Inject constructor(
             budgetCycleDao.insert(cycle.copy(id = 0))
             cycleKeySet.add(key)
             insertedBudgetCycles++
+        }
+
+        // 5b. Planes de quincena dedup por período + items
+        val existingPlans = fortnightPlanDao.getAllPlans()
+        val planKeySet = existingPlans.mapTo(mutableSetOf()) { "${it.startDateEpochDay}|${it.endDateEpochDay}" }
+        val planIdMap = mutableMapOf<Long, Long>()
+        val itemIdMap = mutableMapOf<Long, Long>()
+        val itemsByPlan = snapshot.fortnightItems.groupBy { it.planId }
+        for (plan in snapshot.fortnightPlans) {
+            val key = "${plan.startDateEpochDay}|${plan.endDateEpochDay}"
+            if (planKeySet.contains(key)) {
+                existingPlans.firstOrNull { "${it.startDateEpochDay}|${it.endDateEpochDay}" == key }
+                    ?.let { planIdMap[plan.id] = it.id }
+                continue
+            }
+            val newPlanId = fortnightPlanDao.insertPlan(plan.copy(id = 0))
+            planKeySet.add(key)
+            planIdMap[plan.id] = newPlanId
+            insertedFortnightPlans++
+            itemsByPlan[plan.id]?.forEach { item ->
+                val newItemId = fortnightPlanDao.insertItem(
+                    item.copy(
+                        id = 0,
+                        planId = newPlanId,
+                        templateId = item.templateId?.let { templateIdMap[it] },
+                        categoryId = resolveCategoryId(item.categoryId),
+                        savingsGoalId = item.savingsGoalId?.let { savingsIdMap[it] },
+                    )
+                )
+                itemIdMap[item.id] = newItemId
+            }
         }
 
         // 6. ShoppingLists + items + adjustments (debe ir antes de pending para mapear sourceShoppingListId)
@@ -301,7 +374,8 @@ class RoomBackupRepository @Inject constructor(
 
         // 7. Transactions dedup (similar a restoreBackup original)
         val existingTransactions = transactionDao.getAll()
-        val existingKeys = existingTransactions.mapTo(mutableSetOf()) { it.deduplicationKey(categoryIdMap) }
+        val transactionIdByKey = existingTransactions.associate { it.deduplicationKey(categoryIdMap) to it.id }.toMutableMap()
+        val transactionIdMap = mutableMapOf<Long, Long>()
         var skipped = 0
         for (t in snapshot.transactions) {
             val newCategoryId = resolveCategoryId(t.categoryId)
@@ -319,11 +393,35 @@ class RoomBackupRepository @Inject constructor(
                 savingsGoalId = newSavingsId,
             )
             val key = entity.deduplicationKey(null)
-            if (existingKeys.add(key)) {
-                transactionDao.insert(entity)
-                insertedTransactions++
-            } else {
+            val existingId = transactionIdByKey[key]
+            if (existingId != null) {
+                transactionIdMap[t.id] = existingId
                 skipped++
+                continue
+            }
+            val newId = transactionDao.insert(entity)
+            transactionIdByKey[key] = newId
+            transactionIdMap[t.id] = newId
+            insertedTransactions++
+        }
+
+        // 7b. Pagos quincenales (después de transactions para remapear transactionId)
+        val existingPayments = fortnightPaymentDao.getAllPayments()
+        val paymentKeySet = existingPayments.mapTo(mutableSetOf()) { paymentDedupKey(it) }
+        for (payment in snapshot.fortnightPayments) {
+            val newItemId = itemIdMap[payment.itemId] ?: continue
+            val newTransactionId = payment.transactionId?.let { transactionIdMap[it] }
+            val entity = FortnightPaymentEntity(
+                id = 0,
+                itemId = newItemId,
+                amountInCents = payment.amountInCents,
+                dateEpochDay = payment.dateEpochDay,
+                transactionId = newTransactionId,
+                createdAtEpochMillis = payment.createdAtEpochMillis,
+            )
+            if (paymentKeySet.add(paymentDedupKey(entity))) {
+                fortnightPaymentDao.insertPayment(entity)
+                insertedFortnightPayments++
             }
         }
 
@@ -364,6 +462,8 @@ class RoomBackupRepository @Inject constructor(
             insertedSavingsGoals = insertedSavings,
             insertedShoppingLists = insertedShoppingLists,
             insertedBudgetCycles = insertedBudgetCycles,
+            insertedFortnightPlans = insertedFortnightPlans,
+            insertedFortnightPayments = insertedFortnightPayments,
             skippedTransactions = skipped,
             isLegacyCsv = false,
         )
@@ -441,6 +541,23 @@ class RoomBackupRepository @Inject constructor(
             l.name.trim().lowercase(),
             l.status,
             l.createdAtEpochMillis.toString(),
+        ).joinToString("|")
+
+    private fun templateDedupKey(
+        t: com.angel.mony.data.local.entity.FortnightTemplateEntity,
+        overCategoryId: Long? = null,
+    ): String =
+        listOf(
+            t.description.trim().lowercase(),
+            t.type,
+            (overCategoryId ?: t.categoryId).toString(),
+        ).joinToString("|")
+
+    private fun paymentDedupKey(p: FortnightPaymentEntity): String =
+        listOf(
+            p.itemId.toString(),
+            p.dateEpochDay.toString(),
+            p.amountInCents.toString(),
         ).joinToString("|")
 
     private fun TransactionEntity.deduplicationKey(categoryMap: Map<Long, Long>?): String =

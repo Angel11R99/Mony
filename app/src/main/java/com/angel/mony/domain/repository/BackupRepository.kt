@@ -8,10 +8,12 @@ data class BackupRestoreResult(
     val insertedSavingsGoals: Int = 0,
     val insertedShoppingLists: Int = 0,
     val insertedBudgetCycles: Int = 0,
+    val insertedFortnightPlans: Int = 0,
+    val insertedFortnightPayments: Int = 0,
     val skippedTransactions: Int = 0,
     val isLegacyCsv: Boolean = false,
 ) {
-    val totalInserted: Int get() = insertedTransactions + insertedCategories + insertedFixedEntries + insertedPendingEntries + insertedSavingsGoals + insertedShoppingLists + insertedBudgetCycles
+    val totalInserted: Int get() = insertedTransactions + insertedCategories + insertedFixedEntries + insertedPendingEntries + insertedSavingsGoals + insertedShoppingLists + insertedBudgetCycles + insertedFortnightPlans + insertedFortnightPayments
 }
 
 interface BackupRepository {
@@ -30,6 +32,8 @@ data class BackupPreview(
     val savingsGoalsCount: Int,
     val shoppingListsCount: Int,
     val budgetCyclesCount: Int,
+    val fortnightPlansCount: Int = 0,
+    val fortnightPaymentsCount: Int = 0,
     val firstDate: java.time.LocalDate?,
     val lastDate: java.time.LocalDate?,
 )
