@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -147,7 +148,7 @@ fun FortnightScreen(
         },
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp).padding(top = 12.dp),
         ) {
             PeriodNavigator(
                 slot = state.slot,
@@ -157,7 +158,7 @@ fun FortnightScreen(
                 onNext = viewModel::goToNextPeriod,
                 onCurrent = viewModel::goToCurrentPeriod,
             )
-            Spacer(Modifier.padding(top = 8.dp))
+            Spacer(Modifier.height(12.dp))
 
             when {
                 state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
