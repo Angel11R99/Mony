@@ -84,7 +84,9 @@ fun FortnightTemplatesScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { ModuleTitle("Plantillas de quincena") },
+                title = {
+                    ModuleTitle(if (state.isMonthly) "Plantillas del mes" else "Plantillas de quincena")
+                },
                 actions = {
                     GlobalOutlinedIconButton(Icons.Outlined.Add, "Nueva plantilla", viewModel::startCreate)
                     Spacer(Modifier.width(14.dp))
@@ -121,8 +123,13 @@ fun FortnightTemplatesScreen(
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Text(
-                    "Crea una plantilla con los conceptos que se repiten cada quincena " +
-                        "para planificar más rápido.",
+                    if (state.isMonthly) {
+                        "Crea una plantilla con los conceptos que se repiten cada mes " +
+                            "para planificar más rápido."
+                    } else {
+                        "Crea una plantilla con los conceptos que se repiten cada quincena " +
+                            "para planificar más rápido."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -136,6 +143,7 @@ fun FortnightTemplatesScreen(
                 items(state.templates, key = { it.id }) { template ->
                     TemplateCard(
                         template = template,
+                        isMonthly = state.isMonthly,
                         enabled = !isSaving,
                         onEdit = { viewModel.startEdit(template) },
                         onDelete = { viewModel.requestDelete(template) },
@@ -150,6 +158,7 @@ fun FortnightTemplatesScreen(
         TemplateSheet(
             draft = it,
             categoryNames = state.categories.map { category -> category.id to category.name },
+            isMonthly = state.isMonthly,
             isSaving = isSaving,
             onChange = viewModel::updateDraft,
             onSave = viewModel::save,
@@ -171,6 +180,7 @@ fun FortnightTemplatesScreen(
 @Composable
 private fun TemplateCard(
     template: FortnightTemplate,
+    isMonthly: Boolean,
     enabled: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -190,11 +200,15 @@ private fun TemplateCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        buildString {
-                            append("1ra: ")
-                            append(template.firstFortnightAmountInCents?.let(MoneyFormatter::format) ?: "—")
-                            append("   2da: ")
-                            append(template.secondFortnightAmountInCents?.let(MoneyFormatter::format) ?: "—")
+                        if (isMonthly) {
+                            "Monto: " + (template.firstFortnightAmountInCents?.let(MoneyFormatter::format) ?: "—")
+                        } else {
+                            buildString {
+                                append("1ra: ")
+                                append(template.firstFortnightAmountInCents?.let(MoneyFormatter::format) ?: "—")
+                                append("   2da: ")
+                                append(template.secondFortnightAmountInCents?.let(MoneyFormatter::format) ?: "—")
+                            }
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -229,6 +243,7 @@ private fun TemplateCard(
 private fun TemplateSheet(
     draft: FortnightTemplateDraft,
     categoryNames: List<Pair<Long, String>>,
+    isMonthly: Boolean,
     isSaving: Boolean,
     onChange: ((FortnightTemplateDraft) -> FortnightTemplateDraft) -> Unit,
     onSave: () -> Unit,
@@ -278,19 +293,21 @@ private fun TemplateSheet(
             FinanceTextField(
                 value = draft.firstAmountText,
                 onValueChange = { text -> onChange { it.copy(firstAmountText = sanitizeAmountInput(text)) } },
-                label = "Monto 1ra quincena (opcional)",
+                label = if (isMonthly) "Monto mensual (opcional)" else "Monto 1ra quincena (opcional)",
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 visualTransformation = AmountVisualTransformation,
             )
-            FinanceTextField(
-                value = draft.secondAmountText,
-                onValueChange = { text -> onChange { it.copy(secondAmountText = sanitizeAmountInput(text)) } },
-                label = "Monto 2da quincena (opcional)",
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                visualTransformation = AmountVisualTransformation,
-            )
+            if (!isMonthly) {
+                FinanceTextField(
+                    value = draft.secondAmountText,
+                    onValueChange = { text -> onChange { it.copy(secondAmountText = sanitizeAmountInput(text)) } },
+                    label = "Monto 2da quincena (opcional)",
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    visualTransformation = AmountVisualTransformation,
+                )
+            }
             FinanceTextField(
                 value = draft.note,
                 onValueChange = { text -> onChange { it.copy(note = text) } },

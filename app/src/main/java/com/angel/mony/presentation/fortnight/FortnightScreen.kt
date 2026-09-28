@@ -76,10 +76,11 @@ import com.angel.mony.domain.model.FortnightItemProgress
 import com.angel.mony.domain.model.FortnightItemStatus
 import com.angel.mony.domain.model.FortnightItemType
 import com.angel.mony.domain.model.FortnightPayment
+import com.angel.mony.domain.model.FortnightPeriodStyle
 import com.angel.mony.domain.model.FortnightPlanDetails
 import com.angel.mony.domain.model.FortnightPlanItem
-import com.angel.mony.domain.model.FortnightSlot
 import com.angel.mony.domain.model.SavingsGoalProgress
+import com.angel.mony.domain.model.fortnightPeriodStyle
 import com.angel.mony.domain.model.label
 import com.angel.mony.presentation.components.AmountVisualTransformation
 import com.angel.mony.presentation.components.FinanceCard
@@ -118,6 +119,7 @@ fun FortnightScreen(
     val isDeletePlanConfirm by viewModel.isDeletePlanConfirmVisible.collectAsStateWithLifecycle()
     val pendingItemDelete by viewModel.pendingItemDelete.collectAsStateWithLifecycle()
     val pendingPaymentDelete by viewModel.pendingPaymentDelete.collectAsStateWithLifecycle()
+    val isMonthly = fortnightPeriodStyle(state.budget) == FortnightPeriodStyle.MONTHLY
     val context = LocalContext.current
 
     LaunchedEffect(message) {
@@ -128,7 +130,7 @@ fun FortnightScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { ModuleTitle("Quincena") },
+                title = { ModuleTitle(if (isMonthly) "Mes" else "Quincena") },
                 actions = {
                     if (state.canEditItems) {
                         GlobalOutlinedIconButton(Icons.Outlined.Add, "Agregar concepto", viewModel::startAddItem)
@@ -151,9 +153,13 @@ fun FortnightScreen(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp).padding(top = 12.dp),
         ) {
             PeriodNavigator(
-                slot = state.slot,
-                start = state.period.start,
-                end = state.period.endInclusive,
+                periodLabel = buildString {
+                    append(if (isMonthly) "Mes" else state.slot.label())
+                    append(" · ")
+                    append(state.period.start.format(dayMonthFormatter))
+                    append(" – ")
+                    append(state.period.endInclusive.format(dayMonthFormatter))
+                },
                 onPrevious = viewModel::goToPreviousPeriod,
                 onNext = viewModel::goToNextPeriod,
                 onCurrent = viewModel::goToCurrentPeriod,
@@ -165,7 +171,7 @@ fun FortnightScreen(
                     CircularProgressIndicator()
                 }
                 state.hasError -> Text(
-                    "No se pudo cargar la quincena.",
+                    "No se pudo cargar el período.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -173,11 +179,12 @@ fun FortnightScreen(
                     contentPadding = PaddingValues(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    item { EmptyPlanCard(onCreate = viewModel::showCreatePlan) }
+                    item { EmptyPlanCard(isMonthly = isMonthly, onCreate = viewModel::showCreatePlan) }
                 }
                 else -> PlanContent(
                     state = state,
                     isSaving = isSaving,
+                    isMonthly = isMonthly,
                     onPay = viewModel::startPayment,
                     onEditItem = viewModel::startEditItem,
                     onDeleteItem = viewModel::requestDeleteItem,
@@ -194,6 +201,7 @@ fun FortnightScreen(
         CreatePlanSheet(
             state = state,
             budgetText = planBudgetText,
+            isMonthly = isMonthly,
             isSaving = isSaving,
             onBudgetChange = viewModel::updatePlanBudget,
             onCreate = viewModel::createPlan,
@@ -242,7 +250,7 @@ fun FortnightScreen(
     if (isCloseConfirm) {
         AlertDialog(
             onDismissRequest = viewModel::cancelClosePlan,
-            title = { Text("¿Cerrar la quincena?") },
+            title = { Text(if (isMonthly) "¿Cerrar el mes?" else "¿Cerrar la quincena?") },
             text = {
                 Text(
                     "Dejarás de poder agregar, editar o pagar conceptos de este período. " +
@@ -287,9 +295,7 @@ fun FortnightScreen(
 
 @Composable
 private fun PeriodNavigator(
-    slot: FortnightSlot,
-    start: LocalDate,
-    end: LocalDate,
+    periodLabel: String,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onCurrent: () -> Unit,
@@ -299,14 +305,14 @@ private fun PeriodNavigator(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onPrevious) {
-            Icon(Icons.Outlined.ChevronLeft, "Quincena anterior")
+            Icon(Icons.Outlined.ChevronLeft, "Período anterior")
         }
         Column(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "${slot.label()} · ${start.format(dayMonthFormatter)} – ${end.format(dayMonthFormatter)}",
+                text = periodLabel,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -315,13 +321,13 @@ private fun PeriodNavigator(
             TextButton(onClick = onCurrent) { Text("Ir a la actual") }
         }
         IconButton(onClick = onNext) {
-            Icon(Icons.Outlined.ChevronRight, "Quincena siguiente")
+            Icon(Icons.Outlined.ChevronRight, "Período siguiente")
         }
     }
 }
 
 @Composable
-private fun EmptyPlanCard(onCreate: () -> Unit) {
+private fun EmptyPlanCard(isMonthly: Boolean, onCreate: () -> Unit) {
     FinanceCard(Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(20.dp),
@@ -335,14 +341,20 @@ private fun EmptyPlanCard(onCreate: () -> Unit) {
                 modifier = Modifier.size(36.dp),
             )
             Text(
-                "Esta quincena todavía no tiene plan.",
+                if (isMonthly) "Este mes todavía no tiene plan." else "Esta quincena todavía no tiene plan.",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                "Crea el plan con el presupuesto de la quincena y agrega los gastos y ahorros " +
-                    "que prevés. Después registra un abono cada vez que pagues. Planificar no " +
-                    "registra ningún gasto.",
+                if (isMonthly) {
+                    "Crea el plan con el presupuesto del mes y agrega los gastos y ahorros " +
+                        "que prevés. Después registra un abono cada vez que pagues. Planificar no " +
+                        "registra ningún gasto."
+                } else {
+                    "Crea el plan con el presupuesto de la quincena y agrega los gastos y ahorros " +
+                        "que prevés. Después registra un abono cada vez que pagues. Planificar no " +
+                        "registra ningún gasto."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -355,6 +367,7 @@ private fun EmptyPlanCard(onCreate: () -> Unit) {
 private fun PlanContent(
     state: FortnightUiState,
     isSaving: Boolean,
+    isMonthly: Boolean,
     onPay: (FortnightPlanItem) -> Unit,
     onEditItem: (FortnightPlanItem) -> Unit,
     onDeleteItem: (FortnightPlanItem) -> Unit,
@@ -368,7 +381,7 @@ private fun PlanContent(
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { SummaryCard(details) }
+        item { SummaryCard(details, isMonthly) }
 
         if (details.items.isEmpty()) {
             item {
@@ -384,7 +397,11 @@ private fun PlanContent(
                         )
                         if (!state.isClosed) {
                             Text(
-                                "Agrega tus gastos y ahorros previstos de la quincena.",
+                                if (isMonthly) {
+                                    "Agrega tus gastos y ahorros previstos del mes."
+                                } else {
+                                    "Agrega tus gastos y ahorros previstos de la quincena."
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -431,6 +448,7 @@ private fun PlanContent(
         item {
             PlanActions(
                 isClosed = state.isClosed,
+                isMonthly = isMonthly,
                 enabled = !isSaving,
                 onClosePlan = onClosePlan,
                 onReopenPlan = onReopenPlan,
@@ -441,7 +459,7 @@ private fun PlanContent(
 }
 
 @Composable
-private fun SummaryCard(details: FortnightPlanDetails) {
+private fun SummaryCard(details: FortnightPlanDetails, isMonthly: Boolean) {
     val errorColor = MaterialTheme.colorScheme.error
     FinanceCard(Modifier.fillMaxWidth()) {
         Column(
@@ -453,7 +471,10 @@ private fun SummaryCard(details: FortnightPlanDetails) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Resumen de la quincena", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    if (isMonthly) "Resumen del mes" else "Resumen de la quincena",
+                    style = MaterialTheme.typography.titleSmall,
+                )
                 if (details.plan.isClosed) {
                     AssistChip(
                         onClick = {},
@@ -481,7 +502,11 @@ private fun SummaryCard(details: FortnightPlanDetails) {
             )
             if (details.isOverAssigned) {
                 Text(
-                    "Has planificado más que el presupuesto de la quincena.",
+                    if (isMonthly) {
+                        "Has planificado más que el presupuesto del mes."
+                    } else {
+                        "Has planificado más que el presupuesto de la quincena."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = errorColor,
                 )
@@ -631,6 +656,7 @@ private fun PaymentRow(
 @Composable
 private fun PlanActions(
     isClosed: Boolean,
+    isMonthly: Boolean,
     enabled: Boolean,
     onClosePlan: () -> Unit,
     onReopenPlan: () -> Unit,
@@ -642,20 +668,24 @@ private fun PlanActions(
     ) {
         if (isClosed) {
             SecondaryButton(
-                text = "Reabrir quincena",
+                text = if (isMonthly) "Reabrir mes" else "Reabrir quincena",
                 onClick = onReopenPlan,
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = Icons.Outlined.LockOpen,
                 enabled = enabled,
             )
             Text(
-                "Esta quincena está cerrada. Reábrela para volver a registrar abonos.",
+                if (isMonthly) {
+                    "Este mes está cerrado. Reábrelo para volver a registrar abonos."
+                } else {
+                    "Esta quincena está cerrada. Reábrela para volver a registrar abonos."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
             SecondaryButton(
-                text = "Cerrar quincena",
+                text = if (isMonthly) "Cerrar mes" else "Cerrar quincena",
                 onClick = onClosePlan,
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = Icons.Outlined.Lock,
@@ -677,6 +707,7 @@ private fun PlanActions(
 private fun CreatePlanSheet(
     state: FortnightUiState,
     budgetText: String,
+    isMonthly: Boolean,
     isSaving: Boolean,
     onBudgetChange: (String) -> Unit,
     onCreate: (Set<Long>, Map<Long, String>) -> Unit,
@@ -695,7 +726,10 @@ private fun CreatePlanSheet(
                 .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Plan de la quincena", style = MaterialTheme.typography.titleMedium)
+            Text(
+                if (isMonthly) "Plan del mes" else "Plan de la quincena",
+                style = MaterialTheme.typography.titleMedium,
+            )
             Text(
                 "El presupuesto solo guía tu planificación: no registra ningún gasto.",
                 style = MaterialTheme.typography.bodySmall,
@@ -704,7 +738,7 @@ private fun CreatePlanSheet(
             FinanceTextField(
                 value = budgetText,
                 onValueChange = { onBudgetChange(sanitizeAmountInput(it)) },
-                label = "Presupuesto de la quincena",
+                label = if (isMonthly) "Presupuesto del mes" else "Presupuesto de la quincena",
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 visualTransformation = AmountVisualTransformation,

@@ -6,9 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FortnightItemType
+import com.angel.mony.domain.model.FortnightPeriodStyle
 import com.angel.mony.domain.model.FortnightSlot
 import com.angel.mony.domain.model.FortnightTemplate
 import com.angel.mony.domain.model.TransactionType
+import com.angel.mony.domain.model.fortnightPeriodStyle
+import com.angel.mony.domain.repository.BudgetRepository
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.FortnightMutationResult
 import com.angel.mony.domain.repository.FortnightRepository
@@ -27,6 +30,7 @@ import kotlinx.coroutines.launch
 data class FortnightTemplatesUiState(
     val templates: List<FortnightTemplate> = emptyList(),
     val categories: List<Category> = emptyList(),
+    val isMonthly: Boolean = false,
     val isLoading: Boolean = true,
     val hasError: Boolean = false,
 )
@@ -47,13 +51,20 @@ class FortnightTemplatesViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val repository: FortnightRepository,
     categoryRepository: CategoryRepository,
+    budgetRepository: BudgetRepository,
 ) : ViewModel() {
 
     val state: StateFlow<FortnightTemplatesUiState> = combine(
         repository.observeTemplates(),
         categoryRepository.observeActive(TransactionType.EXPENSE),
-    ) { templates, categories ->
-        FortnightTemplatesUiState(templates = templates, categories = categories, isLoading = false)
+        budgetRepository.observe(),
+    ) { templates, categories, budget ->
+        FortnightTemplatesUiState(
+            templates = templates,
+            categories = categories,
+            isMonthly = fortnightPeriodStyle(budget) == FortnightPeriodStyle.MONTHLY,
+            isLoading = false,
+        )
     }
         .catch { emit(FortnightTemplatesUiState(isLoading = false, hasError = true)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FortnightTemplatesUiState())
@@ -102,6 +113,8 @@ class FortnightTemplatesViewModel @Inject constructor(
             categoryId == null -> message.value = "Selecciona una categoría."
             (first != null && first < 0) || (second != null && second < 0) ->
                 message.value = "El monto debe ser mayor que cero."
+            state.value.isMonthly && first == null ->
+                message.value = "Indica el monto del mes."
             first == null && second == null ->
                 message.value = "Indica el monto de al menos una quincena."
             else -> {

@@ -9,6 +9,7 @@ import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
 import com.angel.mony.domain.model.FortnightItemType
+import com.angel.mony.domain.model.FortnightPeriodStyle
 import com.angel.mony.domain.model.FortnightPlan
 import com.angel.mony.domain.model.FortnightPlanDetails
 import com.angel.mony.domain.model.FortnightPlanItem
@@ -17,8 +18,8 @@ import com.angel.mony.domain.model.FortnightSlot
 import com.angel.mony.domain.model.FortnightTemplate
 import com.angel.mony.domain.model.SavingsGoalProgress
 import com.angel.mony.domain.model.fortnightPeriodContaining
+import com.angel.mony.domain.model.fortnightPeriodStyle
 import com.angel.mony.domain.model.fortnightSlotFor
-import com.angel.mony.domain.model.label
 import com.angel.mony.domain.model.nextFortnightPeriod
 import com.angel.mony.domain.model.previousFortnightPeriod
 import com.angel.mony.domain.repository.BudgetRepository
@@ -60,9 +61,8 @@ data class FortnightUiState(
     val isClosed: Boolean get() = details?.plan?.isClosed == true
     val canEditItems: Boolean get() = hasPlan && !isClosed
     val openSavingsGoals: List<SavingsGoalProgress> get() = savingsGoals.filter { !it.isCompleted }
-    val periodTitle: String get() = "${slot.label()} · ${period.start.dayOfMonth}-${period.endInclusive.dayOfMonth}"
 
-    /** Plantillas activas que aplican a la quincena visible. */
+    /** Plantillas activas que aplican al período visible. */
     val applicableTemplates: List<FortnightTemplate>
         get() = templates.filter { it.appliesTo(slot) }
 }
@@ -179,9 +179,39 @@ class FortnightViewModel @Inject constructor(
 
     fun consumeMessage() { message.value = null }
 
+    private val monthlyMode: Boolean
+        get() = fortnightPeriodStyle(state.value.budget) == FortnightPeriodStyle.MONTHLY
+
+    private fun periodAlreadyHasAPlan(): String =
+        if (monthlyMode) "Este mes ya tiene un plan." else "Esta quincena ya tiene un plan."
+
+    private fun periodIsClosed(): String =
+        if (monthlyMode) "El mes está cerrado." else "La quincena está cerrada."
+
+    private fun periodCreated(): String =
+        if (monthlyMode) "Plan del mes creado." else "Plan de la quincena creado."
+
+    private fun periodClosed(): String =
+        if (monthlyMode) "Mes cerrado." else "Quincena cerrada."
+
+    private fun periodReopened(): String =
+        if (monthlyMode) "Mes reabierto." else "Quincena reabierta."
+
+    private fun periodUnavailable(): String =
+        if (monthlyMode) "El mes ya no está disponible." else "La quincena ya no está disponible."
+
+    private fun couldNotClosePeriod(): String =
+        if (monthlyMode) "No se pudo cerrar el mes." else "No se pudo cerrar la quincena."
+
+    private fun couldNotReopenPeriod(): String =
+        if (monthlyMode) "No se pudo reabrir el mes." else "No se pudo reabrir la quincena."
+
+    private fun reopenPeriodBeforeDelete(): String =
+        if (monthlyMode) "Reabre el mes antes de eliminarlo." else "Reabre la quincena antes de eliminarla."
+
     fun showCreatePlan() {
         if (state.value.hasPlan) {
-            message.value = "Esta quincena ya tiene un plan."
+            message.value = periodAlreadyHasAPlan()
             return
         }
         val suggested = state.value.budget?.amountInCents
@@ -197,7 +227,7 @@ class FortnightViewModel @Inject constructor(
         if (isSaving.value) return
         val uiState = state.value
         if (uiState.hasPlan) {
-            message.value = "Esta quincena ya tiene un plan."
+            message.value = periodAlreadyHasAPlan()
             mutableCreatingPlan.value = false
             return
         }
@@ -254,7 +284,7 @@ class FortnightViewModel @Inject constructor(
                     items = items,
                 )
             }.onSuccess {
-                message.value = "Plan de la quincena creado."
+                message.value = periodCreated()
                 mutableCreatingPlan.value = false
             }.onFailure {
                 message.value = "No se pudo crear el plan."
@@ -310,7 +340,7 @@ class FortnightViewModel @Inject constructor(
         val uiState = state.value
         val draft = mutableItemDraft.value ?: return
         if (!uiState.canEditItems) {
-            message.value = "La quincena está cerrada."
+            message.value = periodIsClosed()
             cancelItemDraft()
             return
         }
@@ -349,7 +379,7 @@ class FortnightViewModel @Inject constructor(
                                 } else {
                                     "Concepto agregado."
                                 }
-                                FortnightMutationResult.ClosedPlan -> "La quincena está cerrada."
+                                FortnightMutationResult.ClosedPlan -> periodIsClosed()
                                 FortnightMutationResult.HasPayments -> "El concepto tiene abonos registrados."
                                 FortnightMutationResult.NotFound -> "El concepto ya no existe."
                                 FortnightMutationResult.TemplateInUse -> "La plantilla está en uso."
@@ -375,7 +405,7 @@ class FortnightViewModel @Inject constructor(
                 .onSuccess { result ->
                     message.value = when (result) {
                         is FortnightMutationResult.Success -> "Concepto eliminado."
-                        FortnightMutationResult.ClosedPlan -> "La quincena está cerrada."
+                        FortnightMutationResult.ClosedPlan -> periodIsClosed()
                         FortnightMutationResult.HasPayments ->
                             "Elimina o revierte los abonos antes de quitar el concepto."
                         FortnightMutationResult.NotFound -> "El concepto ya no existe."
@@ -415,7 +445,7 @@ class FortnightViewModel @Inject constructor(
         if (isSaving.value) return
         val uiState = state.value
         if (!uiState.canEditItems) {
-            message.value = "La quincena está cerrada."
+            message.value = periodIsClosed()
             cancelPayment()
             return
         }
@@ -444,7 +474,7 @@ class FortnightViewModel @Inject constructor(
                     is FortnightPaymentResult.Overpayment -> mutableOverpayment.value = draft
                     FortnightPaymentResult.InvalidAmount -> message.value = "El monto debe ser mayor que cero."
                     FortnightPaymentResult.ClosedPlan -> {
-                        message.value = "La quincena está cerrada."
+                        message.value = periodIsClosed()
                         cancelPayment()
                     }
                     FortnightPaymentResult.InvalidCategory ->
@@ -480,11 +510,11 @@ class FortnightViewModel @Inject constructor(
             runCatching { repository.closePlan(planId) }
                 .onSuccess { result ->
                     message.value = when (result) {
-                        is FortnightMutationResult.Success -> "Quincena cerrada."
-                        else -> "La quincena ya no está disponible."
+                        is FortnightMutationResult.Success -> periodClosed()
+                        else -> periodUnavailable()
                     }
                 }
-                .onFailure { message.value = "No se pudo cerrar la quincena." }
+                .onFailure { message.value = couldNotClosePeriod() }
             mutablePendingClose.value = false
             isSaving.value = false
         }
@@ -498,11 +528,11 @@ class FortnightViewModel @Inject constructor(
             runCatching { repository.reopenPlan(planId) }
                 .onSuccess { result ->
                     message.value = when (result) {
-                        is FortnightMutationResult.Success -> "Quincena reabierta."
-                        else -> "La quincena ya no está disponible."
+                        is FortnightMutationResult.Success -> periodReopened()
+                        else -> periodUnavailable()
                     }
                 }
-                .onFailure { message.value = "No se pudo reabrir la quincena." }
+                .onFailure { message.value = couldNotReopenPeriod() }
             isSaving.value = false
         }
     }
@@ -523,7 +553,7 @@ class FortnightViewModel @Inject constructor(
                 .onSuccess { result ->
                     message.value = when (result) {
                         is FortnightMutationResult.Success -> "Plan eliminado."
-                        FortnightMutationResult.ClosedPlan -> "Reabre la quincena antes de eliminarla."
+                        FortnightMutationResult.ClosedPlan -> reopenPeriodBeforeDelete()
                         FortnightMutationResult.HasPayments ->
                             "Revierte los abonos antes de eliminar el plan."
                         else -> "El plan ya no existe."
@@ -547,7 +577,7 @@ class FortnightViewModel @Inject constructor(
                 .onSuccess { result ->
                     message.value = when (result) {
                         is FortnightMutationResult.Success -> "Abono revertido."
-                        FortnightMutationResult.ClosedPlan -> "La quincena está cerrada."
+                        FortnightMutationResult.ClosedPlan -> periodIsClosed()
                         else -> "El abono ya no existe."
                     }
                     if (result is FortnightMutationResult.Success) {
