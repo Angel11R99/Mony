@@ -6,6 +6,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,6 +45,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -704,7 +707,7 @@ private fun PlanActions(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun CreatePlanSheet(
     state: FortnightUiState,
@@ -779,26 +782,71 @@ private fun CreatePlanSheet(
             }
 
             if (state.categories.isNotEmpty()) {
-                TextButton(onClick = { expandedCategories = !expandedCategories }) {
-                    Text(if (expandedCategories) "Ocultar categorías" else "Agregar por categoría")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Categorías",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { expandedCategories = !expandedCategories }) {
+                        Text(if (expandedCategories) "Ocultar" else "Mostrar")
+                    }
                 }
                 if (expandedCategories) {
-                    state.categories.forEach { category ->
-                        FinanceTextField(
-                            value = categoryAmounts.value[category.id].orEmpty(),
-                            onValueChange = { text ->
-                                val sanitized = sanitizeAmountInput(text)
-                                categoryAmounts.value = if (sanitized.isEmpty()) {
-                                    categoryAmounts.value - category.id
-                                } else {
-                                    categoryAmounts.value + (category.id to sanitized)
-                                }
-                            },
-                            label = category.name,
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            visualTransformation = AmountVisualTransformation,
-                        )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        maxItemsInEachRow = 2,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        state.categories.forEach { category ->
+                            val selected = category.id in categoryAmounts.value
+                            FilterChip(
+                                selected = selected,
+                                onClick = {
+                                    categoryAmounts.value = if (selected) {
+                                        categoryAmounts.value - category.id
+                                    } else {
+                                        categoryAmounts.value + (category.id to "")
+                                    }
+                                },
+                                label = {
+                                    Text(category.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp),
+                                shape = MaterialTheme.shapes.small,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
+                            )
+                        }
+                        if (state.categories.size % 2 != 0) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                    val selectedCategories = state.categories.filter { it.id in categoryAmounts.value }
+                    if (selectedCategories.isNotEmpty()) {
+                        Text("Monto por categoría", style = MaterialTheme.typography.labelLarge)
+                        selectedCategories.forEach { category ->
+                            FinanceTextField(
+                                value = categoryAmounts.value[category.id].orEmpty(),
+                                onValueChange = { text ->
+                                    val sanitized = sanitizeAmountInput(text)
+                                    categoryAmounts.value = categoryAmounts.value + (category.id to sanitized)
+                                },
+                                label = category.name,
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                visualTransformation = AmountVisualTransformation,
+                            )
+                        }
                     }
                 }
             }
