@@ -12,7 +12,7 @@ enum class ModuleTransitionStyle(val label: String, val description: String) {
 }
 
 data class FloatingModuleBarConfig(
-    val visibleRoutes: Set<String> = setOf("home", "fixed", "pending", "savings", "list", "statistics", "history"),
+    val visibleRoutes: Set<String> = setOf("home", "fixed", "pending", "savings", "list", "statistics", "history", "fortnight"),
     val showLabels: Boolean = true,
     val labelTextSize: Float = 10f,
     val transitionStyle: ModuleTransitionStyle = ModuleTransitionStyle.FADE,
@@ -50,7 +50,7 @@ class FloatingModuleBarPreferences(context: Context) {
         private val LEGACY_DEFAULT_VISIBLE_ROUTES = setOf(
             "home", "fixed", "pending", "savings", "statistics", "history",
         )
-        private val DEFAULT_VISIBLE_ROUTES = LEGACY_DEFAULT_VISIBLE_ROUTES + "list"
+        private val DEFAULT_VISIBLE_ROUTES = LEGACY_DEFAULT_VISIBLE_ROUTES + setOf("list", "fortnight")
         private const val PREFERENCES_NAME = "floating_module_bar_preferences"
         private const val KEY_VISIBLE_ROUTES = "visible_routes"
         private const val KEY_SHOW_LABELS = "show_labels"

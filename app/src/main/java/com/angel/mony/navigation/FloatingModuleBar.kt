@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -54,6 +55,7 @@ internal val moduleDestinations = listOf(
     ModuleDestination("Ahorros", "savings", Icons.Outlined.Savings),
     ModuleDestination("Lista", "list", Icons.Outlined.ShoppingCart),
     ModuleDestination("Estadísticas", "statistics", Icons.Outlined.Insights),
+    ModuleDestination("Quincena", "fortnight", Icons.Outlined.CalendarMonth),
     ModuleDestination("Historial", "history", Icons.Outlined.History),
 )
 

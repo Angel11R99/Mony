@@ -38,6 +38,8 @@ import com.angel.mony.presentation.pending.PendingEntriesScreen
 import com.angel.mony.presentation.list.ShoppingListScreen
 import com.angel.mony.presentation.list.ShoppingListsScreen
 import com.angel.mony.presentation.savings.SavingsScreen
+import com.angel.mony.presentation.fortnight.FortnightScreen
+import com.angel.mony.presentation.fortnight.FortnightTemplatesScreen
 import com.angel.mony.presentation.transactions.AddTransactionScreen
 import com.angel.mony.presentation.transactions.HistoryScreen
 import com.angel.mony.presentation.settings.SettingsScreen
@@ -237,6 +239,17 @@ fun FinanceApp(
                     onBack = { if (!navController.popBackStack()) navigateToModule("list") },
                 )
             }
+            composable("fortnight") {
+                FortnightScreen(
+                    onSettings = { navController.navigate("settings") },
+                    onOpenTemplates = { navController.navigate("fortnight/templates") },
+                )
+            }
+            composable("fortnight/templates") {
+                FortnightTemplatesScreen(
+                    onBack = { if (!navController.popBackStack()) navigateToModule("fortnight") },
+                )
+            }
             composable("settings") {
                 SettingsScreen(
                     appearance = appearance,
@@ -282,7 +295,7 @@ fun FinanceApp(
     }
 }
 
-internal val topLevelRoutes = setOf("home", "history", "statistics", "fixed", "pending", "savings", "list")
+    internal val topLevelRoutes = setOf("home", "history", "statistics", "fixed", "pending", "savings", "list", "fortnight")
 
 private const val ModuleEnterDurationMillis = 220
 private const val ModuleExitDurationMillis = 160
