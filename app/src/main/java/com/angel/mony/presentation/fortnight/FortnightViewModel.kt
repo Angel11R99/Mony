@@ -209,6 +209,17 @@ class FortnightViewModel @Inject constructor(
     private fun reopenPeriodBeforeDelete(): String =
         if (monthlyMode) "Reabre el mes antes de eliminarlo." else "Reabre la quincena antes de eliminarla."
 
+    private fun missingAmountsMessage(categories: List<Category>): String {
+        if (categories.size == 1) return "Indica el monto de la categoría ${categories.first().name}."
+        val shown = categories.take(3).joinToString(", ") { it.name }
+        val remaining = categories.size - categories.take(3).size
+        return if (remaining > 0) {
+            "Indica el monto de $shown y $remaining más."
+        } else {
+            "Indica el monto de las categorías: $shown."
+        }
+    }
+
     fun showCreatePlan() {
         if (state.value.hasPlan) {
             message.value = periodAlreadyHasAPlan()
@@ -270,6 +281,14 @@ class FortnightViewModel @Inject constructor(
             )
         }
         val items = fromTemplates + fromCategories
+        val missingAmountCategories = uiState.categories.filter { category ->
+            val raw = categoryAmounts[category.id]
+            raw != null && (raw.isBlank() || (MoneyFormatter.parseToCents(raw) ?: -1L) < 0L)
+        }
+        if (missingAmountCategories.isNotEmpty()) {
+            message.value = missingAmountsMessage(missingAmountCategories)
+            return
+        }
         if (items.isEmpty()) {
             message.value = "Selecciona al menos una categoría o plantilla antes de continuar."
             return
