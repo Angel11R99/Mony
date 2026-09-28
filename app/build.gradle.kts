@@ -104,14 +104,24 @@ androidComponents {
             doLast {
                 val directory = outputDirectory.get().asFile
                 val targetFile = targetApk.get().asFile
-                directory.listFiles()
-                    ?.filter { it.extension == "apk" && it.name.startsWith("Mony-") }
-                    ?.forEach { it.delete() }
+                // Prefiere el APK recién empaquetado (app-debug.apk) frente a uno ya renombrado.
                 val packagedApk = directory.listFiles()
-                    ?.singleOrNull { it.extension == "apk" }
-                    ?: error(
+                    ?.filter { it.extension == "apk" }
+                    ?.firstOrNull { !it.name.startsWith("Mony-") }
+                    ?: directory.listFiles()
+                        ?.singleOrNull { it.extension == "apk" }
+                if (packagedApk == null) {
+                    // packageDebug se saltó porque el APK final ya existe y está al día;
+                    // no hay nada que renombrar.
+                    check(targetFile.isFile) {
                         "No se encontró el APK generado para ${variant.name} en ${directory.absolutePath}."
-                    )
+                    }
+                    return@doLast
+                }
+                directory.listFiles()
+                    ?.filter { it.extension == "apk" && it.name != packagedApk.name }
+                    ?.forEach { it.delete() }
+                if (packagedApk == targetFile) return@doLast
                 check(packagedApk.renameTo(targetFile)) {
                     "No se pudo renombrar ${packagedApk.name} como ${targetFile.name}."
                 }
