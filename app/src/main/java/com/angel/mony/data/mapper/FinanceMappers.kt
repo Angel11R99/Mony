@@ -1,6 +1,10 @@
 package com.angel.mony.data.mapper
 
 import com.angel.mony.data.local.entity.CategoryEntity
+import com.angel.mony.data.local.entity.FortnightPaymentEntity
+import com.angel.mony.data.local.entity.FortnightPlanEntity
+import com.angel.mony.data.local.entity.FortnightPlanItemEntity
+import com.angel.mony.data.local.entity.FortnightTemplateEntity
 import com.angel.mony.data.local.entity.TransactionEntity
 import com.angel.mony.data.local.entity.FixedEntryEntity
 import com.angel.mony.data.local.entity.PendingEntryEntity
@@ -10,7 +14,15 @@ import com.angel.mony.data.local.entity.ShoppingListEntity
 import com.angel.mony.data.local.entity.ShoppingListItemEntity
 import com.angel.mony.data.local.dao.SavingsGoalWithSaved
 import com.angel.mony.domain.model.Category
+import com.angel.mony.domain.model.DateRange
 import com.angel.mony.domain.model.FinanceTransaction
+import com.angel.mony.domain.model.FortnightItemType
+import com.angel.mony.domain.model.FortnightPayment
+import com.angel.mony.domain.model.FortnightPlan
+import com.angel.mony.domain.model.FortnightPlanItem
+import com.angel.mony.domain.model.FortnightPlanStatus
+import com.angel.mony.domain.model.FortnightSlot
+import com.angel.mony.domain.model.FortnightTemplate
 import com.angel.mony.domain.model.SavingsGoal
 import com.angel.mony.domain.model.SavingsGoalProgress
 import com.angel.mony.domain.model.TransactionType
@@ -228,4 +240,102 @@ fun KnownProduct.toEntity() = KnownProductEntity(
     name = name,
     lastPriceInCents = lastPriceInCents,
     lastUsedAtEpochMillis = lastUsedAt.toEpochMilli(),
+)
+
+fun FortnightTemplateEntity.toDomain() = FortnightTemplate(
+    id = id,
+    description = description,
+    firstFortnightAmountInCents = firstFortnightAmountInCents,
+    secondFortnightAmountInCents = secondFortnightAmountInCents,
+    categoryId = categoryId,
+    type = FortnightItemType.valueOf(type),
+    note = note,
+    isActive = isActive,
+    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+)
+
+fun FortnightTemplate.toEntity() = FortnightTemplateEntity(
+    id = id,
+    description = description,
+    firstFortnightAmountInCents = firstFortnightAmountInCents,
+    secondFortnightAmountInCents = secondFortnightAmountInCents,
+    categoryId = categoryId,
+    type = type.name,
+    note = note,
+    isActive = isActive,
+    createdAtEpochMillis = createdAt.toEpochMilli(),
+    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+)
+
+fun FortnightPlanEntity.toDomain() = FortnightPlan(
+    id = id,
+    period = DateRange(
+        start = LocalDate.ofEpochDay(startDateEpochDay),
+        endInclusive = LocalDate.ofEpochDay(endDateEpochDay),
+    ),
+    slot = FortnightSlot.valueOf(slot),
+    budgetInCents = budgetInCents,
+    status = FortnightPlanStatus.valueOf(status),
+    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    closedAt = closedAtEpochMillis?.let(Instant::ofEpochMilli),
+)
+
+fun FortnightPlan.toEntity() = FortnightPlanEntity(
+    id = id,
+    startDateEpochDay = period.start.toEpochDay(),
+    endDateEpochDay = period.endInclusive.toEpochDay(),
+    slot = slot.name,
+    budgetInCents = budgetInCents,
+    status = status.name,
+    createdAtEpochMillis = createdAt.toEpochMilli(),
+    closedAtEpochMillis = closedAt?.toEpochMilli(),
+)
+
+fun FortnightPlanItemEntity.toDomain() = FortnightPlanItem(
+    id = id,
+    planId = planId,
+    templateId = templateId,
+    description = description,
+    plannedAmountInCents = plannedAmountInCents,
+    categoryId = categoryId,
+    type = FortnightItemType.valueOf(type),
+    savingsGoalId = savingsGoalId,
+    note = note,
+    position = position,
+    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+)
+
+fun FortnightPlanItem.toEntity() = FortnightPlanItemEntity(
+    id = id,
+    planId = planId,
+    templateId = templateId,
+    description = description,
+    plannedAmountInCents = plannedAmountInCents,
+    categoryId = categoryId,
+    type = type.name,
+    savingsGoalId = savingsGoalId,
+    note = note,
+    position = position,
+    createdAtEpochMillis = createdAt.toEpochMilli(),
+    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+)
+
+fun FortnightPaymentEntity.toDomain() = FortnightPayment(
+    id = id,
+    itemId = itemId,
+    amountInCents = amountInCents,
+    date = LocalDate.ofEpochDay(dateEpochDay),
+    transactionId = transactionId,
+    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+)
+
+fun FortnightPayment.toEntity() = FortnightPaymentEntity(
+    id = id,
+    itemId = itemId,
+    amountInCents = amountInCents,
+    dateEpochDay = date.toEpochDay(),
+    transactionId = transactionId,
+    createdAtEpochMillis = createdAt.toEpochMilli(),
 )

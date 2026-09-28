@@ -5,6 +5,9 @@ import androidx.room.RoomDatabase
 import com.angel.mony.data.local.dao.CategoryDao
 import com.angel.mony.data.local.dao.BudgetConfigDao
 import com.angel.mony.data.local.dao.BudgetCycleDao
+import com.angel.mony.data.local.dao.FortnightPaymentDao
+import com.angel.mony.data.local.dao.FortnightPlanDao
+import com.angel.mony.data.local.dao.FortnightTemplateDao
 import com.angel.mony.data.local.dao.TransactionDao
 import com.angel.mony.data.local.dao.FixedEntryDao
 import com.angel.mony.data.local.dao.PendingEntryDao
@@ -13,6 +16,10 @@ import com.angel.mony.data.local.dao.ShoppingListDao
 import com.angel.mony.data.local.entity.CategoryEntity
 import com.angel.mony.data.local.entity.BudgetConfigEntity
 import com.angel.mony.data.local.entity.BudgetCycleEntity
+import com.angel.mony.data.local.entity.FortnightPaymentEntity
+import com.angel.mony.data.local.entity.FortnightPlanEntity
+import com.angel.mony.data.local.entity.FortnightPlanItemEntity
+import com.angel.mony.data.local.entity.FortnightTemplateEntity
 import com.angel.mony.data.local.entity.TransactionEntity
 import com.angel.mony.data.local.entity.FixedEntryEntity
 import com.angel.mony.data.local.entity.PendingEntryEntity
@@ -37,8 +44,12 @@ import com.angel.mony.data.local.entity.ProductRecognitionAliasEntity
         ShoppingAdjustmentEntity::class,
         KnownProductEntity::class,
         ProductRecognitionAliasEntity::class,
+        FortnightTemplateEntity::class,
+        FortnightPlanEntity::class,
+        FortnightPlanItemEntity::class,
+        FortnightPaymentEntity::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = true,
 )
 abstract class FinanceDatabase : RoomDatabase() {
@@ -50,4 +61,7 @@ abstract class FinanceDatabase : RoomDatabase() {
     abstract fun pendingEntryDao(): PendingEntryDao
     abstract fun savingsGoalDao(): SavingsGoalDao
     abstract fun shoppingListDao(): ShoppingListDao
+    abstract fun fortnightTemplateDao(): FortnightTemplateDao
+    abstract fun fortnightPlanDao(): FortnightPlanDao
+    abstract fun fortnightPaymentDao(): FortnightPaymentDao
 }

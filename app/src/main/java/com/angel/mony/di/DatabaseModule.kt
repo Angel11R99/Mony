@@ -13,6 +13,9 @@ import com.angel.mony.data.local.dao.FixedEntryDao
 import com.angel.mony.data.local.dao.PendingEntryDao
 import com.angel.mony.data.local.dao.SavingsGoalDao
 import com.angel.mony.data.local.dao.ShoppingListDao
+import com.angel.mony.data.local.dao.FortnightPaymentDao
+import com.angel.mony.data.local.dao.FortnightPlanDao
+import com.angel.mony.data.local.dao.FortnightTemplateDao
 import com.angel.mony.data.local.database.FinanceDatabase
 import com.angel.mony.data.repository.RoomCategoryRepository
 import com.angel.mony.data.repository.RoomBudgetRepository
@@ -21,6 +24,7 @@ import com.angel.mony.data.repository.RoomFixedEntryRepository
 import com.angel.mony.data.repository.RoomPendingEntryRepository
 import com.angel.mony.data.repository.RoomSavingsRepository
 import com.angel.mony.data.repository.RoomShoppingListRepository
+import com.angel.mony.data.repository.RoomFortnightRepository
 import com.angel.mony.data.repository.RoomBackupRepository
 import com.angel.mony.data.repository.OpenFoodFactsProductCatalogRepository
 import com.angel.mony.domain.repository.CategoryRepository
@@ -30,6 +34,7 @@ import com.angel.mony.domain.repository.FixedEntryRepository
 import com.angel.mony.domain.repository.PendingEntryRepository
 import com.angel.mony.domain.repository.SavingsRepository
 import com.angel.mony.domain.repository.ShoppingListRepository
+import com.angel.mony.domain.repository.FortnightRepository
 import com.angel.mony.domain.repository.ProductCatalogRepository
 import dagger.Binds
 import dagger.Module
@@ -275,11 +280,85 @@ object DatabaseModule {
         }
     }
 
+    internal val migration15To16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS fortnight_templates (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    description TEXT NOT NULL,
+                    firstFortnightAmountInCents INTEGER,
+                    secondFortnightAmountInCents INTEGER,
+                    categoryId INTEGER NOT NULL,
+                    type TEXT NOT NULL,
+                    note TEXT,
+                    isActive INTEGER NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    updatedAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(categoryId) REFERENCES categories(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )""".trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_fortnight_templates_categoryId ON fortnight_templates(categoryId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_fortnight_templates_isActive ON fortnight_templates(isActive)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS fortnight_plans (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    startDateEpochDay INTEGER NOT NULL,
+                    endDateEpochDay INTEGER NOT NULL,
+                    slot TEXT NOT NULL,
+                    budgetInCents INTEGER NOT NULL,
+                    status TEXT NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    closedAtEpochMillis INTEGER
+                )""".trimIndent()
+            )
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_fortnight_plans_startDateEpochDay_endDateEpochDay ON fortnight_plans(startDateEpochDay, endDateEpochDay)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_fortnight_plans_status ON fortnight_plans(status)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS fortnight_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    planId INTEGER NOT NULL,
+                    templateId INTEGER,
+                    description TEXT NOT NULL,
+                    plannedAmountInCents INTEGER NOT NULL,
+                    categoryId INTEGER NOT NULL,
+                    type TEXT NOT NULL,
+                    savingsGoalId INTEGER,
+                    note TEXT,
+                    position INTEGER NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    updatedAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(planId) REFERENCES fortnight_plans(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(templateId) REFERENCES fortnight_templates(id) ON UPDATE NO ACTION ON DELETE SET NULL,
+                    FOREIGN KEY(categoryId) REFERENCES categories(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                    FOREIGN KEY(savingsGoalId) REFERENCES savings_goals(id) ON UPDATE NO ACTION ON DELETE SET NULL
+                )""".trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_fortnight_items_planId ON fortnight_items(planId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_fortnight_items_templateId ON fortnight_items(templateId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_fortnight_items_categoryId ON fortnight_items(categoryId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_fortnight_items_savingsGoalId ON fortnight_items(savingsGoalId)")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS fortnight_payments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    itemId INTEGER NOT NULL,
+                    amountInCents INTEGER NOT NULL,
+                    dateEpochDay INTEGER NOT NULL,
+                    transactionId INTEGER,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(itemId) REFERENCES fortnight_items(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(transactionId) REFERENCES transactions(id) ON UPDATE NO ACTION ON DELETE SET NULL
+                )""".trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_fortnight_payments_itemId ON fortnight_payments(itemId)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_fortnight_payments_transactionId ON fortnight_payments(transactionId)")
+        }
+    }
+
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): FinanceDatabase =
         Room.databaseBuilder(context, FinanceDatabase::class.java, "personal_finance.db")
-            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9, migration9To10, migration10To11, migration11To12, migration12To13, migration13To14, migration14To15)
+            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9, migration9To10, migration10To11, migration11To12, migration12To13, migration13To14, migration14To15, migration15To16)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -302,6 +381,9 @@ object DatabaseModule {
     @Provides fun pendingEntryDao(db: FinanceDatabase): PendingEntryDao = db.pendingEntryDao()
     @Provides fun savingsGoalDao(db: FinanceDatabase): SavingsGoalDao = db.savingsGoalDao()
     @Provides fun shoppingListDao(db: FinanceDatabase): ShoppingListDao = db.shoppingListDao()
+    @Provides fun fortnightTemplateDao(db: FinanceDatabase): FortnightTemplateDao = db.fortnightTemplateDao()
+    @Provides fun fortnightPlanDao(db: FinanceDatabase): FortnightPlanDao = db.fortnightPlanDao()
+    @Provides fun fortnightPaymentDao(db: FinanceDatabase): FortnightPaymentDao = db.fortnightPaymentDao()
 
     private val initialCategories = listOf(
         Triple("Salario", "INCOME", "payments"),
@@ -338,6 +420,7 @@ abstract class RepositoryModule {
     @Binds abstract fun pendingEntries(implementation: RoomPendingEntryRepository): PendingEntryRepository
     @Binds abstract fun savings(implementation: RoomSavingsRepository): SavingsRepository
     @Binds abstract fun shoppingLists(implementation: RoomShoppingListRepository): ShoppingListRepository
+@Binds abstract fun fortnights(implementation: RoomFortnightRepository): FortnightRepository
     @Binds abstract fun backup(implementation: RoomBackupRepository): com.angel.mony.domain.repository.BackupRepository
     @Binds abstract fun productCatalog(implementation: OpenFoodFactsProductCatalogRepository): ProductCatalogRepository
 }
