@@ -17,4 +17,11 @@ object MoneyFormatter {
         value.trim().replace(',', '.').toBigDecimalOrNull()
             ?.movePointRight(2)?.longValueExact()
     }.getOrNull()
+
+    /**
+     * Texto editable para campos de monto: sin símbolo de moneda y siempre
+     * con dos decimales, listo para volver a pasar por [parseToCents].
+     */
+    fun formatToInput(cents: Long): String =
+        java.math.BigDecimal.valueOf(cents, 2).toPlainString()
 }

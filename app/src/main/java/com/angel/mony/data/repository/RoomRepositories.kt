@@ -3,6 +3,9 @@ package com.angel.mony.data.repository
 import com.angel.mony.data.local.dao.CategoryDao
 import com.angel.mony.data.local.dao.BudgetConfigDao
 import com.angel.mony.data.local.dao.BudgetCycleDao
+import com.angel.mony.data.local.dao.FortnightPaymentDao
+import com.angel.mony.data.local.dao.FortnightPlanDao
+import com.angel.mony.data.local.dao.FortnightTemplateDao
 import com.angel.mony.data.local.dao.TransactionDao
 import com.angel.mony.data.local.dao.FixedEntryDao
 import com.angel.mony.data.local.dao.PendingEntryDao
@@ -11,6 +14,7 @@ import com.angel.mony.data.local.dao.ShoppingListDao
 import com.angel.mony.data.local.entity.BudgetConfigEntity
 import com.angel.mony.data.local.entity.BudgetCycleEntity
 import com.angel.mony.data.local.entity.CategoryEntity
+import com.angel.mony.data.local.entity.FortnightPaymentEntity
 import com.angel.mony.data.local.entity.TransactionEntity
 import com.angel.mony.data.local.entity.SavingsGoalEntity
 import com.angel.mony.data.local.entity.KnownProductEntity
@@ -29,6 +33,16 @@ import com.angel.mony.domain.model.SavingsGoalProgress
 import com.angel.mony.domain.model.defaultCycleSchedules
 import com.angel.mony.domain.model.DateRange
 import com.angel.mony.domain.model.FinanceTransaction
+import com.angel.mony.domain.model.FortnightPaymentCheck
+import com.angel.mony.domain.model.FortnightPlan
+import com.angel.mony.domain.model.FortnightPlanDetails
+import com.angel.mony.domain.model.FortnightPlanItem
+import com.angel.mony.domain.model.FortnightPlanStatus
+import com.angel.mony.domain.model.FortnightPlanSummary
+import com.angel.mony.domain.model.FortnightTemplate
+import com.angel.mony.domain.model.evaluateFortnightPayment
+import com.angel.mony.domain.model.fortnightPlanSummaries
+import com.angel.mony.domain.model.toPaymentTransaction
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.PendingEntry
 import com.angel.mony.domain.model.ShoppingAdjustment
@@ -47,6 +61,9 @@ import com.angel.mony.domain.repository.FixedEntryRepository
 import com.angel.mony.domain.repository.PendingEntryRepository
 import com.angel.mony.domain.repository.SavingsRepository
 import com.angel.mony.domain.repository.FinalizePurchaseResult
+import com.angel.mony.domain.repository.FortnightMutationResult
+import com.angel.mony.domain.repository.FortnightPaymentResult
+import com.angel.mony.domain.repository.FortnightRepository
 import com.angel.mony.domain.repository.ShoppingListRepository
 import com.angel.mony.domain.repository.ShoppingMutationResult
 import com.angel.mony.domain.repository.TicketProductUpdate
@@ -66,6 +83,7 @@ class RoomTransactionRepository @Inject constructor(
     private val database: FinanceDatabase,
     private val shoppingListDao: ShoppingListDao,
     private val pendingEntryDao: PendingEntryDao,
+    private val fortnightPaymentDao: FortnightPaymentDao,
 ) : TransactionRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
     override fun observeByPeriod(period: DateRange) = dao.observeByPeriod(
@@ -83,6 +101,9 @@ class RoomTransactionRepository @Inject constructor(
         check(pendingEntryDao.findByTransactionId(transaction.id)?.sourceShoppingListId == null) {
             "Este gasto pertenece a una compra a crédito y no se puede editar."
         }
+        check(fortnightPaymentDao.findItemIdByTransaction(transaction.id) == null) {
+            "Este gasto pertenece a una quincena y no se puede editar."
+        }
         dao.update(transaction.toEntity())
     }
     override suspend fun delete(id: Long) = database.withTransaction {
@@ -91,6 +112,9 @@ class RoomTransactionRepository @Inject constructor(
         }
         check(pendingEntryDao.findByTransactionId(id)?.sourceShoppingListId == null) {
             "Este gasto pertenece a una compra a crédito y no se puede eliminar."
+        }
+        check(fortnightPaymentDao.findItemIdByTransaction(id) == null) {
+            "Este gasto pertenece a una quincena y no se puede eliminar."
         }
         val deleted = dao.get(id)
         dao.delete(id)
@@ -787,6 +811,234 @@ class RoomShoppingListRepository @Inject constructor(
                 lastUsedAtEpochMillis = now.toEpochMilli(),
             ))
         }
+    }
+}
+
+class RoomFortnightRepository @Inject constructor(
+    private val templateDao: FortnightTemplateDao,
+    private val planDao: FortnightPlanDao,
+    private val paymentDao: FortnightPaymentDao,
+    private val transactionDao: TransactionDao,
+    private val categoryDao: CategoryDao,
+    private val database: FinanceDatabase,
+) : FortnightRepository {
+
+    override fun observeTemplates() =
+        templateDao.observeTemplates().map { items -> items.map { it.toDomain() } }
+
+    override fun observeActiveTemplates() =
+        templateDao.observeActiveTemplates().map { items -> items.map { it.toDomain() } }
+
+    override suspend fun saveTemplate(template: FortnightTemplate): FortnightMutationResult {
+        val category = categoryDao.get(template.categoryId)
+            ?: return FortnightMutationResult.NotFound
+        check(category.isActive) { "La categoría seleccionada ya no está disponible." }
+        return database.withTransaction {
+            if (template.id == 0L) {
+                val id = templateDao.insertTemplate(template.toEntity().copy(id = 0))
+                FortnightMutationResult.Success(id)
+            } else {
+                val existing = templateDao.getTemplate(template.id)
+                    ?: return@withTransaction FortnightMutationResult.NotFound
+                templateDao.updateTemplate(template.toEntity().copy(id = existing.id))
+                FortnightMutationResult.Success(existing.id)
+            }
+        }
+    }
+
+    override suspend fun setTemplateActive(id: Long, isActive: Boolean): FortnightMutationResult =
+        database.withTransaction {
+            val template = templateDao.getTemplate(id)
+                ?: return@withTransaction FortnightMutationResult.NotFound
+            templateDao.setTemplateActive(id, isActive, Instant.now().toEpochMilli())
+            FortnightMutationResult.Success(template.id)
+        }
+
+    override suspend fun deleteTemplate(id: Long): FortnightMutationResult = database.withTransaction {
+        val template = templateDao.getTemplate(id)
+            ?: return@withTransaction FortnightMutationResult.NotFound
+        if (templateDao.countItemsUsingTemplate(id) > 0) {
+            return@withTransaction FortnightMutationResult.TemplateInUse
+        }
+        templateDao.deleteTemplate(id)
+        FortnightMutationResult.Success(id)
+    }
+
+    override fun observePlanSummaries(): Flow<List<FortnightPlanSummary>> = combine(
+        planDao.observePlans(),
+        planDao.observeAllItems(),
+        paymentDao.observeAllPayments(),
+    ) { plans, items, payments ->
+        fortnightPlanSummaries(
+            plans = plans.map { it.toDomain() },
+            items = items.map { it.toDomain() },
+            payments = payments.map { it.toDomain() },
+        )
+    }
+
+    override fun observeDetails(planId: Long): Flow<FortnightPlanDetails?> = combine(
+        planDao.observePlan(planId),
+        planDao.observeItems(planId),
+        paymentDao.observePayments(planId),
+    ) { plan, items, payments ->
+        val planEntity = plan ?: return@combine null
+        FortnightPlanDetails(
+            plan = planEntity.toDomain(),
+            items = items.map { it.toDomain() },
+            payments = payments.map { it.toDomain() },
+        )
+    }
+
+    override suspend fun getDetails(planId: Long): FortnightPlanDetails? = database.withTransaction {
+        val planEntity = planDao.getPlan(planId) ?: return@withTransaction null
+        FortnightPlanDetails(
+            plan = planEntity.toDomain(),
+            items = planDao.getItems(planId).map { it.toDomain() },
+            payments = paymentDao.getPayments(planId).map { it.toDomain() },
+        )
+    }
+
+    override suspend fun findPlanForPeriod(start: LocalDate, endInclusive: LocalDate): FortnightPlan? =
+        planDao.getPlanForPeriod(start.toEpochDay(), endInclusive.toEpochDay())?.toDomain()
+
+    override suspend fun createPlan(plan: FortnightPlan, items: List<FortnightPlanItem>): Long =
+        database.withTransaction {
+            val now = Instant.now()
+            val planId = planDao.insertPlan(
+                plan.copy(id = 0, createdAt = now, status = FortnightPlanStatus.OPEN, closedAt = null)
+                    .toEntity(),
+            )
+            items.forEachIndexed { index, item ->
+                planDao.insertItem(
+                    item.copy(id = 0, planId = planId, position = index, createdAt = now, updatedAt = now).toEntity(),
+                )
+            }
+            planId
+        }
+
+    override suspend fun saveItem(item: FortnightPlanItem): FortnightMutationResult =
+        database.withTransaction {
+            val plan = planDao.getPlan(item.planId)
+                ?: return@withTransaction FortnightMutationResult.NotFound
+            if (plan.status == FortnightPlanStatus.CLOSED.name) {
+                return@withTransaction FortnightMutationResult.ClosedPlan
+            }
+            val category = categoryDao.get(item.categoryId)
+                ?: return@withTransaction FortnightMutationResult.NotFound
+            check(category.isActive) { "La categoría seleccionada ya no está disponible." }
+            val now = Instant.now()
+            if (item.id == 0L) {
+                val id = planDao.insertItem(item.copy(id = 0, createdAt = now, updatedAt = now).toEntity())
+                FortnightMutationResult.Success(id)
+            } else {
+                planDao.updateItem(item.copy(updatedAt = now).toEntity())
+                FortnightMutationResult.Success(item.id)
+            }
+        }
+
+    override suspend fun deleteItem(itemId: Long): FortnightMutationResult = database.withTransaction {
+        val item = planDao.getItem(itemId)
+            ?: return@withTransaction FortnightMutationResult.NotFound
+        val plan = planDao.getPlan(item.planId)
+            ?: return@withTransaction FortnightMutationResult.NotFound
+        if (plan.status == FortnightPlanStatus.CLOSED.name) {
+            return@withTransaction FortnightMutationResult.ClosedPlan
+        }
+        if (paymentDao.countPaymentsForItem(itemId) > 0) {
+            return@withTransaction FortnightMutationResult.HasPayments
+        }
+        planDao.deleteItem(itemId)
+        FortnightMutationResult.Success(itemId)
+    }
+
+    override suspend fun registerPayment(
+        itemId: Long,
+        amountInCents: Long,
+        date: LocalDate,
+        allowOverpayment: Boolean,
+    ): FortnightPaymentResult = database.withTransaction {
+        val itemEntity = planDao.getItem(itemId)
+            ?: return@withTransaction FortnightPaymentResult.NotFound
+        val item = itemEntity.toDomain()
+        val planEntity = planDao.getPlan(item.planId)
+            ?: return@withTransaction FortnightPaymentResult.NotFound
+        if (planEntity.status == FortnightPlanStatus.CLOSED.name) {
+            return@withTransaction FortnightPaymentResult.ClosedPlan
+        }
+        val alreadyPaid = paymentDao.getPaymentsForItem(itemId)
+            .sumOf { it.amountInCents }
+        when (val check = evaluateFortnightPayment(item.plannedAmountInCents, alreadyPaid, amountInCents)) {
+            is FortnightPaymentCheck.InvalidAmount -> return@withTransaction FortnightPaymentResult.InvalidAmount
+            is FortnightPaymentCheck.Overpayment -> {
+                if (!allowOverpayment) {
+                    return@withTransaction FortnightPaymentResult.Overpayment(
+                        pendingInCents = check.pendingInCents,
+                        excessInCents = check.excessInCents,
+                    )
+                }
+            }
+            is FortnightPaymentCheck.Valid -> Unit
+        }
+        val category = categoryDao.get(item.categoryId)
+        if (category == null || !category.isActive || category.type != TransactionType.EXPENSE.name) {
+            return@withTransaction FortnightPaymentResult.InvalidCategory
+        }
+        val now = Instant.now()
+        val transactionId = transactionDao.insert(
+            item.toPaymentTransaction(amountInCents, date, now).toEntity(),
+        )
+        val paymentId = paymentDao.insertPayment(
+            FortnightPaymentEntity(
+                itemId = itemId,
+                amountInCents = amountInCents,
+                dateEpochDay = date.toEpochDay(),
+                transactionId = transactionId,
+                createdAtEpochMillis = now.toEpochMilli(),
+            ),
+        )
+        FortnightPaymentResult.Registered(paymentId, transactionId, getDetails(item.planId)!!)
+    }
+
+    override suspend fun deletePayment(paymentId: Long): FortnightMutationResult = database.withTransaction {
+        val payment = paymentDao.getPayment(paymentId)
+            ?: return@withTransaction FortnightMutationResult.NotFound
+        val item = planDao.getItem(payment.itemId)
+            ?: return@withTransaction FortnightMutationResult.NotFound
+        val plan = planDao.getPlan(item.planId)
+            ?: return@withTransaction FortnightMutationResult.NotFound
+        if (plan.status == FortnightPlanStatus.CLOSED.name) {
+            return@withTransaction FortnightMutationResult.ClosedPlan
+        }
+        payment.transactionId?.let { transactionDao.delete(it) }
+        paymentDao.deletePayment(paymentId)
+        FortnightMutationResult.Success(paymentId)
+    }
+
+    override suspend fun closePlan(planId: Long): FortnightMutationResult = database.withTransaction {
+        val plan = planDao.getPlan(planId)
+            ?: return@withTransaction FortnightMutationResult.NotFound
+        planDao.closePlan(planId, Instant.now().toEpochMilli())
+        FortnightMutationResult.Success(planId)
+    }
+
+    override suspend fun reopenPlan(planId: Long): FortnightMutationResult = database.withTransaction {
+        val plan = planDao.getPlan(planId)
+            ?: return@withTransaction FortnightMutationResult.NotFound
+        planDao.reopenPlan(planId)
+        FortnightMutationResult.Success(planId)
+    }
+
+    override suspend fun deletePlan(planId: Long): FortnightMutationResult = database.withTransaction {
+        val plan = planDao.getPlan(planId)
+            ?: return@withTransaction FortnightMutationResult.NotFound
+        if (plan.status == FortnightPlanStatus.CLOSED.name) {
+            return@withTransaction FortnightMutationResult.ClosedPlan
+        }
+        if (paymentDao.countPaymentsForPlan(planId) > 0) {
+            return@withTransaction FortnightMutationResult.HasPayments
+        }
+        planDao.deletePlan(planId)
+        FortnightMutationResult.Success(planId)
     }
 }
 
