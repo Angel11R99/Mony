@@ -1,5 +1,7 @@
 package com.angel.mony.presentation.fortnight
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -258,6 +260,7 @@ private fun TemplateSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 620.dp)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
                 .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
