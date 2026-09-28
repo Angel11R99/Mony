@@ -70,7 +70,7 @@ private fun configuredPeriodsAround(budget: BudgetConfig, date: LocalDate): List
     }.distinct().sortedBy(DateRange::start)
 }
 
-private fun BudgetCycleSchedule.toDateRange(openingMonth: YearMonth): DateRange {
+fun BudgetCycleSchedule.toDateRange(openingMonth: YearMonth): DateRange {
     val start = openingMonth.atClampedDay(openingDay)
     val closingMonth = if (closingDay < openingDay) openingMonth.plusMonths(1) else openingMonth
     return DateRange(start, closingMonth.atClampedDay(closingDay))
