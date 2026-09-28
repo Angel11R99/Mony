@@ -2,7 +2,7 @@
 
 Single-module Android app (`:app`) in Kotlin + Jetpack Compose (Material3), Room, Hilt, WorkManager, and Glance app widgets.
 
-The application is a personal finance tracker focused on fast local/offline registration of incomes, expenses, budget-cycle information, fixed entries, pending entries, statistics, and quick actions through Android widgets.
+The application is a personal finance tracker focused on fast local/offline registration of incomes, expenses, budget-cycle information, fixed entries, pending entries, fortnight planning, statistics, and quick actions through Android widgets.
 
 The project has a Spanish `README.md` and no CI.
 
@@ -325,6 +325,7 @@ home
 statistics
 fixed
 pending
+fortnight
 transactions
 settings
 ```
@@ -373,6 +374,8 @@ history
 statistics
 fixed
 pending
+fortnight
+fortnight/templates
 settings
 ```
 
@@ -537,6 +540,7 @@ Add income
 Post fixed entry
 Post pending entry
 Close budget
+Register fortnight payment
 ```
 
 Use the existing ViewModel/UI state pattern.
@@ -756,12 +760,74 @@ Any budget-cycle change should receive unit tests.
 
 ---
 
+# Fortnight (Quincena)
+
+The fortnight module plans expenses and savings per fortnight slot, using the
+budget schedule (the `BudgetCycleSchedule` opening months define the 1-15 / 16-31
+slots; do not hardcode 1-15).
+
+Domain logic lives in:
+
+```text
+domain/model/Fortnight.kt
+domain/model/FortnightPeriod.kt
+```
+
+with unit tests:
+
+```text
+FortnightPlanTest
+FortnightPeriodTest
+```
+
+Do not reproduce fortnight math (schedules, period resolution, pending/paid
+amounts, plan summaries) inside Screens or ViewModels.
+
+Key rules:
+
+* `PLANIFICADO != PAGADO != PENDIENTE`. Items snapshot `plannedAmountInCents`;
+  they are planning references, never transactions.
+* The plan `budgetInCents` is only a reference. Creating or editing a plan never
+  registers transactions.
+* A payment (`registerPayment`) is atomic: it validates the item/plan/category,
+  inserts a `finance_transaction` and a `fortnight_payments` row in the same
+  transaction. Overpaying requires `allowOverpayment`; zero or negative amounts
+  are rejected.
+* `SAVINGS` items are registered as `EXPENSE` transactions carrying the
+  `savingsGoalId` (progresses the Savings goal). `EXPENSE` items never carry a
+  `savingsGoalId`.
+* Payments must never be lost: deleting an item/plan is rejected while it has
+  payments (`HasPayments`); deleting a payment also deletes its linked
+  transaction (and that transaction becomes orphaned the same way as other
+  deletes). A closed plan can only be reopened via `reopenPlan`.
+* `RoomTransactionRepository.update/delete` guard fortnight transactions:
+  "Este gasto pertenece a una quincena y no se puede editar." / "... eliminar."
+* Templates are snapshots: editing/deleting a template never alters existing
+  plans, and deleting a template keeps its items (`templateId` becomes NULL).
+* Widget-visible data changes after registering or reverting a fortnight payment
+  must call `updateAllFinanceWidgets(context)`.
+
+Room tables:
+
+```text
+fortnight_templates  (FK category RESTRICT)
+fortnight_plans      (unique period start|end)
+fortnight_items      (FK plan CASCADE, template SET_NULL, category RESTRICT, savingsGoal SET_NULL)
+fortnight_payments   (FK item CASCADE, transaction SET_NULL, unique transactionId)
+```
+
+New finance tables added by the backup format (version 3) are exported and
+restored with ID remapping (templates, plans, items, payments after
+transactions).
+
+---
+
 # Room
 
 Current `FinanceDatabase` version:
 
 ```text
-9
+16
 ```
 
 Configuration:
@@ -807,7 +873,8 @@ Migrations currently exist:
 1 → 2
 2 → 3
 ...
-8 → 9
+14 → 15
+15 → 16
 ```
 
 Continue this pattern.
@@ -944,6 +1011,7 @@ budget
 appearance
 fixed/pending posting
 budget closing
+fortnight payments (register/revert)
 ```
 
 call:
@@ -1343,6 +1411,8 @@ delete transaction
 post fixed entry
 post pending entry
 close budget
+register fortnight payment
+revert fortnight payment
 ```
 
 verify:
