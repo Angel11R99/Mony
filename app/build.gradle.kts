@@ -65,39 +65,71 @@ android {
 
 }
 
+fun readPackagedVersionName(outputDirectory: File): String? {
+    val metadata = outputDirectory.resolve("output-metadata.json")
+    if (!metadata.isFile) return null
+    return Regex("\"versionName\": \"([^\"]+)\"").find(metadata.readText())?.groupValues?.get(1)
+}
+
 androidComponents {
-    onVariants(selector().all()) { variant ->
+    onVariants { variant ->
         val variantName = variant.name.replaceFirstChar { it.uppercase() }
+        val packageTaskName = "package$variantName"
+        val assembleTaskName = "assemble$variantName"
+        val unsignedSuffix =
+            if (variant.buildType == "release" && releaseStoreFile == null) "-unsigned" else ""
+        val targetApkName = "Mony-v$appVersionName-${variant.buildType}$unsignedSuffix.apk"
+        val outputDirectory = layout.buildDirectory.dir("outputs/apk/${variant.name}")
+        val targetApk = outputDirectory.map { it.file(targetApkName) }
+
+        // El APK se renombra al finalizar el empaquetado, por lo que el archivo declarado
+        // por la tarea de empaquetado deja de existir. Si el nombre final falta o quedó
+        // desactualizado hay que volver a empaquetar en lugar de reutilizar un artefacto viejo.
         tasks.configureEach {
-            if (name == "assemble$variantName") {
-                doLast {
-                    val outputDirectory = layout.buildDirectory
-                        .dir("outputs/apk/${variant.name}")
-                        .get()
-                        .asFile
-                    val apks = outputDirectory.listFiles()?.filter { it.extension == "apk" }.orEmpty()
-                    val generatedApk = apks.singleOrNull { !it.name.startsWith("Mony-") }
-                    val currentApk = generatedApk ?: apks.singleOrNull {
-                        it.name.startsWith("Mony-v$appVersionName-${variant.buildType}")
-                    } ?: error("No se encontró el APK generado para ${variant.name}.")
-                    val unsignedSuffix = if (currentApk.name.contains("unsigned")) "-unsigned" else ""
-                    val targetApk = outputDirectory.resolve(
-                        "Mony-v$appVersionName-${variant.buildType}$unsignedSuffix.apk"
+            if (name == packageTaskName) {
+                outputs.upToDateWhen {
+                    targetApk.get().asFile.isFile &&
+                        readPackagedVersionName(outputDirectory.get().asFile) == appVersionName
+                }
+            }
+        }
+
+        tasks.register("finalize${variantName}Apk") {
+            group = "build"
+            description = "Nombra el APK de ${variant.name} como $targetApkName."
+            dependsOn(packageTaskName)
+            val outputDirectory = outputDirectory
+            val targetApk = targetApk
+            outputs.file(targetApk)
+            doLast {
+                val directory = outputDirectory.get().asFile
+                val targetFile = targetApk.get().asFile
+                directory.listFiles()
+                    ?.filter { it.extension == "apk" && it.name.startsWith("Mony-") }
+                    ?.forEach { it.delete() }
+                val packagedApk = directory.listFiles()
+                    ?.singleOrNull { it.extension == "apk" }
+                    ?: error(
+                        "No se encontró el APK generado para ${variant.name} en ${directory.absolutePath}."
                     )
-                    if (generatedApk != null) {
-                        targetApk.delete()
-                        check(generatedApk.renameTo(targetApk)) {
-                            "No se pudo renombrar ${generatedApk.name} como ${targetApk.name}."
-                        }
-                    }
-                    val outputMetadata = outputDirectory.resolve("output-metadata.json")
-                    outputMetadata.writeText(
-                        outputMetadata.readText().replace(
+                check(packagedApk.renameTo(targetFile)) {
+                    "No se pudo renombrar ${packagedApk.name} como ${targetFile.name}."
+                }
+                val metadata = directory.resolve("output-metadata.json")
+                if (metadata.isFile) {
+                    metadata.writeText(
+                        metadata.readText().replace(
                             Regex("\"outputFile\": \"[^\"]+\\.apk\""),
-                            "\"outputFile\": \"${targetApk.name}\""
+                            "\"outputFile\": \"${targetFile.name}\""
                         )
                     )
                 }
+            }
+        }
+
+        tasks.configureEach {
+            if (name == assembleTaskName) {
+                dependsOn("finalize${variantName}Apk")
             }
         }
     }
