@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -92,11 +93,14 @@ fun FortnightTemplatesScreen(
                     ModuleTitle(if (state.isMonthly) "Plantillas del mes" else "Plantillas de quincena")
                 },
                 actions = {
+                    GlobalOutlinedIconButton(
+                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = "Volver",
+                        onClick = onBack,
+                    )
+                    Spacer(Modifier.width(8.dp))
                     GlobalOutlinedIconButton(Icons.Outlined.Add, "Nueva plantilla", viewModel::startCreate)
                     Spacer(Modifier.width(14.dp))
-                },
-                navigationIcon = {
-                    TextButton(onClick = onBack) { Text("Volver") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
