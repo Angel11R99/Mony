@@ -41,8 +41,6 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -68,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,12 +89,15 @@ import com.angel.mony.domain.model.label
 import com.angel.mony.presentation.components.AmountVisualTransformation
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.FinanceDetailRow
+import com.angel.mony.presentation.components.FinanceSelectionField
+import com.angel.mony.presentation.components.FinanceSelectionSheet
 import com.angel.mony.presentation.components.FinanceTextField
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.GlobalSettingsButton
 import com.angel.mony.presentation.components.ModuleTitle
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
+import com.angel.mony.presentation.components.SelectionOption
 import com.angel.mony.presentation.components.sanitizeAmountInput
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -872,8 +874,11 @@ private fun ItemSheet(
     onSave: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var categoryMenuOpen by remember { mutableStateOf(false) }
-    var goalMenuOpen by remember { mutableStateOf(false) }
+    // El selector se abre en su propia hoja: el formulario permanece montado detrás y el
+    // borrador (descripción, monto, nota...) vive en el ViewModel, así que no se pierde nada.
+    var categoryPickerOpen by rememberSaveable { mutableStateOf(false) }
+    var goalPickerOpen by rememberSaveable { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
     val selectedCategory = state.categories.firstOrNull { it.id == draft.categoryId }
     val selectedGoal = state.openSavingsGoals.firstOrNull { it.goal.id == draft.savingsGoalId }
 
@@ -920,44 +925,26 @@ private fun ItemSheet(
                 )
             }
 
-            Box {
-                SecondaryButton(
-                    text = selectedCategory?.name ?: "Selecciona una categoría",
-                    onClick = { categoryMenuOpen = true },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                DropdownMenu(expanded = categoryMenuOpen, onDismissRequest = { categoryMenuOpen = false }) {
-                    state.categories.forEach { category ->
-                        DropdownMenuItem(
-                            text = { Text(category.name) },
-                            onClick = {
-                                categoryMenuOpen = false
-                                onChange { it.copy(categoryId = category.id) }
-                            },
-                        )
-                    }
-                }
-            }
+            FinanceSelectionField(
+                label = "Categoría",
+                value = selectedCategory?.name.orEmpty(),
+                placeholder = "Selecciona una categoría",
+                onClick = {
+                    focusManager.clearFocus(force = true)
+                    categoryPickerOpen = true
+                },
+            )
 
             if (draft.type == FortnightItemType.SAVINGS) {
-                Box {
-                    SecondaryButton(
-                        text = selectedGoal?.goal?.name ?: "Selecciona la meta de ahorro",
-                        onClick = { goalMenuOpen = true },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    DropdownMenu(expanded = goalMenuOpen, onDismissRequest = { goalMenuOpen = false }) {
-                        state.openSavingsGoals.forEach { goal ->
-                            DropdownMenuItem(
-                                text = { Text(goal.goal.name) },
-                                onClick = {
-                                    goalMenuOpen = false
-                                    onChange { it.copy(savingsGoalId = goal.goal.id) }
-                                },
-                            )
-                        }
-                    }
-                }
+                FinanceSelectionField(
+                    label = "Meta de ahorro",
+                    value = selectedGoal?.goal?.name.orEmpty(),
+                    placeholder = "Selecciona la meta de ahorro",
+                    onClick = {
+                        focusManager.clearFocus(force = true)
+                        goalPickerOpen = true
+                    },
+                )
             }
 
             FinanceTextField(
@@ -973,8 +960,36 @@ private fun ItemSheet(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isSaving,
             )
-            Spacer(Modifier.padding(bottom = 12.dp))
+            Spacer(Modifier.height(20.dp))
         }
+    }
+
+    if (categoryPickerOpen) {
+        FinanceSelectionSheet(
+            title = "Seleccionar categoría",
+            options = state.categories.map { SelectionOption(it.id, it.name) },
+            selectedId = draft.categoryId,
+            onSelect = { categoryId ->
+                onChange { it.copy(categoryId = categoryId) }
+                categoryPickerOpen = false
+            },
+            onDismiss = { categoryPickerOpen = false },
+            emptyMessage = "Todavía no tienes categorías activas.",
+        )
+    }
+
+    if (goalPickerOpen) {
+        FinanceSelectionSheet(
+            title = "Seleccionar meta de ahorro",
+            options = state.openSavingsGoals.map { SelectionOption(it.goal.id, it.goal.name) },
+            selectedId = draft.savingsGoalId,
+            onSelect = { goalId ->
+                onChange { it.copy(savingsGoalId = goalId) }
+                goalPickerOpen = false
+            },
+            onDismiss = { goalPickerOpen = false },
+            emptyMessage = "Todavía no tienes metas de ahorro activas.",
+        )
     }
 }
 
