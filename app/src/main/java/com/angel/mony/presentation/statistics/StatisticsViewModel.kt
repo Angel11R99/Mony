@@ -2,6 +2,7 @@ package com.angel.mony.presentation.statistics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetCycleSchedule
@@ -11,9 +12,6 @@ import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.activeBudgetPeriod
 import com.angel.mony.domain.model.budgetPeriodForSchedule
 import com.angel.mony.domain.model.previousBudgetPeriod
-import com.angel.mony.domain.repository.BudgetRepository
-import com.angel.mony.domain.repository.CategoryRepository
-import com.angel.mony.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -133,14 +131,12 @@ data class StatisticsReport(
 
 @HiltViewModel
 class StatisticsViewModel @Inject constructor(
-    transactions: TransactionRepository,
-    categories: CategoryRepository,
-    budget: BudgetRepository,
+    dataCache: FinanceDataCache,
 ) : ViewModel() {
     val state = combine(
-        transactions.observeAll(),
-        categories.observeAll(),
-        budget.observe(),
+        dataCache.transactions,
+        dataCache.categories,
+        dataCache.budget,
     ) { items, categoryList, budgetConfig ->
         StatisticsUiState(
             transactions = items,
@@ -148,7 +144,16 @@ class StatisticsViewModel @Inject constructor(
             budget = budgetConfig,
             isReady = true,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatisticsUiState())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        StatisticsUiState(
+            transactions = dataCache.transactions.value,
+            categories = dataCache.categories.value.associateBy(Category::id),
+            budget = dataCache.budget.value,
+            isReady = true,
+        ),
+    )
 }
 
 internal fun StatisticsRange.displayLabel(budget: BudgetConfig?): String =

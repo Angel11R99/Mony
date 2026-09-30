@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
@@ -22,12 +23,9 @@ import com.angel.mony.domain.model.fortnightPeriodStyle
 import com.angel.mony.domain.model.fortnightSlotFor
 import com.angel.mony.domain.model.nextFortnightPeriod
 import com.angel.mony.domain.model.previousFortnightPeriod
-import com.angel.mony.domain.repository.BudgetRepository
-import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.FortnightMutationResult
 import com.angel.mony.domain.repository.FortnightPaymentResult
 import com.angel.mony.domain.repository.FortnightRepository
-import com.angel.mony.domain.repository.SavingsRepository
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -96,9 +94,7 @@ data class FortnightPaymentDraft(
 class FortnightViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val repository: FortnightRepository,
-    private val budgetRepository: BudgetRepository,
-    categoryRepository: CategoryRepository,
-    savingsRepository: SavingsRepository,
+    dataCache: FinanceDataCache,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -115,7 +111,7 @@ class FortnightViewModel @Inject constructor(
     val state: StateFlow<FortnightUiState> = run {
         val periodWithPlan = combine(
             selectedPeriod,
-            repository.observePlanSummaries(),
+            dataCache.fortnightPlans,
         ) { period, summaries ->
             period to summaries.firstOrNull { it.plan.period == period }?.plan?.id
         }
@@ -123,16 +119,18 @@ class FortnightViewModel @Inject constructor(
             planId?.let { repository.observeDetails(it) } ?: flowOf(null)
         }
         val pickers = combine(
-            categoryRepository.observeActive(TransactionType.EXPENSE),
-            savingsRepository.observeGoals(),
-        ) { categories, goals -> categories to goals }
+            dataCache.categories,
+            dataCache.savingsGoals,
+        ) { categories, goals ->
+            categories.filter { it.type == TransactionType.EXPENSE && it.isActive } to goals
+        }
 
         combine(
-            budgetRepository.observe(),
+            dataCache.budget,
             periodWithPlan,
             details,
             pickers,
-            repository.observeActiveTemplates(),
+            dataCache.activeFortnightTemplates,
         ) { budget, (period, _), details, (categories, goals), templates ->
             FortnightUiState(
                 period = period,

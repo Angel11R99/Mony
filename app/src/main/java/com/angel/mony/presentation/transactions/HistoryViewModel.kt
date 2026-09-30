@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.Context
 import android.net.Uri
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.CsvExporter
 import com.angel.mony.core.HistoryPdfMeta
 import com.angel.mony.core.HistoryPdfWriter
@@ -13,11 +14,7 @@ import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.repository.BackupPreview
 import com.angel.mony.domain.repository.BackupRepository
-import com.angel.mony.domain.repository.BudgetRepository
-import com.angel.mony.domain.repository.CategoryRepository
-import com.angel.mony.domain.repository.ShoppingListRepository
 import com.angel.mony.domain.repository.TransactionRepository
-import com.angel.mony.domain.repository.PendingEntryRepository
 import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -51,19 +48,32 @@ data class HistoryPdfRequest(
     val meta: HistoryPdfMeta,
 )
 
+private fun initialHistoryState(dataCache: FinanceDataCache): HistoryUiState {
+    val pendingById = dataCache.pendingEntries.value.associateBy { it.id }
+    val links = dataCache.shoppingLists.value.mapNotNull { list ->
+        list.expenseTransactionId?.let { it to list.id }
+            ?: list.payableId?.let(pendingById::get)?.transactionId?.let { it to list.id }
+    }.toMap()
+    return HistoryUiState(
+        transactions = dataCache.transactions.value,
+        categories = dataCache.categories.value.associateBy(Category::id),
+        shoppingListIdsByExpenseTransactionId = links,
+        budget = dataCache.budget.value,
+        cycleHistory = dataCache.budgetHistory.value,
+        isReady = true,
+    )
+}
+
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
     private val transactionsRepository: TransactionRepository,
-    categories: CategoryRepository,
-    shoppingLists: ShoppingListRepository,
-    pendingEntries: PendingEntryRepository,
-    budgetRepository: BudgetRepository,
+    dataCache: FinanceDataCache,
     private val backupRepository: BackupRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val shoppingLinks = combine(
-        shoppingLists.observeLists(),
-        pendingEntries.observeAll(),
+        dataCache.shoppingLists,
+        dataCache.pendingEntries,
     ) { lists, pending ->
         val pendingById = pending.associateBy { it.id }
         lists.mapNotNull { list ->
@@ -73,11 +83,11 @@ class HistoryViewModel @Inject constructor(
     }
 
     val state = combine(
-        transactionsRepository.observeAll(),
-        categories.observeAll(),
+        dataCache.transactions,
+        dataCache.categories,
         shoppingLinks,
-        budgetRepository.observe(),
-        budgetRepository.observeHistory(),
+        dataCache.budget,
+        dataCache.budgetHistory,
     ) { items, cats, links, budget, history ->
         HistoryUiState(
             transactions = items,
@@ -87,7 +97,11 @@ class HistoryViewModel @Inject constructor(
             cycleHistory = history,
             isReady = true,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        initialHistoryState(dataCache),
+    )
 
     val message = MutableStateFlow<String?>(null)
     val restorePreview = MutableStateFlow<RestorePreview?>(null)

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FortnightItemType
 import com.angel.mony.domain.model.FortnightPeriodStyle
@@ -11,8 +12,6 @@ import com.angel.mony.domain.model.FortnightSlot
 import com.angel.mony.domain.model.FortnightTemplate
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.fortnightPeriodStyle
-import com.angel.mony.domain.repository.BudgetRepository
-import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.FortnightMutationResult
 import com.angel.mony.domain.repository.FortnightRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,24 +49,34 @@ data class FortnightTemplateDraft(
 class FortnightTemplatesViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val repository: FortnightRepository,
-    categoryRepository: CategoryRepository,
-    budgetRepository: BudgetRepository,
+    dataCache: FinanceDataCache,
 ) : ViewModel() {
 
     val state: StateFlow<FortnightTemplatesUiState> = combine(
-        repository.observeTemplates(),
-        categoryRepository.observeActive(TransactionType.EXPENSE),
-        budgetRepository.observe(),
+        dataCache.fortnightTemplates,
+        dataCache.categories,
+        dataCache.budget,
     ) { templates, categories, budget ->
         FortnightTemplatesUiState(
             templates = templates,
-            categories = categories,
+            categories = categories.filter { it.type == TransactionType.EXPENSE && it.isActive },
             isMonthly = fortnightPeriodStyle(budget) == FortnightPeriodStyle.MONTHLY,
             isLoading = false,
         )
     }
         .catch { emit(FortnightTemplatesUiState(isLoading = false, hasError = true)) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FortnightTemplatesUiState())
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            FortnightTemplatesUiState(
+                templates = dataCache.fortnightTemplates.value,
+                categories = dataCache.categories.value.filter {
+                    it.type == TransactionType.EXPENSE && it.isActive
+                },
+                isMonthly = fortnightPeriodStyle(dataCache.budget.value) == FortnightPeriodStyle.MONTHLY,
+                isLoading = false,
+            ),
+        )
 
     val message = MutableStateFlow<String?>(null)
     val isSaving = MutableStateFlow(false)

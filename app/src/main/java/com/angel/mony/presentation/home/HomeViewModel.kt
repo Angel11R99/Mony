@@ -22,6 +22,7 @@ import com.angel.mony.domain.repository.TransactionRepository
 import com.angel.mony.domain.usecase.SaveBudget
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.CyclePreferences
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.showToast
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -77,6 +78,7 @@ class HomeViewModel @Inject constructor(
     private val categories: CategoryRepository,
     private val budgetRepository: BudgetRepository,
     private val saveBudgetUseCase: SaveBudget,
+    private val dataCache: FinanceDataCache,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val closingCycle = MutableStateFlow(false)
@@ -99,7 +101,7 @@ class HomeViewModel @Inject constructor(
     ) { pinned, selected, today -> Triple(pinned, selected, today) }
 
     private val homePeriodState = combine(
-        budgetRepository.observe(),
+        dataCache.budget,
         periodViewState,
     ) { budget, (pinnedView, selectedView, today) ->
         val currentPeriod = budgetPeriodForView(budget, BudgetPeriodView.CURRENT, today)
@@ -121,8 +123,8 @@ class HomeViewModel @Inject constructor(
 
     val state = combine(
         periodTransactions,
-        categories.observeAll(),
-        budgetRepository.observeHistory(),
+        dataCache.categories,
+        dataCache.budgetHistory,
         homePeriodState,
     ) { periodTransactions, categoryList, history, periodState ->
         val byId = categoryList.associateBy(Category::id)

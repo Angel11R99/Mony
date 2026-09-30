@@ -216,6 +216,7 @@ fun StatisticsScreen(
             LoadingContent(
                 isLoading = isLoadingReport,
                 modifier = Modifier.padding(padding),
+                minVisibleMillis = 0,
                 skeleton = { StatisticsSkeleton() },
             ) {
                 StaggeredReveal(

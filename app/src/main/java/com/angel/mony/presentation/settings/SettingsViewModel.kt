@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.BudgetAlertPreferences
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.BudgetPeriod
@@ -13,10 +14,8 @@ import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -24,12 +23,12 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val budgetRepository: BudgetRepository,
     private val saveBudgetUseCase: SaveBudget,
+    dataCache: FinanceDataCache,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val alertPreferences = BudgetAlertPreferences(context)
 
-    val budget = budgetRepository.observe()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val budget = dataCache.budget
     val message = MutableStateFlow<String?>(null)
     val isSavingCycles = MutableStateFlow(false)
     val isSavingBudget = MutableStateFlow(false)

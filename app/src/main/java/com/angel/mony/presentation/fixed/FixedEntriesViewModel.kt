@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.EntryDisplayPreferences
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.EntryCardSize
 import com.angel.mony.domain.model.ExpenseCreationResult
@@ -13,7 +14,6 @@ import com.angel.mony.domain.model.FixedEntry
 import com.angel.mony.domain.model.FixedScheduleMode
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.calculateNextRun
-import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.FixedEntryRepository
 import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,16 +37,24 @@ data class FixedEntriesUiState(
 @HiltViewModel
 class FixedEntriesViewModel @Inject constructor(
     private val fixedEntries: FixedEntryRepository,
-    categories: CategoryRepository,
+    dataCache: FinanceDataCache,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
-    val state = combine(fixedEntries.observeAll(), categories.observeAll()) { entries, categoryList ->
+    val state = combine(dataCache.fixedEntries, dataCache.categories) { entries, categoryList ->
         FixedEntriesUiState(
             entries = entries,
             categories = categoryList.associateBy(Category::id),
             isReady = true,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FixedEntriesUiState())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        FixedEntriesUiState(
+            entries = dataCache.fixedEntries.value,
+            categories = dataCache.categories.value.associateBy(Category::id),
+            isReady = true,
+        ),
+    )
 
     val message = MutableStateFlow<String?>(null)
     private val displayPreferences = EntryDisplayPreferences(context)

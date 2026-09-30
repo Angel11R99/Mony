@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.CategoryValidator
 import com.angel.mony.domain.model.TransactionType
@@ -39,14 +40,19 @@ internal fun parseBudgetLimit(raw: String): BudgetLimitInput {
 @HiltViewModel
 class CategoriesViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository,
+    dataCache: FinanceDataCache,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val state = combine(
-        categoryRepository.observeAll(),
+        dataCache.categories,
         categoryRepository.observeUsedCategoryIds(),
     ) { categories, usedIds ->
         CategoriesUiState(categories, usedIds)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CategoriesUiState())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        CategoriesUiState(categories = dataCache.categories.value),
+    )
 
     val message = MutableStateFlow<String?>(null)
     val isSaving = MutableStateFlow(false)

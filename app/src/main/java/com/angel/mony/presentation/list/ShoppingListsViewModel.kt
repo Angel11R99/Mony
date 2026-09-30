@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.EntryDisplayPreferences
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.domain.model.EntryCardSize
 import com.angel.mony.domain.model.ShoppingList
@@ -37,13 +38,18 @@ data class ShoppingListsUiState(
 class ShoppingListsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val repository: ShoppingListRepository,
+    dataCache: FinanceDataCache,
 ) : ViewModel() {
     private val displayPreferences = EntryDisplayPreferences(context)
 
-    val state: StateFlow<ShoppingListsUiState> = repository.observeListOverviews()
+    val state: StateFlow<ShoppingListsUiState> = dataCache.shoppingOverviews
         .map { ShoppingListsUiState(lists = it, isLoading = false) }
         .catch { emit(ShoppingListsUiState(isLoading = false, hasError = true)) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ShoppingListsUiState())
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            ShoppingListsUiState(lists = dataCache.shoppingOverviews.value, isLoading = false),
+        )
 
     val message = MutableStateFlow<String?>(null)
     val isSaving = MutableStateFlow(false)

@@ -4,13 +4,13 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.EntryDisplayPreferences
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.domain.model.EntryCardSize
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.SavingsGoalProgress
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.ExpenseCreationResult
-import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.SavingsRepository
 import com.angel.mony.domain.repository.TransactionRepository
 import com.angel.mony.widget.updateAllFinanceWidgets
@@ -41,22 +41,36 @@ data class SavingsUiState(
 class SavingsViewModel @Inject constructor(
     private val savings: SavingsRepository,
     private val transactions: TransactionRepository,
-    categories: CategoryRepository,
+    dataCache: FinanceDataCache,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val displayPreferences = EntryDisplayPreferences(context)
 
     val state = combine(
-        savings.observeGoals(),
-        categories.observeActive(TransactionType.EXPENSE),
+        dataCache.savingsGoals,
+        dataCache.categories,
     ) { goals, expenseCategories ->
-        val ahorro = expenseCategories.firstOrNull { it.name.equals(SAVINGS_CATEGORY, ignoreCase = true) }
+        val ahorro = expenseCategories.firstOrNull {
+            it.type == TransactionType.EXPENSE && it.isActive &&
+                it.name.equals(SAVINGS_CATEGORY, ignoreCase = true)
+        }
         SavingsUiState(
             goals = goals,
             savingsCategoryId = ahorro?.id,
             isReady = true,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SavingsUiState())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        SavingsUiState(
+            goals = dataCache.savingsGoals.value,
+            savingsCategoryId = dataCache.categories.value.firstOrNull {
+                it.type == TransactionType.EXPENSE && it.isActive &&
+                    it.name.equals(SAVINGS_CATEGORY, ignoreCase = true)
+            }?.id,
+            isReady = true,
+        ),
+    )
 
     val cardSize: StateFlow<EntryCardSize> = displayPreferences.savingsCardSize
     fun setCardSize(size: EntryCardSize) = displayPreferences.setSavingsCardSize(size)

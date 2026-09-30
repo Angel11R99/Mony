@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.EntryDisplayPreferences
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.ExpenseCreationResult
 import com.angel.mony.domain.model.FinanceTransaction
@@ -15,7 +16,6 @@ import com.angel.mony.domain.model.label
 import com.angel.mony.domain.model.isPendingReminderInFuture
 import com.angel.mony.domain.model.isPendingDateValid
 import com.angel.mony.domain.model.toTransactionType
-import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.PendingEntryRepository
 import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,16 +47,24 @@ data class PendingDraftState(
 @HiltViewModel
 class PendingEntriesViewModel @Inject constructor(
     private val pendingEntries: PendingEntryRepository,
-    categories: CategoryRepository,
+    dataCache: FinanceDataCache,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
-    val state = combine(pendingEntries.observeAll(), categories.observeAll()) { entries, categoryList ->
+    val state = combine(dataCache.pendingEntries, dataCache.categories) { entries, categoryList ->
         PendingEntriesUiState(
             entries = entries,
             categories = categoryList.associateBy(Category::id),
             isReady = true,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PendingEntriesUiState())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        PendingEntriesUiState(
+            entries = dataCache.pendingEntries.value,
+            categories = dataCache.categories.value.associateBy(Category::id),
+            isReady = true,
+        ),
+    )
 
     val message = MutableStateFlow<String?>(null)
     val isSaving = MutableStateFlow(false)

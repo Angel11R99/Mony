@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.showToast
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
@@ -12,8 +13,6 @@ import com.angel.mony.domain.model.ExpenseCreationResult
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.activeBudgetPeriod
-import com.angel.mony.domain.repository.BudgetRepository
-import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.TransactionRepository
 import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,29 +35,47 @@ enum class TransactionField { AMOUNT, CATEGORY, DATE }
 @HiltViewModel
 class AddTransactionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    categories: CategoryRepository,
-    private val budgetRepository: BudgetRepository,
     private val transactionRepository: TransactionRepository,
+    dataCache: FinanceDataCache,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val type = TransactionType.valueOf(savedStateHandle.get<String>("type") ?: TransactionType.EXPENSE.name)
-    val categories: StateFlow<List<Category>> = categories.observeActive(type)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val categories: StateFlow<List<Category>> = dataCache.categories
+        .map { items -> items.filter { it.type == type && it.isActive } }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            dataCache.categories.value.filter { it.type == type && it.isActive },
+        )
     val error = MutableStateFlow<String?>(null)
     val fieldErrors = MutableStateFlow<Map<TransactionField, String>>(emptyMap())
     val saving = MutableStateFlow(false)
     val editingTransaction = MutableStateFlow<FinanceTransaction?>(null)
     private val transactionId = savedStateHandle.get<Long>("transactionId") ?: 0L
     val isEditing: Boolean = transactionId != 0L
-    val suggestedCategoryId: StateFlow<Long?> = transactionRepository.observeAll()
-        .map { transactions -> lastCategoryForType(transactions, type) }
+    private val suggestions = dataCache.transactions
+        .map { transactions ->
+            lastCategoryForType(transactions, type) to lastDateForType(transactions, type)
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            lastCategoryForType(dataCache.transactions.value, type) to
+                lastDateForType(dataCache.transactions.value, type),
+        )
+    val suggestedCategoryId: StateFlow<Long?> = suggestions
+        .map { it.first }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-    val suggestedDate: StateFlow<LocalDate?> = transactionRepository.observeAll()
-        .map { transactions -> lastDateForType(transactions, type) }
+    val suggestedDate: StateFlow<LocalDate?> = suggestions
+        .map { it.second }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-    val activePeriod: StateFlow<DateRange> = budgetRepository.observe()
+    val activePeriod: StateFlow<DateRange> = dataCache.budget
         .map { budget -> activeBudgetPeriod(budget) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DateRange.currentFortnight())
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            activeBudgetPeriod(dataCache.budget.value),
+        )
 
     // Funding dialog state
     private val _showFundingDialog = MutableStateFlow<ExpenseCreationResult.RequiresFundingSource?>(null)

@@ -358,6 +358,7 @@ fun HistoryScreen(
             LoadingContent(
                 isLoading = isLoadingHistory,
                 modifier = Modifier.padding(padding),
+                minVisibleMillis = 0,
                 skeleton = { HistorySkeleton() },
             ) {
                 LazyColumn(
