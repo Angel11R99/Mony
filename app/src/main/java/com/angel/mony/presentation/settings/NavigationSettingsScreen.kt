@@ -76,7 +76,11 @@ fun NavigationSettingsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Icon(dest.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            com.angel.mony.ui.iconography.MonyIcon(
+                                dest.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
                             Text(dest.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                             Switch(
                                 checked = isVisible,

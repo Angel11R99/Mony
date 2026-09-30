@@ -84,6 +84,9 @@ class MainActivity : ComponentActivity() {
                 accentSeed = Color(appearance.accentArgb),
                 shapeStyle = appearance.shapeStyle,
                 fontFamily = appearance.fontFamily,
+                iconPack = appearance.iconPack,
+                iconColorMode = appearance.iconColorMode,
+                customIconColor = Color(appearance.customIconColorArgb),
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize()) {
@@ -155,6 +158,21 @@ class MainActivity : ComponentActivity() {
                             onFontFamilyChange = appearancePreferences::setFontFamily,
                             onBackgroundDecorationChange = appearancePreferences::setBackgroundDecoration,
                             onBackgroundIntensityChange = appearancePreferences::setBackgroundIntensity,
+                            onIconPackChange = {
+                                appearancePreferences.setIconPack(it)
+                                applicationContext.showToast("Estilo de iconos actualizado")
+                                lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
+                            },
+                            onIconColorModeChange = {
+                                appearancePreferences.setIconColorMode(it)
+                                applicationContext.showToast("Color de iconos actualizado")
+                                lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
+                            },
+                            onCustomIconColorChange = {
+                                appearancePreferences.setCustomIconColor(it)
+                                applicationContext.showToast("Color personalizado aplicado")
+                                lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
+                            },
                             onAutomaticCycleCloseChange = cyclePreferences::setAutomaticClose,
                             onAutomaticCloseTimeChange = cyclePreferences::setAutomaticCloseTime,
                             onModuleBarVisibleRoutesChange = moduleBarPreferences::setVisibleRoutes,

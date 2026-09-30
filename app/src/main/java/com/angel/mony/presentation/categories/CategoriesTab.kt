@@ -207,6 +207,11 @@ private fun CategoryRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        com.angel.mony.ui.iconography.MonyIcon(
+            icon = com.angel.mony.ui.iconography.semanticIconForCategory(category.icon, category.name),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+        )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 category.name,
@@ -227,14 +232,19 @@ private fun CategoryRow(
             )
         }
         IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-            Icon(Icons.Outlined.Edit, "Editar ${category.name}", modifier = Modifier.size(20.dp))
+            com.angel.mony.ui.iconography.MonyIcon(
+                com.angel.mony.ui.iconography.MonyIcon.Edit,
+                "Editar ${category.name}",
+                modifier = Modifier.size(20.dp),
+            )
         }
         if (!isInUse) {
             IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    Icons.Outlined.Delete,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Delete,
                     contentDescription = "Eliminar ${category.name}",
                     tint = MaterialTheme.colorScheme.error,
+                    role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                     modifier = Modifier.size(20.dp),
                 )
             }

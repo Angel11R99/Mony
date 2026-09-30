@@ -43,6 +43,9 @@ import com.angel.mony.ui.theme.AppShapeStyle
 import com.angel.mony.ui.theme.AppThemeMode
 import com.angel.mony.ui.theme.BackgroundDecoration
 import com.angel.mony.navigation.ModuleTransitionStyle
+import com.angel.mony.ui.iconography.IconColorMode
+import com.angel.mony.ui.iconography.IconPack
+import com.angel.mony.ui.iconography.MonyIcon
 
 import java.time.LocalTime
 
@@ -65,6 +68,9 @@ fun SettingsScreen(
     onFontFamilyChange: (AppFontFamily) -> Unit,
     onBackgroundDecorationChange: (BackgroundDecoration) -> Unit,
     onBackgroundIntensityChange: (Float) -> Unit,
+    onIconPackChange: (IconPack) -> Unit,
+    onIconColorModeChange: (IconColorMode) -> Unit,
+    onCustomIconColorChange: (Int) -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onAutomaticCloseTimeChange: (LocalTime) -> Unit,
     onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
@@ -112,6 +118,9 @@ fun SettingsScreen(
             onFontFamilyChange = onFontFamilyChange,
             onBackgroundDecorationChange = onBackgroundDecorationChange,
             onBackgroundIntensityChange = onBackgroundIntensityChange,
+            onIconPackChange = onIconPackChange,
+            onIconColorModeChange = onIconColorModeChange,
+            onCustomIconColorChange = onCustomIconColorChange,
             editingColor = editingColor,
             onEditingColorChange = { editingColor = it },
         )
@@ -173,7 +182,7 @@ private fun SettingsMainScreen(
                 title = { ModuleTitle("Ajustes") },
                 actions = {
                     GlobalOutlinedIconButton(
-                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                        semanticIcon = MonyIcon.Back,
                         contentDescription = "Volver",
                         onClick = onBack,
                     )
@@ -203,7 +212,7 @@ private fun SettingsMainScreen(
             // ── APARIENCIA ──
             item {
                 SettingsGroupRow(
-                    icon = Icons.Outlined.Palette,
+                    icon = MonyIcon.Appearance,
                     title = "Apariencia",
                     description = "Tema, colores, estilo y fondo",
                     summary = appearance.themeMode.label,
@@ -215,7 +224,7 @@ private fun SettingsMainScreen(
             item {
                 val visibleCount = moduleBarConfig.visibleRoutes.size
                 SettingsGroupRow(
-                    icon = Icons.Outlined.Tune,
+                    icon = MonyIcon.Navigation,
                     title = "Navegación",
                     description = "Barra, módulos y animaciones",
                     summary = "$visibleCount módulos · ${moduleBarConfig.transitionStyle.label}",
@@ -237,7 +246,7 @@ private fun SettingsMainScreen(
                     }
                 }
                 SettingsGroupRow(
-                    icon = Icons.Outlined.Schedule,
+                    icon = MonyIcon.Finance,
                     title = "Finanzas",
                     description = "Ciclos, presupuesto y categorías",
                     summary = summaryParts.joinToString(" · ").ifEmpty { null },

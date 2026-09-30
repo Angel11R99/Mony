@@ -160,6 +160,13 @@ Registrados en `Application.onCreate` (no desde UI):
 
 Material 3 `PersonalFinanceTrackerTheme(darkTheme, primarySeed, accentSeed)` genera `ColorScheme` dinámico. Nunca hardcodear colores; usar `MaterialTheme.colorScheme/typography/shapes`.
 
+La iconografía visual se consume mediante `ui/iconography/`: `MonyIcon` expresa el significado,
+`MonyIconResolver` selecciona Material/Lucide/Phosphor con fallback Material y el composable
+`MonyIcon(...)` aplica pack, color y tamaños globales. `AppAppearance` persiste `iconPack`,
+`iconColorMode` y `customIconColorArgb` en las mismas preferencias de apariencia. Los estados
+de error, advertencia, éxito, selección y deshabilitado usan `MonyIconRole.STATE` o un `tint`
+explícito para conservar la semántica del Design System.
+
 ---
 
 ## 12. Lógica de ciclo presupuestario

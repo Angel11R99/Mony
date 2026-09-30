@@ -94,12 +94,16 @@ fun FortnightTemplatesScreen(
                 },
                 actions = {
                     GlobalOutlinedIconButton(
-                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                        semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Back,
                         contentDescription = "Volver",
                         onClick = onBack,
                     )
                     Spacer(Modifier.width(8.dp))
-                    GlobalOutlinedIconButton(Icons.Outlined.Add, "Nueva plantilla", viewModel::startCreate)
+                    GlobalOutlinedIconButton(
+                        semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Add,
+                        contentDescription = "Nueva plantilla",
+                        onClick = viewModel::startCreate,
+                    )
                     Spacer(Modifier.width(14.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -120,10 +124,9 @@ fun FortnightTemplatesScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(
-                    Icons.Outlined.Inventory2,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Template,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(36.dp),
                 )
                 Text(
@@ -230,10 +233,16 @@ private fun TemplateCard(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconButton(onClick = onEdit, enabled = enabled) {
-                    Icon(Icons.Outlined.Edit, "Editar plantilla")
+                    com.angel.mony.ui.iconography.MonyIcon(
+                        com.angel.mony.ui.iconography.MonyIcon.Edit,
+                        "Editar plantilla",
+                    )
                 }
                 IconButton(onClick = onDelete, enabled = enabled) {
-                    Icon(Icons.Outlined.Delete, "Eliminar plantilla")
+                    com.angel.mony.ui.iconography.MonyIcon(
+                        com.angel.mony.ui.iconography.MonyIcon.Delete,
+                        "Eliminar plantilla",
+                    )
                 }
                 Spacer(Modifier.weight(1f))
                 Text(

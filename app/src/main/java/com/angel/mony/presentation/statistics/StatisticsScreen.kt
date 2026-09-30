@@ -328,7 +328,10 @@ private fun StatisticsFilterButton(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
     ) {
-        Icon(Icons.Outlined.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        com.angel.mony.ui.iconography.MonyIcon(
+            com.angel.mony.ui.iconography.MonyIcon.Filter,
+            contentDescription = null,
+        )
         Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
             Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             Text("$period · $category", style = MaterialTheme.typography.bodyMedium, maxLines = 1)
@@ -384,7 +387,10 @@ private fun StatisticsFilterSheet(
                     )
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros")
+                    com.angel.mony.ui.iconography.MonyIcon(
+                        com.angel.mony.ui.iconography.MonyIcon.Close,
+                        contentDescription = "Cerrar filtros",
+                    )
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -511,7 +517,10 @@ private fun StatisticsDateField(
                     maxLines = 1,
                 )
             }
-            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            com.angel.mony.ui.iconography.MonyIcon(
+                com.angel.mony.ui.iconography.MonyIcon.Calendar,
+                contentDescription = null,
+            )
         }
     }
     if (showPicker) {
@@ -855,8 +864,25 @@ private fun CategoryBar(statistic: CategoryStatistic, comparisonAmount: Long) {
         "${(fraction * 100).toInt()}% · ${MoneyFormatter.format(statistic.amountInCents)}"
     }
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(statistic.category.name.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            com.angel.mony.ui.iconography.MonyIcon(
+                com.angel.mony.ui.iconography.semanticIconForCategory(
+                    statistic.category.icon,
+                    statistic.category.name,
+                ),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                statistic.category.name.uppercase(),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
             Text(summary, style = MaterialTheme.typography.titleSmall)
         }
         Box(

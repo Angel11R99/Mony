@@ -217,8 +217,20 @@ fun HomeScreen(
             if (state.spending.isNotEmpty()) {
                 item { EditorialHeading("GASTOS POR CATEGORÍA") }
                 items(state.spending.take(5), key = { "spending-category-${it.category.id}" }) { spending ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(spending.category.name.uppercase(), style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        com.angel.mony.ui.iconography.MonyIcon(
+                            com.angel.mony.ui.iconography.semanticIconForCategory(
+                                spending.category.icon,
+                                spending.category.name,
+                            ),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(spending.category.name.uppercase(), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
                         Text(MoneyFormatter.format(spending.amountInCents), style = MaterialTheme.typography.titleSmall)
                     }
                 }
@@ -429,10 +441,12 @@ private fun PeriodViewOption(
                 onClick = onPin,
                 modifier = Modifier.size(40.dp),
             ) {
-                Icon(
-                    imageVector = if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    icon = com.angel.mony.ui.iconography.MonyIcon.Pin,
                     contentDescription = if (pinned) "Vista fijada" else "Fijar vista $title",
                     tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    role = if (pinned) com.angel.mony.ui.iconography.MonyIconRole.STATE
+                    else com.angel.mony.ui.iconography.MonyIconRole.NORMAL,
                 )
             }
         }
@@ -514,10 +528,11 @@ private fun CloseCycleButton(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    Icons.Outlined.Lock,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Lock,
                     contentDescription = null,
                     modifier = Modifier.size(15.dp),
+                    role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(

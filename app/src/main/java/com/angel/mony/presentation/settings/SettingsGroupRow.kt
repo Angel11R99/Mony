@@ -21,16 +21,16 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.ModuleTitle
+import com.angel.mony.ui.iconography.MonyIcon
 
 @Composable
 fun SettingsGroupRow(
-    icon: ImageVector,
+    icon: MonyIcon,
     title: String,
     description: String,
     summary: String? = null,
@@ -45,10 +45,9 @@ fun SettingsGroupRow(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = icon,
+            MonyIcon(
+                icon = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp),
             )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -93,7 +92,7 @@ fun SettingsModuleHeader(
         title = { ModuleTitle(title) },
         actions = {
             GlobalOutlinedIconButton(
-                icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                semanticIcon = MonyIcon.Back,
                 contentDescription = "Volver",
                 onClick = onBack,
             )

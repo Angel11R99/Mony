@@ -140,13 +140,17 @@ fun FortnightScreen(
                 title = { ModuleTitle(if (isMonthly) "Mes" else "Quincena") },
                 actions = {
                     if (state.canEditItems) {
-                        GlobalOutlinedIconButton(Icons.Outlined.Add, "Agregar concepto", viewModel::startAddItem)
+                        GlobalOutlinedIconButton(
+                            semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Add,
+                            contentDescription = "Agregar concepto",
+                            onClick = viewModel::startAddItem,
+                        )
                         Spacer(Modifier.width(8.dp))
                     }
                     GlobalOutlinedIconButton(
-                        Icons.Outlined.Inventory2,
-                        "Plantillas",
-                        onOpenTemplates,
+                        semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Template,
+                        contentDescription = "Plantillas",
+                        onClick = onOpenTemplates,
                     )
                     Spacer(Modifier.width(8.dp))
                     GlobalSettingsButton(onSettings)
@@ -312,7 +316,10 @@ private fun PeriodNavigator(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onPrevious) {
-            Icon(Icons.Outlined.ChevronLeft, "Período anterior")
+            com.angel.mony.ui.iconography.MonyIcon(
+                com.angel.mony.ui.iconography.MonyIcon.Previous,
+                "Período anterior",
+            )
         }
         Column(
             modifier = Modifier.weight(1f),
@@ -328,7 +335,10 @@ private fun PeriodNavigator(
             TextButton(onClick = onCurrent) { Text("Ir a la actual") }
         }
         IconButton(onClick = onNext) {
-            Icon(Icons.Outlined.ChevronRight, "Período siguiente")
+            com.angel.mony.ui.iconography.MonyIcon(
+                com.angel.mony.ui.iconography.MonyIcon.Next,
+                "Período siguiente",
+            )
         }
     }
 }
@@ -341,10 +351,9 @@ private fun EmptyPlanCard(isMonthly: Boolean, onCreate: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(
-                Icons.Outlined.CalendarMonth,
+            com.angel.mony.ui.iconography.MonyIcon(
+                com.angel.mony.ui.iconography.MonyIcon.Calendar,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(36.dp),
             )
             Text(
@@ -487,7 +496,14 @@ private fun SummaryCard(details: FortnightPlanDetails, isMonthly: Boolean) {
                         onClick = {},
                         enabled = false,
                         label = { Text("Cerrada") },
-                        leadingIcon = { Icon(Icons.Outlined.Lock, null, Modifier.size(16.dp)) },
+                        leadingIcon = {
+                            com.angel.mony.ui.iconography.MonyIcon(
+                                com.angel.mony.ui.iconography.MonyIcon.Lock,
+                                null,
+                                Modifier.size(16.dp),
+                                role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
+                            )
+                        },
                         colors = AssistChipDefaults.assistChipColors(),
                     )
                 }
@@ -584,10 +600,16 @@ private fun FortnightItemCard(
             if (canEdit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IconButton(onClick = onEdit, enabled = enabled) {
-                        Icon(Icons.Outlined.Edit, "Editar concepto")
+                        com.angel.mony.ui.iconography.MonyIcon(
+                            com.angel.mony.ui.iconography.MonyIcon.Edit,
+                            "Editar concepto",
+                        )
                     }
                     IconButton(onClick = onDelete, enabled = enabled) {
-                        Icon(Icons.Outlined.Delete, "Eliminar concepto")
+                        com.angel.mony.ui.iconography.MonyIcon(
+                            com.angel.mony.ui.iconography.MonyIcon.Delete,
+                            "Eliminar concepto",
+                        )
                     }
                 }
             }
@@ -611,15 +633,22 @@ private fun StatusChip(status: FortnightItemStatus) {
         FortnightItemStatus.PENDING -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }
     val icon = when (status) {
-        FortnightItemStatus.PAID -> Icons.Outlined.Payments
-        FortnightItemStatus.PARTIAL -> Icons.Outlined.CalendarMonth
-        FortnightItemStatus.PENDING -> Icons.Outlined.CalendarMonth
+        FortnightItemStatus.PAID -> com.angel.mony.ui.iconography.MonyIcon.Completed
+        FortnightItemStatus.PARTIAL -> com.angel.mony.ui.iconography.MonyIcon.Calendar
+        FortnightItemStatus.PENDING -> com.angel.mony.ui.iconography.MonyIcon.Pending
     }
     AssistChip(
         onClick = {},
         enabled = false,
         label = { Text(status.label()) },
-        leadingIcon = { Icon(icon, null, Modifier.size(16.dp)) },
+        leadingIcon = {
+            com.angel.mony.ui.iconography.MonyIcon(
+                icon,
+                null,
+                Modifier.size(16.dp),
+                role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
+            )
+        },
         colors = AssistChipDefaults.assistChipColors(
             disabledContainerColor = container,
             disabledLabelColor = content,
@@ -653,7 +682,10 @@ private fun PaymentRow(
             Text(MoneyFormatter.format(payment.amountInCents), style = MaterialTheme.typography.bodyMedium)
             if (canRevert) {
                 IconButton(onClick = onRevert, enabled = enabled) {
-                    Icon(Icons.Outlined.Undo, "Revertir abono")
+                    com.angel.mony.ui.iconography.MonyIcon(
+                        com.angel.mony.ui.iconography.MonyIcon.Undo,
+                        "Revertir abono",
+                    )
                 }
             }
         }
@@ -678,7 +710,7 @@ private fun PlanActions(
                 text = if (isMonthly) "Reabrir mes" else "Reabrir quincena",
                 onClick = onReopenPlan,
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = Icons.Outlined.LockOpen,
+                semanticLeadingIcon = com.angel.mony.ui.iconography.MonyIcon.Unlock,
                 enabled = enabled,
             )
             Text(
@@ -695,7 +727,7 @@ private fun PlanActions(
                 text = if (isMonthly) "Cerrar mes" else "Cerrar quincena",
                 onClick = onClosePlan,
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = Icons.Outlined.Lock,
+                semanticLeadingIcon = com.angel.mony.ui.iconography.MonyIcon.Lock,
                 enabled = enabled,
             )
         }
@@ -703,7 +735,7 @@ private fun PlanActions(
             text = "Eliminar plan",
             onClick = onDeletePlan,
             modifier = Modifier.fillMaxWidth(),
-            leadingIcon = Icons.Outlined.Delete,
+            semanticLeadingIcon = com.angel.mony.ui.iconography.MonyIcon.Delete,
             enabled = enabled && !isClosed,
         )
     }
@@ -915,13 +947,25 @@ private fun ItemSheet(
                     selected = draft.type == FortnightItemType.EXPENSE,
                     onClick = { onChange { it.copy(type = FortnightItemType.EXPENSE) } },
                     label = { Text("Gasto") },
-                    leadingIcon = { Icon(Icons.Outlined.Payments, null, Modifier.size(16.dp)) },
+                    leadingIcon = {
+                        com.angel.mony.ui.iconography.MonyIcon(
+                            com.angel.mony.ui.iconography.MonyIcon.Expense,
+                            null,
+                            Modifier.size(16.dp),
+                        )
+                    },
                 )
                 FilterChip(
                     selected = draft.type == FortnightItemType.SAVINGS,
                     onClick = { onChange { it.copy(type = FortnightItemType.SAVINGS) } },
                     label = { Text("Ahorro") },
-                    leadingIcon = { Icon(Icons.Outlined.Savings, null, Modifier.size(16.dp)) },
+                    leadingIcon = {
+                        com.angel.mony.ui.iconography.MonyIcon(
+                            com.angel.mony.ui.iconography.MonyIcon.Savings,
+                            null,
+                            Modifier.size(16.dp),
+                        )
+                    },
                 )
             }
 

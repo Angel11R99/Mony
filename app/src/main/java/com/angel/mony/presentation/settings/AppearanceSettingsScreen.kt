@@ -76,6 +76,12 @@ import com.angel.mony.ui.theme.isColorCompatible
 import com.angel.mony.ui.theme.primaryPresets
 import com.angel.mony.ui.theme.recommendedFont
 import com.angel.mony.ui.theme.toComposeFontFamily
+import com.angel.mony.ui.iconography.IconColorMode
+import com.angel.mony.ui.iconography.IconPack
+import com.angel.mony.ui.iconography.MonyIcon
+import com.angel.mony.ui.iconography.MonyIconRole
+import com.angel.mony.ui.iconography.MonyIconSize
+import com.angel.mony.ui.iconography.hasIconContrast
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -93,6 +99,9 @@ fun AppearanceSettingsScreen(
     onFontFamilyChange: (AppFontFamily) -> Unit,
     onBackgroundDecorationChange: (BackgroundDecoration) -> Unit,
     onBackgroundIntensityChange: (Float) -> Unit,
+    onIconPackChange: (IconPack) -> Unit,
+    onIconColorModeChange: (IconColorMode) -> Unit,
+    onCustomIconColorChange: (Int) -> Unit,
     editingColor: ColorRole?,
     onEditingColorChange: (ColorRole?) -> Unit,
 ) {
@@ -175,6 +184,74 @@ fun AppearanceSettingsScreen(
                     }
                 }
             }
+        }
+
+        // ── ICONOS ──
+        item {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+        item {
+            SectionTitle("ICONOS", "Elige un estilo global y cómo se colorean los iconos normales.")
+        }
+        item {
+            Text("Estilo", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            IconPackSelector(selected = appearance.iconPack, onSelect = onIconPackChange)
+        }
+        item {
+            Text("Color de iconos", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                IconColorMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = appearance.iconColorMode == mode,
+                        onClick = {
+                            if (mode == IconColorMode.CUSTOM) onEditingColorChange(ColorRole.ICON)
+                            else onIconColorModeChange(mode)
+                        },
+                        label = { Text(mode.displayName) },
+                        leadingIcon = if (appearance.iconColorMode == mode) {
+                            { MonyIcon(MonyIcon.Check, null, size = 17.dp, role = MonyIconRole.STATE) }
+                        } else null,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                        shape = MaterialTheme.shapes.small,
+                    )
+                }
+            }
+            if (appearance.iconColorMode == IconColorMode.CUSTOM) {
+                val compatible = hasIconContrast(
+                    Color(appearance.customIconColorArgb),
+                    MaterialTheme.colorScheme.background,
+                )
+                TextButton(onClick = { onEditingColorChange(ColorRole.ICON) }) {
+                    Surface(
+                        modifier = Modifier.size(20.dp),
+                        color = Color(appearance.customIconColorArgb),
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    ) {}
+                    Spacer(Modifier.width(8.dp))
+                    Text("Cambiar color personalizado")
+                }
+                if (!compatible) {
+                    Text(
+                        "El color no tiene contraste suficiente con este tema; se usa el color automático.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+        item {
+            IconLivePreview()
         }
 
         // ── FORMAS ──
@@ -286,20 +363,135 @@ fun AppearanceSettingsScreen(
     // ── Color Picker Dialog ──
     editingColor?.let { role ->
         ColorPickerDialog(
-            title = if (role == ColorRole.PRIMARY) "Color principal" else "Color secundario",
-            currentArgb = if (role == ColorRole.PRIMARY) appearance.primaryArgb else appearance.accentArgb,
-            presets = if (role == ColorRole.PRIMARY) primaryPresets else accentPresets,
+            title = when (role) {
+                ColorRole.PRIMARY -> "Color principal"
+                ColorRole.ACCENT -> "Color secundario"
+                ColorRole.ICON -> "Color personalizado de iconos"
+            },
+            currentArgb = when (role) {
+                ColorRole.PRIMARY -> appearance.primaryArgb
+                ColorRole.ACCENT -> appearance.accentArgb
+                ColorRole.ICON -> appearance.customIconColorArgb
+            },
+            presets = if (role == ColorRole.ACCENT) accentPresets else primaryPresets,
             isDarkTheme = isDarkTheme,
             onDismiss = { onEditingColorChange(null) },
             onSelect = { argb ->
-                if (role == ColorRole.PRIMARY) {
-                    onPrimaryChange(argb)
-                } else {
-                    onAccentChange(argb)
+                when (role) {
+                    ColorRole.PRIMARY -> onPrimaryChange(argb)
+                    ColorRole.ACCENT -> onAccentChange(argb)
+                    ColorRole.ICON -> onCustomIconColorChange(argb)
                 }
                 onEditingColorChange(null)
             },
         )
+    }
+}
+
+@Composable
+private fun IconPackSelector(selected: IconPack, onSelect: (IconPack) -> Unit) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(end = 4.dp),
+    ) {
+        items(IconPack.entries.size) { index ->
+            val pack = IconPack.entries[index]
+            val isSelected = pack == selected
+            Surface(
+                modifier = Modifier
+                    .width(152.dp)
+                    .height(92.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable { onSelect(pack) },
+                shape = MaterialTheme.shapes.small,
+                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                border = BorderStroke(
+                    if (isSelected) 2.dp else 1.dp,
+                    if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                ),
+            ) {
+                Column(
+                    Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(pack.displayName, style = MaterialTheme.typography.labelLarge)
+                        if (isSelected) {
+                            MonyIcon(
+                                MonyIcon.Check,
+                                contentDescription = "Seleccionado",
+                                tint = MaterialTheme.colorScheme.primary,
+                                role = MonyIconRole.STATE,
+                                size = MonyIconSize.Small,
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        listOf(MonyIcon.Home, MonyIcon.Add, MonyIcon.Savings, MonyIcon.Settings).forEach { icon ->
+                            MonyIcon(
+                                icon = icon,
+                                contentDescription = null,
+                                packOverride = pack,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                role = MonyIconRole.STATE,
+                                size = MonyIconSize.Medium,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IconLivePreview() {
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("VISTA PREVIA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                listOf(
+                    MonyIcon.Home to "Inicio",
+                    MonyIcon.Expense to "Gastos",
+                    MonyIcon.Savings to "Ahorro",
+                    MonyIcon.Statistics to "Estadísticas",
+                ).forEach { (icon, label) ->
+                    Column(
+                        modifier = Modifier.width(70.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        MonyIcon(icon, contentDescription = null, size = MonyIconSize.Large)
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 2,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                MonyIcon(
+                    MonyIcon.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    role = MonyIconRole.STATE,
+                )
+                Text(
+                    "Los estados de alerta conservan su color semántico.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -532,7 +724,7 @@ internal fun ColorRoleCard(
                     }
                 }
             }
-            Icon(Icons.Outlined.Palette, contentDescription = "Cambiar $title", tint = MaterialTheme.colorScheme.primary)
+            MonyIcon(MonyIcon.Appearance, contentDescription = "Cambiar $title")
         }
     }
 }
@@ -573,7 +765,7 @@ internal fun ColorPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Outlined.Palette, null, tint = MaterialTheme.colorScheme.primary) },
+        icon = { MonyIcon(MonyIcon.Appearance, null) },
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -753,7 +945,7 @@ internal fun HueBar(hue: Float, onHueChange: (Float) -> Unit) {
 
 internal fun Int.toHsv(): FloatArray = FloatArray(3).also { android.graphics.Color.colorToHSV(this, it) }
 
-enum class ColorRole { PRIMARY, ACCENT }
+enum class ColorRole { PRIMARY, ACCENT, ICON }
 
 internal val AppThemeMode.label: String
     get() = when (this) {

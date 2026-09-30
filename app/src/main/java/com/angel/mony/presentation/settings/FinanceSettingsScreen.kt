@@ -156,10 +156,9 @@ fun FinanceSettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            Icons.Outlined.Schedule,
+                        com.angel.mony.ui.iconography.MonyIcon(
+                            com.angel.mony.ui.iconography.MonyIcon.Calendar,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
                         )
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text("Hora del cierre automático", style = MaterialTheme.typography.bodyMedium)
@@ -216,10 +215,9 @@ fun FinanceSettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Category,
+                    com.angel.mony.ui.iconography.MonyIcon(
+                        icon = com.angel.mony.ui.iconography.MonyIcon.Category,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp),
                     )
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -251,7 +249,12 @@ fun FinanceSettingsScreen(
         )
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
-            icon = { Icon(Icons.Outlined.Schedule, null, tint = MaterialTheme.colorScheme.primary) },
+            icon = {
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Calendar,
+                    null,
+                )
+            },
             title = { Text("Hora del cierre automático") },
             text = {
                 Column(

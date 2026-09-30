@@ -3,6 +3,8 @@ package com.angel.mony.ui.theme
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import com.angel.mony.ui.iconography.IconColorMode
+import com.angel.mony.ui.iconography.IconPack
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -18,6 +20,9 @@ data class AppAppearance(
     val fontFamily: AppFontFamily = AppFontFamily.SYSTEM,
     val backgroundDecoration: BackgroundDecoration = BackgroundDecoration.NONE,
     val backgroundIntensity: Float = DEFAULT_BACKGROUND_INTENSITY,
+    val iconPack: IconPack = IconPack.MATERIAL,
+    val iconColorMode: IconColorMode = IconColorMode.AUTOMATIC,
+    val customIconColorArgb: Int = DEFAULT_PRIMARY_ARGB,
 )
 
 class AppearancePreferences(context: Context) {
@@ -87,6 +92,14 @@ class AppearancePreferences(context: Context) {
         update(mutableSettings.value.copy(backgroundDecoration = decoration))
     fun setBackgroundIntensity(intensity: Float) =
         update(mutableSettings.value.copy(backgroundIntensity = intensity.coerceIn(0f, 1f)))
+    fun setIconPack(pack: IconPack) = update(mutableSettings.value.copy(iconPack = pack))
+    fun setIconColorMode(mode: IconColorMode) = update(mutableSettings.value.copy(iconColorMode = mode))
+    fun setCustomIconColor(argb: Int) = update(
+        mutableSettings.value.copy(
+            iconColorMode = IconColorMode.CUSTOM,
+            customIconColorArgb = argb or OPAQUE_ALPHA,
+        )
+    )
     fun reset() = update(AppAppearance())
 
     private fun update(value: AppAppearance) {
@@ -98,6 +111,9 @@ class AppearancePreferences(context: Context) {
             .putString(KEY_FONT, value.fontFamily.name)
             .putString(KEY_BACKGROUND_DECORATION, value.backgroundDecoration.name)
             .putFloat(KEY_BACKGROUND_INTENSITY, value.backgroundIntensity)
+            .putString(KEY_ICON_PACK, value.iconPack.name)
+            .putString(KEY_ICON_COLOR_MODE, value.iconColorMode.name)
+            .putLong(KEY_CUSTOM_ICON_COLOR, value.customIconColorArgb.toLong())
             .apply()
         mutableSettings.value = value
     }
@@ -125,6 +141,10 @@ class AppearancePreferences(context: Context) {
             backgroundIntensity = preferences
                 .getFloat(KEY_BACKGROUND_INTENSITY, DEFAULT_BACKGROUND_INTENSITY)
                 .coerceIn(0f, 1f),
+            iconPack = parseIconPack(preferences.getString(KEY_ICON_PACK, null)),
+            iconColorMode = parseIconColorMode(preferences.getString(KEY_ICON_COLOR_MODE, null)),
+            customIconColorArgb = preferences
+                .getLong(KEY_CUSTOM_ICON_COLOR, DEFAULT_PRIMARY_ARGB.toLong()).toInt(),
         )
     }
 }
@@ -141,6 +161,15 @@ private const val KEY_SHAPE = "shape_style"
 private const val KEY_FONT = "font_family"
 private const val KEY_BACKGROUND_DECORATION = "backgroundDecoration"
 private const val KEY_BACKGROUND_INTENSITY = "backgroundIntensity"
+private const val KEY_ICON_PACK = "icon_pack"
+private const val KEY_ICON_COLOR_MODE = "icon_color_mode"
+private const val KEY_CUSTOM_ICON_COLOR = "icon_custom_color"
+
+internal fun parseIconPack(value: String?): IconPack =
+    value?.let { runCatching { IconPack.valueOf(it) }.getOrNull() } ?: IconPack.MATERIAL
+
+internal fun parseIconColorMode(value: String?): IconColorMode =
+    value?.let { runCatching { IconColorMode.valueOf(it) }.getOrNull() } ?: IconColorMode.AUTOMATIC
 
 const val DARK_INCOMPATIBLE_LUMINANCE_THRESHOLD: Float = 0.18f
 const val LIGHT_INCOMPATIBLE_LUMINANCE_THRESHOLD: Float = 0.65f

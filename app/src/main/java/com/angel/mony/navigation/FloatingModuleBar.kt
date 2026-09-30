@@ -16,16 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Insights
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.Savings
-import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,27 +26,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.angel.mony.ui.iconography.MonyIcon
+import com.angel.mony.ui.iconography.MonyIconRole
 
 internal data class ModuleDestination(
     val label: String,
     val route: String,
-    val icon: ImageVector,
+    val icon: MonyIcon,
 )
 
 internal val moduleDestinations = listOf(
-    ModuleDestination("Inicio", "home", Icons.Outlined.AccountBalanceWallet),
-    ModuleDestination("Fijos", "fixed", Icons.Outlined.Repeat),
-    ModuleDestination("Recordatorios", "pending", Icons.Outlined.Notifications),
-    ModuleDestination("Ahorros", "savings", Icons.Outlined.Savings),
-    ModuleDestination("Lista", "list", Icons.Outlined.ShoppingCart),
-    ModuleDestination("Estadísticas", "statistics", Icons.Outlined.Insights),
-    ModuleDestination("Quincena", "fortnight", Icons.Outlined.CalendarMonth),
-    ModuleDestination("Historial", "history", Icons.Outlined.History),
+    ModuleDestination("Inicio", "home", MonyIcon.Home),
+    ModuleDestination("Fijos", "fixed", MonyIcon.Fixed),
+    ModuleDestination("Recordatorios", "pending", MonyIcon.Pending),
+    ModuleDestination("Ahorros", "savings", MonyIcon.Savings),
+    ModuleDestination("Lista", "list", MonyIcon.Shopping),
+    ModuleDestination("Estadísticas", "statistics", MonyIcon.Statistics),
+    ModuleDestination("Quincena", "fortnight", MonyIcon.Fortnight),
+    ModuleDestination("Historial", "history", MonyIcon.History),
 )
 
 @Composable
@@ -150,11 +141,12 @@ private fun ModuleItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
     ) {
-        Icon(
-            imageVector = destination.icon,
+        MonyIcon(
+            icon = destination.icon,
             contentDescription = destination.label,
             modifier = Modifier.size(21.dp).scale(iconScale),
             tint = contentColor,
+            role = MonyIconRole.STATE,
         )
         if (showLabel) {
             Text(

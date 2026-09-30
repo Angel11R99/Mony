@@ -460,6 +460,28 @@ Do not use emojis as functional interface icons.
 
 Use icons semantically.
 
+All new visual icons in Mony must use the global semantic iconography abstraction in
+`ui/iconography/` instead of depending directly on Material, Lucide, Phosphor, or another
+icon library. Direct library usage is allowed only for a documented exception, such as an
+Android auto-mirrored directional icon that the selected pack cannot preserve.
+
+To add a semantic icon:
+
+1. Add the meaning to `MonyIcon`.
+2. Map it in `MonyIconResolver` for Material.
+3. Map it for Lucide.
+4. Map it for Phosphor.
+5. Return `null` from a pack-specific resolver only when Material is the intentional fallback.
+6. Render it from UI with `MonyIcon(...)`; use `MonyIconRole.STATE` or an explicit `tint` for error, warning, success, selected, and disabled states.
+
+To add a complete pack:
+
+1. Add the pack to `IconPack` and verify its license, maintenance, Compose compatibility, and APK impact.
+2. Add one centralized resolver function and connect it in `MonyIconResolver.resolveOrNull`.
+3. Map every existing semantic icon, documenting deliberate fallbacks.
+4. The selector and preview use `IconPack.entries`, so no screen-specific pack conditions are needed.
+5. Extend resolver, category, fallback, persistence, and preview tests.
+
 Examples:
 
 ```text

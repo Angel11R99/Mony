@@ -15,6 +15,10 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import com.angel.mony.ui.iconography.IconColorMode
+import com.angel.mony.ui.iconography.IconPack
+import com.angel.mony.ui.iconography.IconographyConfig
+import com.angel.mony.ui.iconography.LocalIconography
 
 private fun financeDarkColors(primarySeed: Color, accentSeed: Color) = darkColorScheme(
     primary = primarySeed,
@@ -89,12 +93,18 @@ fun PersonalFinanceTrackerTheme(
     accentSeed: Color = ExpenseRed,
     shapeStyle: AppShapeStyle = AppShapeStyle.CUT,
     fontFamily: AppFontFamily = AppFontFamily.SYSTEM,
+    iconPack: IconPack = IconPack.MATERIAL,
+    iconColorMode: IconColorMode = IconColorMode.AUTOMATIC,
+    customIconColor: Color = Color.Unspecified,
     content: @Composable () -> Unit,
 ) {
     val appShapes = remember(shapeStyle) { createAppShapes(shapeStyle) }
     val typography = remember(fontFamily) { createAppTypography(fontFamily) }
     val materialShapes = remember(appShapes) { appShapes.toMaterialShapes() }
-    CompositionLocalProvider(LocalAppShapes provides appShapes) {
+    CompositionLocalProvider(
+        LocalAppShapes provides appShapes,
+        LocalIconography provides IconographyConfig(iconPack, iconColorMode, customIconColor),
+    ) {
         MaterialTheme(
             colorScheme = if (darkTheme) financeDarkColors(primarySeed, accentSeed)
             else financeLightColors(primarySeed, accentSeed),

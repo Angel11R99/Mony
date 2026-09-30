@@ -6,9 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +17,8 @@ import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
+import com.angel.mony.ui.iconography.MonyIcon
+import com.angel.mony.ui.iconography.semanticIconForCategory
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -37,7 +36,11 @@ fun TransactionRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.AutoMirrored.Outlined.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        MonyIcon(
+            icon = category?.let { semanticIconForCategory(it.icon, it.name) }
+                ?: if (transaction.type == TransactionType.INCOME) MonyIcon.Income else MonyIcon.Expense,
+            contentDescription = null,
+        )
         Column(Modifier.weight(1f)) {
             Text(category?.name ?: "Sin categoría", style = MaterialTheme.typography.bodyLarge)
             Text(

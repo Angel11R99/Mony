@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.angel.mony.ui.theme.LocalAppShapes
+import com.angel.mony.ui.iconography.MonyIcon
+import com.angel.mony.ui.iconography.MonyIconRole
 
 @Composable
 fun PrimaryButton(
@@ -82,6 +84,7 @@ fun SecondaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     leadingIcon: ImageVector? = null,
+    semanticLeadingIcon: MonyIcon? = null,
     enabled: Boolean = true,
 ) {
     OutlinedButton(
@@ -95,7 +98,10 @@ fun SecondaryButton(
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
     ) {
-        if (leadingIcon != null) {
+        if (semanticLeadingIcon != null) {
+            MonyIcon(semanticLeadingIcon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+        } else if (leadingIcon != null) {
             Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
         }
@@ -114,7 +120,7 @@ fun GlobalSettingsButton(
     modifier: Modifier = Modifier,
 ) {
     GlobalOutlinedIconButton(
-        icon = Icons.Outlined.Settings,
+        semanticIcon = MonyIcon.Settings,
         contentDescription = "Ajustes de la app",
         onClick = onClick,
         modifier = modifier,
@@ -128,7 +134,7 @@ fun GlobalSaveButton(
     enabled: Boolean = true,
 ) {
     GlobalOutlinedIconButton(
-        icon = Icons.Outlined.Save,
+        semanticIcon = MonyIcon.Save,
         contentDescription = "Guardar",
         onClick = onClick,
         modifier = modifier,
@@ -156,6 +162,30 @@ fun GlobalOutlinedIconButton(
             icon,
             contentDescription = contentDescription,
             tint = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+@Composable
+fun GlobalOutlinedIconButton(
+    semanticIcon: MonyIcon,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    size: Dp = 54.dp,
+) {
+    OutlinedIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(size).then(modifier),
+        shape = LocalAppShapes.current.buttonShape,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        MonyIcon(
+            icon = semanticIcon,
+            contentDescription = contentDescription,
+            role = if (enabled) MonyIconRole.NORMAL else MonyIconRole.STATE,
         )
     }
 }
