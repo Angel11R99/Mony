@@ -161,7 +161,12 @@ fun FortnightScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    StaggeredReveal {
+                    StaggeredReveal(
+                        screenKey = "fortnight",
+                        staggerMillis = 40,
+                        durationMillis = 180,
+                        slideOffsetDp = 8.dp,
+                    ) {
                         add {
                             PeriodNavigator(
                                 periodLabel = buildString {
@@ -394,7 +399,12 @@ private fun PlanContent(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        StaggeredReveal {
+        StaggeredReveal(
+            screenKey = "fortnight-plan",
+            staggerMillis = 40,
+            durationMillis = 180,
+            slideOffsetDp = 8.dp,
+        ) {
             add { SummaryCard(details, isMonthly) }
 
             add {

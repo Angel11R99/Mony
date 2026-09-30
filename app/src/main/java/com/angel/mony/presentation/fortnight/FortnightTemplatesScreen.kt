@@ -117,7 +117,12 @@ fun FortnightTemplatesScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    StaggeredReveal {
+                    StaggeredReveal(
+                        screenKey = "fortnight-templates",
+                        staggerMillis = 40,
+                        durationMillis = 180,
+                        slideOffsetDp = 8.dp,
+                    ) {
                         add {
                             when {
                                 state.hasError -> Text(

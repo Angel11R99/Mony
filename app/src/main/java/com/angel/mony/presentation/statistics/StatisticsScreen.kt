@@ -84,6 +84,7 @@ import com.angel.mony.presentation.components.SkeletonCircle
 import com.angel.mony.presentation.components.SkeletonHost
 import com.angel.mony.presentation.components.SkeletonLine
 import com.angel.mony.presentation.components.SkeletonTone
+import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.presentation.components.localDateNullableSaver
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -185,72 +186,99 @@ fun StatisticsScreen(
                 modifier = Modifier.padding(padding),
                 skeleton = { StatisticsSkeleton() },
             ) {
-                LazyColumn(
+                StaggeredReveal(
+                    screenKey = "statistics",
                     modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
-                    contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    staggerMillis = 40,
+                    durationMillis = 180,
+                    slideOffsetDp = 8.dp,
                 ) {
-            item {
-                StatisticsFilterButton(
-                    period = periodLabel,
-                    category = selectedCategory?.name ?: "Todas las categorías",
-                    onClick = {
-                        draftRange = range
-                        draftCycleIndex = cycleIndex
-                        draftCategoryId = categoryId
-                        draftCustomStart = customStart
-                        draftCustomEnd = customEnd
-                        showFilters = true
-                    },
-                )
-            }
-            item { BalanceCard(report) }
-            item { IncomeExpenseChart(report) }
-            item { ActivityCard(report) }
-            val comparisonPeriod = previousPeriod
-            val comparisonReport = previousReport
-            if (comparisonPeriod != null && comparisonReport != null) {
-                item { TrendComparisonCard(current = report, previous = comparisonReport, previousPeriod = comparisonPeriod) }
-            }
-            if (selectedCategory != null) {
-                item {
-                    CategoryFocusCard(
-                        category = selectedCategory,
-                        amountInCents = selectedStatistic?.amountInCents ?: 0,
-                        comparisonAmountInCents = categoryFocusLimit ?: comparisonAmount,
-                        periodLabel = periodLabel,
-                    )
-                }
-            }
-            item {
-                Text(
-                    if (selectedCategory == null) "GASTOS POR CATEGORÍA" else "DETALLE DE CATEGORÍA",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.8.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            val visibleStatistics = if (categoryId == null) {
-                report.expenseByCategory
-            } else {
-                report.expenseByCategory.filter { it.category.id == categoryId }
-            }
-            if (visibleStatistics.isEmpty()) {
-                item {
-                    Text(
-                        if (selectedCategory == null) "No hay gastos registrados en este periodo."
-                        else "No hay gastos de ${selectedCategory.name} en este periodo.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            items(visibleStatistics, key = { it.category.id }) { statistic ->
-                CategoryBar(
-                    statistic = statistic,
-                    comparisonAmount = comparisonAmount,
-                )
-            }
+                    add {
+                        StatisticsFilterButton(
+                            period = periodLabel,
+                            category = selectedCategory?.name ?: "Todas las categorías",
+                            onClick = {
+                                draftRange = range
+                                draftCycleIndex = cycleIndex
+                                draftCategoryId = categoryId
+                                draftCustomStart = customStart
+                                draftCustomEnd = customEnd
+                                showFilters = true
+                            },
+                        )
+                    }
+
+                    add {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            BalanceCard(report)
+                            ActivityCard(report)
+                        }
+                    }
+
+                    add {
+                        IncomeExpenseChart(report)
+                    }
+
+                    add {
+                        val comparisonPeriod = previousPeriod
+                        val comparisonReport = previousReport
+                        if (comparisonPeriod != null && comparisonReport != null) {
+                            TrendComparisonCard(current = report, previous = comparisonReport, previousPeriod = comparisonPeriod)
+                        }
+                    }
+
+                    add {
+                        if (selectedCategory != null) {
+                            CategoryFocusCard(
+                                category = selectedCategory,
+                                amountInCents = selectedStatistic?.amountInCents ?: 0,
+                                comparisonAmountInCents = categoryFocusLimit ?: comparisonAmount,
+                                periodLabel = periodLabel,
+                            )
+                        }
+                    }
+
+                    add {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                if (selectedCategory == null) "GASTOS POR CATEGORÍA" else "DETALLE DE CATEGORÍA",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.8.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            val visibleStatistics = if (categoryId == null) {
+                                report.expenseByCategory
+                            } else {
+                                report.expenseByCategory.filter { it.category.id == categoryId }
+                            }
+                            if (visibleStatistics.isEmpty()) {
+                                Text(
+                                    if (selectedCategory == null) "No hay gastos registrados en este periodo."
+                                    else "No hay gastos de ${selectedCategory.name} en este periodo.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(7.dp),
+                                ) {
+                                    items(visibleStatistics, key = { it.category.id }) { statistic ->
+                                        CategoryBar(
+                                            statistic = statistic,
+                                            comparisonAmount = comparisonAmount,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

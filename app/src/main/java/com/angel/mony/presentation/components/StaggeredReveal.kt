@@ -20,12 +20,12 @@ import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.delay
 
 /**
- * A composable that reveals its content items with a subtle staggered animation.
- * Each child added via [add] will fade in and slide up with a small delay between items.
+ * A composable that reveals its content groups with a subtle staggered animation.
+ * Each group added via [add] will fade in and slide up with a small delay between groups.
  *
  * Usage:
  * ```kotlin
- * StaggeredReveal {
+ * StaggeredReveal("home") {
  *     add { Header() }
  *     add { SummaryCard() }
  *     add { ContentList() }
@@ -33,24 +33,38 @@ import kotlinx.coroutines.delay
  * }
  * ```
  *
- * The animation respects the system's "reduce motion" setting.
+ * The animation respects the system's "reduce motion" setting and only runs on first appearance.
+ * The [screenKey] should be unique per screen to prevent re-animation on recomposition.
  */
 @Composable
 fun StaggeredReveal(
+    screenKey: String,
     modifier: Modifier = Modifier,
+    staggerMillis: Int = 40,
+    durationMillis: Int = 180,
+    slideOffsetDp: Dp = 8.dp,
     content: StaggeredRevealScope.() -> Unit,
 ) {
     val scope = remember { StaggeredRevealScope() }
     content(scope)
+
+    val hasAnimated = remember(screenKey) { mutableStateOf(false) }
+    val reducedMotion = rememberReducedMotion()
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         scope.items.forEachIndexed { index, item ->
-            StaggeredRevealItem(index = index) {
-                item()
-            }
+            StaggeredRevealItem(
+                index = index,
+                hasAnimated = hasAnimated,
+                reducedMotion = reducedMotion,
+                staggerMillis = staggerMillis,
+                durationMillis = durationMillis,
+                slideOffsetDp = slideOffsetDp,
+                content = item,
+            )
         }
     }
 }
@@ -65,33 +79,46 @@ class StaggeredRevealScope {
 }
 
 /**
- * A single item in a staggered reveal sequence. Handles the fade-in and slide-up animation.
- * The animation only runs once when the item first appears, and respects reduced motion settings.
+ * A single group in a staggered reveal sequence. Handles the fade-in and slide-up animation.
+ * The animation only runs once per screen lifecycle, and respects reduced motion settings.
  */
 @Composable
-fun StaggeredRevealItem(
+private fun StaggeredRevealItem(
     index: Int,
-    modifier: Modifier = Modifier,
-    delayMillis: Int = 40,
-    durationMillis: Int = 180,
+    hasAnimated: androidx.compose.runtime.MutableState<Boolean>,
+    reducedMotion: Boolean,
+    staggerMillis: Int,
+    durationMillis: Int,
+    slideOffsetDp: Dp,
     content: @Composable () -> Unit,
 ) {
     val (visible, setVisible) = remember { mutableStateOf(false) }
-    val reducedMotion = rememberReducedMotion()
-    val slideOffset = with(LocalDensity.current) { 12.dp.roundToPx() }
+    val slideOffset = with(LocalDensity.current) { slideOffsetDp.roundToPx() }
     val slideOffsetProvider = { height: Int -> slideOffset }
 
-    LaunchedEffect(Unit) {
-        if (!reducedMotion) {
-            val delay = index * delayMillis
+    LaunchedEffect(hasAnimated.value) {
+        if (!hasAnimated.value && !reducedMotion) {
+            val delay = index * staggerMillis
             if (delay > 0) {
                 delay(delay.toLong())
             }
+            setVisible(true)
+        } else if (hasAnimated.value || reducedMotion) {
+            setVisible(true)
         }
-        setVisible(true)
     }
 
-    if (visible || reducedMotion) {
+    // Mark as animated after the first item starts (or immediately if reduced motion)
+    LaunchedEffect(Unit) {
+        if (!hasAnimated.value && !reducedMotion) {
+            delay((staggerMillis * (index + 1)).toLong())
+            hasAnimated.value = true
+        } else if (!hasAnimated.value && reducedMotion) {
+            hasAnimated.value = true
+        }
+    }
+
+    if (visible || reducedMotion || hasAnimated.value) {
         androidx.compose.animation.AnimatedVisibility(
             visible = true,
             enter = androidx.compose.animation.fadeIn(
@@ -103,11 +130,11 @@ fun StaggeredRevealItem(
             exit = androidx.compose.animation.fadeOut(
                 animationSpec = tween(durationMillis, easing = FastOutSlowInEasing),
             ),
-            modifier = modifier,
         ) {
             content()
         }
     } else {
+        // Should not reach here, but render content without animation as fallback
         content()
     }
 }

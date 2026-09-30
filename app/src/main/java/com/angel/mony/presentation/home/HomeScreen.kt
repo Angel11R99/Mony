@@ -68,6 +68,7 @@ import com.angel.mony.presentation.components.SkeletonHost
 import com.angel.mony.presentation.components.SkeletonLine
 import com.angel.mony.presentation.components.SkeletonTransactionRow
 import com.angel.mony.presentation.components.SkeletonTone
+import com.angel.mony.presentation.components.StaggeredReveal
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -130,129 +131,158 @@ fun HomeScreen(
                 modifier = Modifier.padding(padding),
                 skeleton = { HomeSkeleton() },
             ) {
-                LazyColumn(
+                StaggeredReveal(
+                    screenKey = "home",
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    staggerMillis = 40,
+                    durationMillis = 180,
+                    slideOffsetDp = 8.dp,
                 ) {
-            item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    RegisterActionChip("Registrar gasto", { onAdd(TransactionType.EXPENSE) }, Modifier.weight(1f))
-                    RegisterActionChip("Registrar ingreso", { onAdd(TransactionType.INCOME) }, Modifier.weight(1f))
-                }
-            }
-            item {
-                FinanceCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        SectionLabel(
-                            when {
-                                state.budget?.period == BudgetPeriod.MONTHLY && state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMO MES"
-                                state.budget?.period == BudgetPeriod.MONTHLY -> "MES ACTUAL"
-                                state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMA QUINCENA"
-                                else -> "QUINCENA ACTUAL"
-                            },
-                        )
-                        PeriodViewSelector(
-                            currentPeriod = state.currentPeriod,
-                            nextPeriod = state.nextPeriod,
-                            selected = state.selectedPeriodView,
-                            pinned = state.pinnedPeriodView,
-                            onSelect = viewModel::selectPeriodView,
-                            onPin = viewModel::pinPeriodView,
-                        )
-                        if (state.budget == null) {
-                            Text(
-                                "Define cuánto quieres administrar durante este periodo.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            PrimaryButton("Agregar presupuesto", { editingBudget = true }, Modifier.fillMaxWidth())
-                        } else {
-                            Text("PRESUPUESTO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(MoneyFormatter.format(state.budget!!.amountInCents), style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Metric("INGRESOS", state.periodIncomeInCents, Modifier.weight(1f))
-                                Metric("GASTOS", state.periodExpenseInCents, Modifier.weight(1f), true)
-                                Metric("RESTANTE", state.budget!!.amountInCents - state.periodExpenseInCents, Modifier.weight(1f))
-                            }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                SecondaryButton(
-                                    text = "Historial",
-                                    onClick = { showingHistory = true },
-                                    modifier = Modifier.weight(1f),
+                    add {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            RegisterActionChip("Registrar gasto", { onAdd(TransactionType.EXPENSE) }, Modifier.weight(1f))
+                            RegisterActionChip("Registrar ingreso", { onAdd(TransactionType.INCOME) }, Modifier.weight(1f))
+                        }
+                    }
+
+                    add {
+                        FinanceCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                SectionLabel(
+                                    when {
+                                        state.budget?.period == BudgetPeriod.MONTHLY && state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMO MES"
+                                        state.budget?.period == BudgetPeriod.MONTHLY -> "MES ACTUAL"
+                                        state.selectedPeriodView == BudgetPeriodView.NEXT -> "PRÓXIMA QUINCENA"
+                                        else -> "QUINCENA ACTUAL"
+                                    },
                                 )
-                                CloseCycleButton(
-                                    closing = closingCycle,
-                                    available = !automaticCycleClose && manualCloseAvailable,
-                                    onClick = { confirmingClose = true },
-                                    modifier = Modifier.weight(1f),
+                                PeriodViewSelector(
+                                    currentPeriod = state.currentPeriod,
+                                    nextPeriod = state.nextPeriod,
+                                    selected = state.selectedPeriodView,
+                                    pinned = state.pinnedPeriodView,
+                                    onSelect = viewModel::selectPeriodView,
+                                    onPin = viewModel::pinPeriodView,
                                 )
-                            }
-                            if (automaticCycleClose) {
-                                Text(
-                                    "El cierre automático está activo.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            } else if (!manualCloseAvailable) {
-                                Text(
-                                    "El cierre estará disponible el ${state.currentPeriod.endInclusive.format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO")))}.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                if (state.budget == null) {
+                                    Text(
+                                        "Define cuánto quieres administrar durante este periodo.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    PrimaryButton("Agregar presupuesto", { editingBudget = true }, Modifier.fillMaxWidth())
+                                } else {
+                                    Text("PRESUPUESTO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(MoneyFormatter.format(state.budget!!.amountInCents), style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Metric("INGRESOS", state.periodIncomeInCents, Modifier.weight(1f))
+                                        Metric("GASTOS", state.periodExpenseInCents, Modifier.weight(1f), true)
+                                        Metric("RESTANTE", state.budget!!.amountInCents - state.periodExpenseInCents, Modifier.weight(1f))
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        SecondaryButton(
+                                            text = "Historial",
+                                            onClick = { showingHistory = true },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        CloseCycleButton(
+                                            closing = closingCycle,
+                                            available = !automaticCycleClose && manualCloseAvailable,
+                                            onClick = { confirmingClose = true },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                    if (automaticCycleClose) {
+                                        Text(
+                                            "El cierre automático está activo.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    } else if (!manualCloseAvailable) {
+                                        Text(
+                                            "El cierre estará disponible el ${state.currentPeriod.endInclusive.format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO")))}.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }
-            if (state.spending.isNotEmpty()) {
-                item { EditorialHeading("GASTOS POR CATEGORÍA") }
-                items(state.spending.take(5), key = { "spending-category-${it.category.id}" }) { spending ->
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        com.angel.mony.ui.iconography.MonyIcon(
-                            com.angel.mony.ui.iconography.semanticIconForCategory(
-                                spending.category.icon,
-                                spending.category.name,
-                            ),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(spending.category.name.uppercase(), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-                        Text(MoneyFormatter.format(spending.amountInCents), style = MaterialTheme.typography.titleSmall)
+
+                    add {
+                        if (state.spending.isNotEmpty()) {
+                            Column(
+                                Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                EditorialHeading("GASTOS POR CATEGORÍA")
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    items(state.spending.take(5), key = { "spending-category-${it.category.id}" }) { spending ->
+                                        Row(
+                                            Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            com.angel.mony.ui.iconography.MonyIcon(
+                                                com.angel.mony.ui.iconography.semanticIconForCategory(
+                                                    spending.category.icon,
+                                                    spending.category.name,
+                                                ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                            Text(spending.category.name.uppercase(), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                                            Text(MoneyFormatter.format(spending.amountInCents), style = MaterialTheme.typography.titleSmall)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                }
-            }
-            item {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    EditorialHeading("Últimos movimientos", Modifier.weight(1f))
-                    TextButton(onClick = onHistory) {
-                        Text("Ver todos", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
+
+                    add {
+                        Column(
+                            Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                EditorialHeading("Últimos movimientos", Modifier.weight(1f))
+                                TextButton(onClick = onHistory) {
+                                    Text("Ver todos", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
+                                }
+                            }
+                            if (state.recent.isEmpty()) {
+                                Text(
+                                    "No hay movimientos en el período seleccionado.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    items(state.recent, key = { "recent-transaction-${it.id}" }) { transaction ->
+                                        TransactionRow(
+                                            transaction = transaction,
+                                            category = state.categories[transaction.categoryId],
+                                            onClick = { selectedTransaction = transaction },
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(24.dp))
+                        }
                     }
-                }
-            }
-            if (state.recent.isEmpty()) item {
-                Text(
-                    "No hay movimientos en el período seleccionado.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            items(state.recent, key = { "recent-transaction-${it.id}" }) { transaction ->
-                TransactionRow(
-                    transaction = transaction,
-                    category = state.categories[transaction.categoryId],
-                    onClick = { selectedTransaction = transaction },
-                )
-            }
-            item { Spacer(Modifier.height(24.dp)) }
                 }
             }
         }
