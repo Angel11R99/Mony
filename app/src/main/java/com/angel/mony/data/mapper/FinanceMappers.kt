@@ -1,6 +1,7 @@
 package com.angel.mony.data.mapper
 
 import com.angel.mony.data.local.entity.CategoryEntity
+import com.angel.mony.data.local.entity.ExpenseFundingEntity
 import com.angel.mony.data.local.entity.FortnightPaymentEntity
 import com.angel.mony.data.local.entity.FortnightPlanEntity
 import com.angel.mony.data.local.entity.FortnightPlanItemEntity
@@ -12,6 +13,9 @@ import com.angel.mony.data.local.entity.KnownProductEntity
 import com.angel.mony.data.local.entity.ShoppingAdjustmentEntity
 import com.angel.mony.data.local.entity.ShoppingListEntity
 import com.angel.mony.data.local.entity.ShoppingListItemEntity
+import com.angel.mony.data.local.entity.BudgetConfigEntity
+import com.angel.mony.data.local.entity.BudgetCycleEntity
+import com.angel.mony.data.local.entity.SavingsGoalEntity
 import com.angel.mony.data.local.dao.SavingsGoalWithSaved
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
@@ -36,6 +40,10 @@ import com.angel.mony.domain.model.ShoppingAdjustment
 import com.angel.mony.domain.model.ShoppingList
 import com.angel.mony.domain.model.ShoppingListItem
 import com.angel.mony.domain.model.ShoppingListStatus
+import com.angel.mony.domain.model.BudgetConfig
+import com.angel.mony.domain.model.BudgetCycle
+import com.angel.mony.domain.model.BudgetCycleSchedule
+import com.angel.mony.domain.model.BudgetPeriod
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -339,3 +347,56 @@ fun FortnightPayment.toEntity() = FortnightPaymentEntity(
     transactionId = transactionId,
     createdAtEpochMillis = createdAt.toEpochMilli(),
 )
+
+fun ExpenseFundingEntity.toDomain() = com.angel.mony.domain.model.ExpenseFunding(
+    id = id,
+    transactionId = transactionId,
+    amountInCents = amountInCents,
+    sourceDescription = sourceDescription,
+    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+)
+
+fun com.angel.mony.domain.model.ExpenseFunding.toEntity(dateEpochDay: Long) = ExpenseFundingEntity(
+    id = id,
+    transactionId = transactionId,
+    amountInCents = amountInCents,
+    sourceDescription = sourceDescription,
+    dateEpochDay = dateEpochDay,
+    createdAtEpochMillis = createdAt.toEpochMilli(),
+    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+)
+
+fun BudgetConfigEntity.toDomain() = BudgetConfig(
+    amountInCents = amountInCents,
+    period = BudgetPeriod.valueOf(period),
+    cycleStart = cycleStartEpochDay?.let(LocalDate::ofEpochDay),
+    cycleStartedAt = cycleStartedAtEpochMillis?.let(Instant::ofEpochMilli),
+    incomeTransactionId = incomeTransactionId,
+    cycleSchedules = parseCycleSchedules(closingDays, BudgetPeriod.valueOf(period)),
+)
+
+private fun parseCycleSchedules(raw: String, period: BudgetPeriod): List<BudgetCycleSchedule> {
+    val schedules = raw.split(',').mapNotNull { value ->
+        val parts = value.split(':')
+        if (parts.size != 2) return@mapNotNull null
+        val openingDay = parts[0].toIntOrNull() ?: return@mapNotNull null
+        val closingDay = parts[1].toIntOrNull() ?: return@mapNotNull null
+        if (openingDay !in 1..31 || closingDay !in 1..31) return@mapNotNull null
+        BudgetCycleSchedule(openingDay, closingDay)
+    }.distinct()
+    if (schedules.isNotEmpty()) return schedules
+
+    val legacyOpeningDays = raw.split(',').mapNotNull(String::toIntOrNull)
+        .filter { it in 1..31 }
+        .distinct()
+        .sorted()
+    if (legacyOpeningDays.size < 2) return com.angel.mony.domain.model.defaultCycleSchedules(period)
+    return legacyOpeningDays.mapIndexed { index, openingDay ->
+        val nextOpeningDay = legacyOpeningDays[(index + 1) % legacyOpeningDays.size]
+        BudgetCycleSchedule(
+            openingDay = openingDay,
+            closingDay = if (nextOpeningDay == 1) 31 else nextOpeningDay - 1,
+        )
+    }
+}

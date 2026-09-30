@@ -8,6 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.angel.mony.data.local.dao.CategoryDao
 import com.angel.mony.data.local.dao.BudgetConfigDao
 import com.angel.mony.data.local.dao.BudgetCycleDao
+import com.angel.mony.data.local.dao.ExpenseFundingDao
 import com.angel.mony.data.local.dao.TransactionDao
 import com.angel.mony.data.local.dao.FixedEntryDao
 import com.angel.mony.data.local.dao.PendingEntryDao
@@ -26,9 +27,11 @@ import com.angel.mony.data.repository.RoomSavingsRepository
 import com.angel.mony.data.repository.RoomShoppingListRepository
 import com.angel.mony.data.repository.RoomFortnightRepository
 import com.angel.mony.data.repository.RoomBackupRepository
+import com.angel.mony.data.repository.RoomExpenseFundingRepository
 import com.angel.mony.data.repository.OpenFoodFactsProductCatalogRepository
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.BudgetRepository
+import com.angel.mony.domain.repository.ExpenseFundingRepository
 import com.angel.mony.domain.repository.TransactionRepository
 import com.angel.mony.domain.repository.FixedEntryRepository
 import com.angel.mony.domain.repository.PendingEntryRepository
@@ -354,11 +357,31 @@ object DatabaseModule {
         }
     }
 
+    internal val migration16To17 = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS expense_funding (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    transactionId INTEGER NOT NULL,
+                    amountInCents INTEGER NOT NULL,
+                    sourceDescription TEXT NOT NULL,
+                    dateEpochDay INTEGER NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    updatedAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(transactionId) REFERENCES transactions(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                )""".trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_expense_funding_transactionId ON expense_funding(transactionId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_expense_funding_dateEpochDay ON expense_funding(dateEpochDay)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_expense_funding_createdAtEpochMillis ON expense_funding(createdAtEpochMillis)")
+        }
+    }
+
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): FinanceDatabase =
         Room.databaseBuilder(context, FinanceDatabase::class.java, "personal_finance.db")
-            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9, migration9To10, migration10To11, migration11To12, migration12To13, migration13To14, migration14To15, migration15To16)
+            .addMigrations(migration1To2, migration2To3, migration3To4, migration4To5, migration5To6, migration6To7, migration7To8, migration8To9, migration9To10, migration10To11, migration11To12, migration12To13, migration13To14, migration14To15, migration15To16, migration16To17)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -384,6 +407,7 @@ object DatabaseModule {
     @Provides fun fortnightTemplateDao(db: FinanceDatabase): FortnightTemplateDao = db.fortnightTemplateDao()
     @Provides fun fortnightPlanDao(db: FinanceDatabase): FortnightPlanDao = db.fortnightPlanDao()
     @Provides fun fortnightPaymentDao(db: FinanceDatabase): FortnightPaymentDao = db.fortnightPaymentDao()
+    @Provides fun expenseFundingDao(db: FinanceDatabase): ExpenseFundingDao = db.expenseFundingDao()
 
     private val initialCategories = listOf(
         Triple("Salario", "INCOME", "payments"),
@@ -422,5 +446,6 @@ abstract class RepositoryModule {
     @Binds abstract fun shoppingLists(implementation: RoomShoppingListRepository): ShoppingListRepository
 @Binds abstract fun fortnights(implementation: RoomFortnightRepository): FortnightRepository
     @Binds abstract fun backup(implementation: RoomBackupRepository): com.angel.mony.domain.repository.BackupRepository
+    @Binds abstract fun expenseFunding(implementation: RoomExpenseFundingRepository): ExpenseFundingRepository
     @Binds abstract fun productCatalog(implementation: OpenFoodFactsProductCatalogRepository): ProductCatalogRepository
 }

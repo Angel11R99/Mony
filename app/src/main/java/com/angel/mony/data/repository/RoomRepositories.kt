@@ -3,6 +3,7 @@ package com.angel.mony.data.repository
 import com.angel.mony.data.local.dao.CategoryDao
 import com.angel.mony.data.local.dao.BudgetConfigDao
 import com.angel.mony.data.local.dao.BudgetCycleDao
+import com.angel.mony.data.local.dao.ExpenseFundingDao
 import com.angel.mony.data.local.dao.FortnightPaymentDao
 import com.angel.mony.data.local.dao.FortnightPlanDao
 import com.angel.mony.data.local.dao.FortnightTemplateDao
@@ -14,6 +15,7 @@ import com.angel.mony.data.local.dao.ShoppingListDao
 import com.angel.mony.data.local.entity.BudgetConfigEntity
 import com.angel.mony.data.local.entity.BudgetCycleEntity
 import com.angel.mony.data.local.entity.CategoryEntity
+import com.angel.mony.data.local.entity.ExpenseFundingEntity
 import com.angel.mony.data.local.entity.FortnightPaymentEntity
 import com.angel.mony.data.local.entity.TransactionEntity
 import com.angel.mony.data.local.entity.SavingsGoalEntity
@@ -29,6 +31,8 @@ import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.BudgetCycle
 import com.angel.mony.domain.model.BudgetPeriod
+import com.angel.mony.domain.model.ExpenseCreationResult
+import com.angel.mony.domain.model.ExpenseFunding
 import com.angel.mony.domain.model.SavingsGoalProgress
 import com.angel.mony.domain.model.defaultCycleSchedules
 import com.angel.mony.domain.model.DateRange
@@ -54,8 +58,10 @@ import com.angel.mony.domain.model.ShoppingListStatus
 import com.angel.mony.domain.model.ShoppingPaymentMethod
 import com.angel.mony.domain.model.PendingType
 import com.angel.mony.domain.model.normalizeProductName
+import com.angel.mony.domain.model.activeBudgetPeriod
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.BudgetRepository
+import com.angel.mony.domain.repository.ExpenseFundingRepository
 import com.angel.mony.domain.repository.TransactionRepository
 import com.angel.mony.domain.repository.FixedEntryRepository
 import com.angel.mony.domain.repository.PendingEntryRepository
@@ -84,6 +90,7 @@ class RoomTransactionRepository @Inject constructor(
     private val shoppingListDao: ShoppingListDao,
     private val pendingEntryDao: PendingEntryDao,
     private val fortnightPaymentDao: FortnightPaymentDao,
+    private val expenseFundingDao: ExpenseFundingDao,
 ) : TransactionRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
     override fun observeByPeriod(period: DateRange) = dao.observeByPeriod(
@@ -145,6 +152,137 @@ class RoomTransactionRepository @Inject constructor(
                 savingsGoalId = null,
             )
         )
+    }
+
+    override suspend fun createWithFunding(
+        transaction: FinanceTransaction,
+        fundingSourceDescription: String?,
+    ): ExpenseCreationResult = database.withTransaction {
+        require(transaction.amountInCents > 0) { "El monto debe ser mayor que cero" }
+        val normalized = transaction.copy(description = transaction.description?.trim()?.takeIf(String::isNotEmpty))
+
+        // If not an expense, just create normally
+        if (normalized.type != TransactionType.EXPENSE) {
+            val id = dao.insert(normalized.toEntity())
+            return@withTransaction ExpenseCreationResult.Saved(id, null)
+        }
+
+        // For expenses, we need to evaluate funding
+        // Get budget config to determine period
+        val budgetConfig = database.budgetConfigDao().get()?.toDomain()
+        val period = activeBudgetPeriod(budgetConfig, normalized.date)
+
+        // Calculate available before this expense
+        val transactions = dao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val expensesInCents = transactions.filter { it.type == TransactionType.EXPENSE.name }.sumOf { it.amountInCents }
+
+        val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
+        val remainingAfterExpense = availableBeforeExpense - normalized.amountInCents
+
+        if (remainingAfterExpense >= 0) {
+            val id = dao.insert(normalized.toEntity())
+            return@withTransaction ExpenseCreationResult.Saved(id, null)
+        }
+
+        val overflowInCents = -remainingAfterExpense
+
+        if (fundingSourceDescription == null || fundingSourceDescription.trim().isEmpty()) {
+            return@withTransaction ExpenseCreationResult.RequiresFundingSource(
+                overflowInCents = overflowInCents,
+                availableBeforeExpenseInCents = availableBeforeExpense,
+                expenseAmountInCents = normalized.amountInCents,
+                transaction = normalized,
+            )
+        }
+
+        // Create both transaction and funding atomically
+        val id = dao.insert(normalized.toEntity())
+        val funding = ExpenseFunding(
+            transactionId = id,
+            amountInCents = overflowInCents,
+            sourceDescription = fundingSourceDescription.trim(),
+            createdAt = Instant.now(),
+            updatedAt = Instant.now(),
+        )
+        expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDay()))
+        ExpenseCreationResult.Saved(id, funding)
+    }
+
+    override suspend fun updateWithFunding(
+        transaction: FinanceTransaction,
+        existingTransactionId: Long,
+        fundingSourceDescription: String?,
+    ): ExpenseCreationResult = database.withTransaction {
+        require(transaction.amountInCents > 0) { "El monto debe ser mayor que cero" }
+        val normalized = transaction.copy(description = transaction.description?.trim()?.takeIf(String::isNotEmpty))
+
+        // If not an expense, just update normally
+        if (normalized.type != TransactionType.EXPENSE) {
+            dao.update(normalized.toEntity())
+            return@withTransaction ExpenseCreationResult.Saved(normalized.id, null)
+        }
+
+        // Get the existing transaction
+        val existing = dao.get(existingTransactionId)
+            ?: throw IllegalArgumentException("Transacción no encontrada: $existingTransactionId")
+
+        // Get budget config to determine period
+        val budgetConfig = database.budgetConfigDao().get()?.toDomain()
+        val period = activeBudgetPeriod(budgetConfig, normalized.date)
+
+        // Calculate available before this expense (excluding the existing transaction)
+        val transactions = dao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val expensesInCents = transactions
+            .filter { it.type == TransactionType.EXPENSE.name }
+            .filterNot { it.id == existingTransactionId }
+            .sumOf { it.amountInCents }
+
+        val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
+        val remainingAfterExpense = availableBeforeExpense - normalized.amountInCents
+
+        // Check existing funding
+        val existingFunding = expenseFundingDao.getByTransaction(existingTransactionId)?.toDomain()
+
+        if (remainingAfterExpense >= 0) {
+            // No overflow needed, delete existing funding if any
+            if (existingFunding != null) {
+                expenseFundingDao.deleteByTransaction(existingTransactionId)
+            }
+            dao.update(normalized.toEntity())
+            return@withTransaction ExpenseCreationResult.Saved(normalized.id, null)
+        }
+
+        val overflowInCents = -remainingAfterExpense
+
+        if (fundingSourceDescription == null || fundingSourceDescription.trim().isEmpty()) {
+            return@withTransaction ExpenseCreationResult.RequiresFundingSource(
+                overflowInCents = overflowInCents,
+                availableBeforeExpenseInCents = availableBeforeExpense,
+                expenseAmountInCents = normalized.amountInCents,
+                transaction = normalized,
+            )
+        }
+
+        // Update both transaction and funding atomically
+        dao.update(normalized.toEntity())
+        val funding = ExpenseFunding(
+            id = existingFunding?.id ?: 0,
+            transactionId = existingTransactionId,
+            amountInCents = overflowInCents,
+            sourceDescription = fundingSourceDescription.trim(),
+            createdAt = existingFunding?.createdAt ?: Instant.now(),
+            updatedAt = Instant.now(),
+        )
+        if (existingFunding != null) {
+            expenseFundingDao.update(funding.toEntity(normalized.date.toEpochDay()))
+        } else {
+            expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDay()))
+        }
+        ExpenseCreationResult.Saved(existingTransactionId, funding)
     }
 
     override suspend fun restoreBackup(movements: List<BackupMovement>): Int = database.withTransaction {
@@ -248,6 +386,7 @@ class RoomCategoryRepository @Inject constructor(
 class RoomFixedEntryRepository @Inject constructor(
     private val dao: FixedEntryDao,
     private val transactionDao: TransactionDao,
+    private val expenseFundingDao: ExpenseFundingDao,
     private val database: FinanceDatabase,
 ) : FixedEntryRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
@@ -256,10 +395,56 @@ class RoomFixedEntryRepository @Inject constructor(
     override suspend fun post(
         entry: com.angel.mony.domain.model.FixedEntry,
         transaction: FinanceTransaction,
-    ) = database.withTransaction {
-        transactionDao.insert(transaction.toEntity())
+        fundingSourceDescription: String?,
+    ): ExpenseCreationResult = database.withTransaction {
+        require(transaction.amountInCents > 0) { "El monto debe ser mayor que cero" }
+        val normalized = transaction.copy(description = transaction.description?.trim()?.takeIf(String::isNotEmpty))
+
+        if (normalized.type != TransactionType.EXPENSE) {
+            val id = transactionDao.insert(normalized.toEntity())
+            dao.upsert(entry.toEntity())
+            return@withTransaction ExpenseCreationResult.Saved(id, null)
+        }
+
+        val budgetConfig = database.budgetConfigDao().get()?.toDomain()
+        val period = activeBudgetPeriod(budgetConfig, normalized.date)
+
+        val transactions = transactionDao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val expensesInCents = transactions.filter { it.type == TransactionType.EXPENSE.name }.sumOf { it.amountInCents }
+
+        val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
+        val remainingAfterExpense = availableBeforeExpense - normalized.amountInCents
+
+        if (remainingAfterExpense >= 0) {
+            val id = transactionDao.insert(normalized.toEntity())
+            dao.upsert(entry.toEntity())
+            return@withTransaction ExpenseCreationResult.Saved(id, null)
+        }
+
+        val overflowInCents = -remainingAfterExpense
+
+        if (fundingSourceDescription == null || fundingSourceDescription.trim().isEmpty()) {
+            return@withTransaction ExpenseCreationResult.RequiresFundingSource(
+                overflowInCents = overflowInCents,
+                availableBeforeExpenseInCents = availableBeforeExpense,
+                expenseAmountInCents = normalized.amountInCents,
+                transaction = normalized,
+            )
+        }
+
+        val id = transactionDao.insert(normalized.toEntity())
         dao.upsert(entry.toEntity())
-        Unit
+        val funding = ExpenseFunding(
+            transactionId = id,
+            amountInCents = overflowInCents,
+            sourceDescription = fundingSourceDescription.trim(),
+            createdAt = Instant.now(),
+            updatedAt = Instant.now(),
+        )
+        expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDay()))
+        ExpenseCreationResult.Saved(id, funding)
     }
     override suspend fun delete(id: Long) = dao.delete(id)
 }
@@ -267,6 +452,7 @@ class RoomFixedEntryRepository @Inject constructor(
 class RoomPendingEntryRepository @Inject constructor(
     private val dao: PendingEntryDao,
     private val transactionDao: TransactionDao,
+    private val expenseFundingDao: ExpenseFundingDao,
     private val database: FinanceDatabase,
 ) : PendingEntryRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
@@ -275,17 +461,70 @@ class RoomPendingEntryRepository @Inject constructor(
         check(entry.sourceShoppingListId == null) { "Esta obligación debe editarse desde la compra vinculada." }
         return dao.upsert(entry.toEntity())
     }
-    override suspend fun complete(entry: PendingEntry, transaction: FinanceTransaction) {
-        database.withTransaction {
-            val transactionId = transactionDao.insert(transaction.toEntity())
+    override suspend fun complete(
+        entry: PendingEntry,
+        transaction: FinanceTransaction,
+        fundingSourceDescription: String?,
+    ): ExpenseCreationResult = database.withTransaction {
+        require(transaction.amountInCents > 0) { "El monto debe ser mayor que cero" }
+        val normalized = transaction.copy(description = transaction.description?.trim()?.takeIf(String::isNotEmpty))
+
+        if (normalized.type != TransactionType.EXPENSE) {
+            val transactionId = transactionDao.insert(normalized.toEntity())
             dao.upsert(
                 entry.copy(isDone = true, doneAt = transaction.createdAt, transactionId = transactionId).toEntity()
             )
+            return@withTransaction ExpenseCreationResult.Saved(transactionId, null)
         }
+
+        val budgetConfig = database.budgetConfigDao().get()?.toDomain()
+        val period = activeBudgetPeriod(budgetConfig, normalized.date)
+
+        val transactions = transactionDao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val expensesInCents = transactions.filter { it.type == TransactionType.EXPENSE.name }.sumOf { it.amountInCents }
+
+        val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
+        val remainingAfterExpense = availableBeforeExpense - normalized.amountInCents
+
+        if (remainingAfterExpense >= 0) {
+            val transactionId = transactionDao.insert(normalized.toEntity())
+            dao.upsert(
+                entry.copy(isDone = true, doneAt = transaction.createdAt, transactionId = transactionId).toEntity()
+            )
+            return@withTransaction ExpenseCreationResult.Saved(transactionId, null)
+        }
+
+        val overflowInCents = -remainingAfterExpense
+
+        if (fundingSourceDescription == null || fundingSourceDescription.trim().isEmpty()) {
+            return@withTransaction ExpenseCreationResult.RequiresFundingSource(
+                overflowInCents = overflowInCents,
+                availableBeforeExpenseInCents = availableBeforeExpense,
+                expenseAmountInCents = normalized.amountInCents,
+                transaction = normalized,
+            )
+        }
+
+        val transactionId = transactionDao.insert(normalized.toEntity())
+        dao.upsert(
+            entry.copy(isDone = true, doneAt = transaction.createdAt, transactionId = transactionId).toEntity()
+        )
+        val funding = ExpenseFunding(
+            transactionId = transactionId,
+            amountInCents = overflowInCents,
+            sourceDescription = fundingSourceDescription.trim(),
+            createdAt = Instant.now(),
+            updatedAt = Instant.now(),
+        )
+        expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDay()))
+        ExpenseCreationResult.Saved(transactionId, funding)
     }
     override suspend fun reopen(entry: PendingEntry) {
         database.withTransaction {
             entry.transactionId?.let { transactionDao.delete(it) }
+            entry.transactionId?.let { expenseFundingDao.deleteByTransaction(it) }
             dao.upsert(entry.copy(isDone = false, doneAt = null, transactionId = null).toEntity())
         }
     }
@@ -820,6 +1059,7 @@ class RoomFortnightRepository @Inject constructor(
     private val paymentDao: FortnightPaymentDao,
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
+    private val expenseFundingDao: ExpenseFundingDao,
     private val database: FinanceDatabase,
 ) : FortnightRepository {
 
@@ -983,6 +1223,34 @@ class RoomFortnightRepository @Inject constructor(
         if (category == null || !category.isActive || category.type != TransactionType.EXPENSE.name) {
             return@withTransaction FortnightPaymentResult.InvalidCategory
         }
+
+        // Check for expense funding overflow
+        val budgetConfig = database.budgetConfigDao().get()?.toDomain()
+        val period = activeBudgetPeriod(budgetConfig, date)
+
+        val transactions = transactionDao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val expensesInCents = transactions.filter { it.type == TransactionType.EXPENSE.name }.sumOf { it.amountInCents }
+
+        val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
+        val remainingAfterExpense = availableBeforeExpense - amountInCents
+
+        if (remainingAfterExpense < 0) {
+            val overflowInCents = -remainingAfterExpense
+            val transaction = item.toPaymentTransaction(amountInCents, date, Instant.now())
+            return@withTransaction FortnightPaymentResult.RequiresFundingSource(
+                overflowInCents = overflowInCents,
+                availableBeforeExpenseInCents = availableBeforeExpense,
+                expenseAmountInCents = amountInCents,
+                transaction = transaction,
+                itemId = itemId,
+                amountInCents = amountInCents,
+                date = date,
+                allowOverpayment = allowOverpayment,
+            )
+        }
+
         val now = Instant.now()
         val transactionId = transactionDao.insert(
             item.toPaymentTransaction(amountInCents, date, now).toEntity(),
@@ -999,6 +1267,82 @@ class RoomFortnightRepository @Inject constructor(
         FortnightPaymentResult.Registered(paymentId, transactionId, getDetails(item.planId)!!)
     }
 
+    override suspend fun registerPaymentWithFunding(
+        itemId: Long,
+        amountInCents: Long,
+        date: LocalDate,
+        allowOverpayment: Boolean,
+        fundingSourceDescription: String,
+    ): FortnightPaymentResult = database.withTransaction {
+        val itemEntity = planDao.getItem(itemId)
+            ?: return@withTransaction FortnightPaymentResult.NotFound
+        val item = itemEntity.toDomain()
+        val planEntity = planDao.getPlan(item.planId)
+            ?: return@withTransaction FortnightPaymentResult.NotFound
+        if (planEntity.status == FortnightPlanStatus.CLOSED.name) {
+            return@withTransaction FortnightPaymentResult.ClosedPlan
+        }
+        val alreadyPaid = paymentDao.getPaymentsForItem(itemId)
+            .sumOf { it.amountInCents }
+        when (val check = evaluateFortnightPayment(item.plannedAmountInCents, alreadyPaid, amountInCents)) {
+            is FortnightPaymentCheck.InvalidAmount -> return@withTransaction FortnightPaymentResult.InvalidAmount
+            is FortnightPaymentCheck.Overpayment -> {
+                if (!allowOverpayment) {
+                    return@withTransaction FortnightPaymentResult.Overpayment(
+                        pendingInCents = check.pendingInCents,
+                        excessInCents = check.excessInCents,
+                    )
+                }
+            }
+            is FortnightPaymentCheck.Valid -> Unit
+        }
+        val category = categoryDao.get(item.categoryId)
+        if (category == null || !category.isActive || category.type != TransactionType.EXPENSE.name) {
+            return@withTransaction FortnightPaymentResult.InvalidCategory
+        }
+
+        if (fundingSourceDescription.trim().isEmpty()) {
+            return@withTransaction FortnightPaymentResult.Error("La fuente de financiación es obligatoria")
+        }
+
+        val now = Instant.now()
+        val transactionId = transactionDao.insert(
+            item.toPaymentTransaction(amountInCents, date, now).toEntity(),
+        )
+        val paymentId = paymentDao.insertPayment(
+            FortnightPaymentEntity(
+                itemId = itemId,
+                amountInCents = amountInCents,
+                dateEpochDay = date.toEpochDay(),
+                transactionId = transactionId,
+                createdAtEpochMillis = now.toEpochMilli(),
+            ),
+        )
+
+        // Create the funding record
+        val budgetConfig = database.budgetConfigDao().get()?.toDomain()
+        val period = activeBudgetPeriod(budgetConfig, date)
+        val transactions = transactionDao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val expensesInCents = transactions.filter { it.type == TransactionType.EXPENSE.name }.sumOf { it.amountInCents }
+        val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
+        val overflowInCents = if (availableBeforeExpense - amountInCents < 0) -(availableBeforeExpense - amountInCents) else 0L
+
+        if (overflowInCents > 0) {
+            val funding = ExpenseFunding(
+                transactionId = transactionId,
+                amountInCents = overflowInCents,
+                sourceDescription = fundingSourceDescription.trim(),
+                createdAt = now,
+                updatedAt = now,
+            )
+            expenseFundingDao.insert(funding.toEntity(date.toEpochDay()))
+        }
+
+        FortnightPaymentResult.Registered(paymentId, transactionId, getDetails(item.planId)!!)
+    }
+
     override suspend fun deletePayment(paymentId: Long): FortnightMutationResult = database.withTransaction {
         val payment = paymentDao.getPayment(paymentId)
             ?: return@withTransaction FortnightMutationResult.NotFound
@@ -1009,7 +1353,10 @@ class RoomFortnightRepository @Inject constructor(
         if (plan.status == FortnightPlanStatus.CLOSED.name) {
             return@withTransaction FortnightMutationResult.ClosedPlan
         }
-        payment.transactionId?.let { transactionDao.delete(it) }
+        payment.transactionId?.let { transactionId ->
+            transactionDao.delete(transactionId)
+            expenseFundingDao.deleteByTransaction(transactionId)
+        }
         paymentDao.deletePayment(paymentId)
         FortnightMutationResult.Success(paymentId)
     }
@@ -1134,3 +1481,38 @@ private fun BudgetCycle.toEntity() = BudgetCycleEntity(
     endDateEpochDay = endDate.toEpochDay(),
     closedAtEpochMillis = closedAt.toEpochMilli(),
 )
+
+class RoomExpenseFundingRepository @Inject constructor(
+    private val dao: ExpenseFundingDao,
+    private val transactionDao: TransactionDao,
+) : ExpenseFundingRepository {
+    override fun observeAll(): Flow<List<ExpenseFunding>> =
+        dao.observeAll().map { items -> items.map { it.toDomain() } }
+
+    override fun observeByTransaction(transactionId: Long): Flow<ExpenseFunding?> =
+        dao.observeByTransaction(transactionId).map { it?.toDomain() }
+
+    override fun observeByPeriod(startEpochDay: Long, endEpochDay: Long): Flow<List<ExpenseFunding>> =
+        dao.observeByPeriod(startEpochDay, endEpochDay).map { items -> items.map { it.toDomain() } }
+
+    override suspend fun getByTransaction(transactionId: Long): ExpenseFunding? =
+        dao.getByTransaction(transactionId)?.toDomain()
+
+    override suspend fun create(funding: ExpenseFunding): Long {
+        val transaction = transactionDao.get(funding.transactionId)
+            ?: throw IllegalArgumentException("Transaction not found: ${funding.transactionId}")
+        return dao.insert(funding.toEntity(transaction.dateEpochDay))
+    }
+
+    override suspend fun update(funding: ExpenseFunding) {
+        val transaction = transactionDao.get(funding.transactionId)
+            ?: throw IllegalArgumentException("Transaction not found: ${funding.transactionId}")
+        dao.update(funding.toEntity(transaction.dateEpochDay))
+    }
+
+    override suspend fun deleteByTransaction(transactionId: Long) =
+        dao.deleteByTransaction(transactionId)
+
+    override suspend fun sumByPeriod(startEpochDay: Long, endEpochDay: Long): Long =
+        dao.sumByPeriod(startEpochDay, endEpochDay) ?: 0L
+}
