@@ -20,6 +20,16 @@ fun FortnightSlot.label(): String = when (this) {
     FortnightSlot.SECOND -> "2da quincena"
 }
 
+fun FortnightSlot.cycleLabel(): String = when (this) {
+    FortnightSlot.FIRST -> "1.er ciclo"
+    FortnightSlot.SECOND -> "2.º ciclo"
+}
+
+fun cycleLabelForSlot(slot: FortnightSlot): String = when (slot) {
+    FortnightSlot.FIRST -> "1.er ciclo"
+    FortnightSlot.SECOND -> "2.º ciclo"
+}
+
 enum class FortnightItemType {
     EXPENSE,
     SAVINGS,

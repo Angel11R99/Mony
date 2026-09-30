@@ -302,7 +302,7 @@ fun PendingEntriesScreen(
                             com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Add, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
                             Text("Todavía no hay recordatorios", style = MaterialTheme.typography.titleLarge)
                             Text(
-                                "Guarda aquí las cosas que piensas pagar o cobrar y ponles la fecha. Aparecerán en la quincena o el mes que elijas.",
+                                "Guarda aquí las cosas que piensas pagar o cobrar y ponles la fecha. Aparecerán en el ciclo o el mes que elijas.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             PrimaryButton("Crear el primero", {
@@ -602,7 +602,7 @@ private fun PendingFilterButton(
 ) {
     val typeLabel = if (type == PendingType.PAYMENT) "Pagos" else "Cobros"
     val periodLabel = when (period) {
-        PendingPeriodFilter.FORTNIGHT -> "Quincena"
+        PendingPeriodFilter.FORTNIGHT -> "Ciclo"
         PendingPeriodFilter.MONTH -> "Mes"
         PendingPeriodFilter.ALL -> "Todas"
     }
@@ -690,7 +690,7 @@ private fun PendingFilterSheet(
             }
             Text("PERIODO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PendingPeriodChip("Quincena", draftPeriod == PendingPeriodFilter.FORTNIGHT, { onPeriodChange(PendingPeriodFilter.FORTNIGHT) }, Modifier.weight(1f))
+                PendingPeriodChip("Ciclo", draftPeriod == PendingPeriodFilter.FORTNIGHT, { onPeriodChange(PendingPeriodFilter.FORTNIGHT) }, Modifier.weight(1f))
                 PendingPeriodChip("Mes", draftPeriod == PendingPeriodFilter.MONTH, { onPeriodChange(PendingPeriodFilter.MONTH) }, Modifier.weight(1f))
                 PendingPeriodChip("Todas", draftPeriod == PendingPeriodFilter.ALL, { onPeriodChange(PendingPeriodFilter.ALL) }, Modifier.weight(1f))
             }
@@ -733,7 +733,7 @@ private fun PendingSummaryCard(
     formatter: DateTimeFormatter,
 ) {
     val periodTitle = when (filter) {
-        PendingPeriodFilter.FORTNIGHT -> "QUINCENA ACTUAL"
+        PendingPeriodFilter.FORTNIGHT -> "CICLO ACTUAL"
         PendingPeriodFilter.MONTH -> "MES ACTUAL"
         PendingPeriodFilter.ALL -> "TODOS LOS RECORDATORIOS"
     }

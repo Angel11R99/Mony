@@ -183,31 +183,31 @@ class FortnightViewModel @Inject constructor(
         get() = fortnightPeriodStyle(state.value.budget) == FortnightPeriodStyle.MONTHLY
 
     private fun periodAlreadyHasAPlan(): String =
-        if (monthlyMode) "Este mes ya tiene un plan." else "Esta quincena ya tiene un plan."
+        if (monthlyMode) "Este mes ya tiene un plan." else "Este ciclo ya tiene un plan."
 
     private fun periodIsClosed(): String =
-        if (monthlyMode) "El mes está cerrado." else "La quincena está cerrada."
+        if (monthlyMode) "El mes está cerrado." else "El ciclo está cerrado."
 
     private fun periodCreated(): String =
-        if (monthlyMode) "Plan del mes creado." else "Plan de la quincena creado."
+        if (monthlyMode) "Plan del mes creado." else "Plan del ciclo creado."
 
     private fun periodClosed(): String =
-        if (monthlyMode) "Mes cerrado." else "Quincena cerrada."
+        if (monthlyMode) "Mes cerrado." else "Ciclo cerrado."
 
     private fun periodReopened(): String =
-        if (monthlyMode) "Mes reabierto." else "Quincena reabierta."
+        if (monthlyMode) "Mes reabierto." else "Ciclo reabierto."
 
     private fun periodUnavailable(): String =
-        if (monthlyMode) "El mes ya no está disponible." else "La quincena ya no está disponible."
+        if (monthlyMode) "El mes ya no está disponible." else "El ciclo ya no está disponible."
 
     private fun couldNotClosePeriod(): String =
-        if (monthlyMode) "No se pudo cerrar el mes." else "No se pudo cerrar la quincena."
+        if (monthlyMode) "No se pudo cerrar el mes." else "No se pudo cerrar el ciclo."
 
     private fun couldNotReopenPeriod(): String =
-        if (monthlyMode) "No se pudo reabrir el mes." else "No se pudo reabrir la quincena."
+        if (monthlyMode) "No se pudo reabrir el mes." else "No se pudo reabrir el ciclo."
 
     private fun reopenPeriodBeforeDelete(): String =
-        if (monthlyMode) "Reabre el mes antes de eliminarlo." else "Reabre la quincena antes de eliminarla."
+        if (monthlyMode) "Reabre el mes antes de eliminarlo." else "Reabre el ciclo antes de eliminarlo."
 
     private fun missingAmountsMessage(categories: List<Category>): String {
         if (categories.size == 1) return "Indica el monto de la categoría ${categories.first().name}."
@@ -244,7 +244,7 @@ class FortnightViewModel @Inject constructor(
         }
         val budget = MoneyFormatter.parseToCents(planBudgetText.value)
         if (planBudgetText.value.isBlank()) {
-            message.value = if (monthlyMode) "Indica el presupuesto del mes." else "Indica el presupuesto de la quincena."
+            message.value = if (monthlyMode) "Indica el presupuesto del mes." else "Indica el presupuesto del ciclo."
             return
         }
         if (budget == null || budget < 0) {

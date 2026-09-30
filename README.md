@@ -16,7 +16,7 @@ Descarga **Mony v1.0.4** desde su [release en GitHub](https://github.com/Angel11
 ## Funciones principales
 
 - Registro, edición, duplicado y eliminación de ingresos y gastos.
-- Presupuestos mensuales o quincenales con ciclos y cierre manual o automático.
+- Presupuestos mensuales o por ciclos con ciclos y cierre manual o automático.
 - Historial con filtros, búsqueda y exportación local a CSV y PDF.
 - Estadísticas por período y categoría, comparaciones y límites de gasto.
 - Entradas fijas recurrentes y pagos o cobros pendientes con recordatorios.

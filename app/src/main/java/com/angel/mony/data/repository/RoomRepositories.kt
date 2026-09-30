@@ -102,7 +102,7 @@ class RoomTransactionRepository @Inject constructor(
             "Este gasto pertenece a una compra a crédito y no se puede editar."
         }
         check(fortnightPaymentDao.findItemIdByTransaction(transaction.id) == null) {
-            "Este gasto pertenece a una quincena y no se puede editar."
+            "Este gasto pertenece a un ciclo y no se puede editar."
         }
         dao.update(transaction.toEntity())
     }
@@ -114,7 +114,7 @@ class RoomTransactionRepository @Inject constructor(
             "Este gasto pertenece a una compra a crédito y no se puede eliminar."
         }
         check(fortnightPaymentDao.findItemIdByTransaction(id) == null) {
-            "Este gasto pertenece a una quincena y no se puede eliminar."
+            "Este gasto pertenece a un ciclo y no se puede eliminar."
         }
         val deleted = dao.get(id)
         dao.delete(id)

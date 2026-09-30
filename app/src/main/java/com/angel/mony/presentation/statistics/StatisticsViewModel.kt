@@ -152,7 +152,7 @@ class StatisticsViewModel @Inject constructor(
 
 internal fun StatisticsRange.displayLabel(budget: BudgetConfig?): String =
     if (this != StatisticsRange.CURRENT_BUDGET) label
-    else if (budget?.period == BudgetPeriod.MONTHLY) "Este ciclo mensual" else "Esta quincena"
+    else if (budget?.period == BudgetPeriod.MONTHLY) "Este ciclo mensual" else "Este ciclo"
 
 private val customRangeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 

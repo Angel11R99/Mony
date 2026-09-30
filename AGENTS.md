@@ -782,11 +782,16 @@ Any budget-cycle change should receive unit tests.
 
 ---
 
-# Fortnight (Quincena)
+# Cycle Plan (Plan de ciclo) · Legacy internal name: Fortnight
 
-The fortnight module plans expenses and savings per fortnight slot, using the
-budget schedule (the `BudgetCycleSchedule` opening months define the 1-15 / 16-31
-slots; do not hardcode 1-15).
+The module visible to users is called **"Plan de ciclo"**.
+
+Internally the codebase still uses `Fortnight*` names (entities, DAOs, repositories, domain models)
+to avoid destructive migrations and refactors. This is intentional:
+**data safety > internal aesthetics**.
+
+The module plans expenses and savings per budget-cycle slot, using the
+`BudgetCycleSchedule` (the opening months define the slots; do not hardcode 1-15).
 
 Domain logic lives in:
 
@@ -823,7 +828,7 @@ Key rules:
   transaction (and that transaction becomes orphaned the same way as other
   deletes). A closed plan can only be reopened via `reopenPlan`.
 * `RoomTransactionRepository.update/delete` guard fortnight transactions:
-  "Este gasto pertenece a una quincena y no se puede editar." / "... eliminar."
+  "Este gasto pertenece a un ciclo y no se puede editar." / "... eliminar."
 * Templates are snapshots: editing/deleting a template never alters existing
   plans, and deleting a template keeps its items (`templateId` becomes NULL).
 * Widget-visible data changes after registering or reverting a fortnight payment

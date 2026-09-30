@@ -315,4 +315,4 @@ class HomeViewModel @Inject constructor(
 }
 
 internal fun budgetIncomeDescription(period: BudgetPeriod): String =
-    if (period == BudgetPeriod.MONTHLY) "Ingreso mensual" else "Ingreso quincenal"
+    if (period == BudgetPeriod.MONTHLY) "Ingreso mensual" else "Ingreso por ciclo"

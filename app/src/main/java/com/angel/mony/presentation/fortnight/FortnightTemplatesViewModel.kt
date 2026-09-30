@@ -116,7 +116,7 @@ class FortnightTemplatesViewModel @Inject constructor(
             state.value.isMonthly && first == null ->
                 message.value = "Indica el monto del mes."
             first == null && second == null ->
-                message.value = "Indica el monto de al menos una quincena."
+                message.value = "Indica el monto de al menos un ciclo."
             else -> {
                 val now = Instant.now()
                 viewModelScope.launch {

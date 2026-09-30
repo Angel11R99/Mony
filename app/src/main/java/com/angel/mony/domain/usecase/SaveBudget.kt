@@ -48,7 +48,7 @@ class SaveBudget @Inject constructor(
             amountInCents = amountInCents,
             type = TransactionType.INCOME,
             categoryId = existingIncome?.categoryId ?: categoryId,
-            description = if (period == BudgetPeriod.MONTHLY) "Ingreso mensual" else "Ingreso quincenal",
+            description = if (period == BudgetPeriod.MONTHLY) "Ingreso mensual" else "Ingreso por ciclo",
             date = if (initializesCycle) initialPeriod.start else existingIncome?.date ?: today,
             createdAt = existingIncome?.createdAt ?: now,
             updatedAt = now,

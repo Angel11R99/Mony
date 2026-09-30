@@ -598,7 +598,7 @@ private fun formatScheduleHour(hour: Int): String =
 
 private fun manualDateModeLabel(mode: FixedDateMode): String = when (mode) {
     FixedDateMode.TODAY -> "Hoy"
-    FixedDateMode.PREVIOUS_FORTNIGHT -> "Quincena anterior"
+    FixedDateMode.PREVIOUS_FORTNIGHT -> "Ciclo anterior"
     FixedDateMode.PREVIOUS_MONTH -> "Mes anterior"
     FixedDateMode.SPECIFIC_DATE -> "Fecha específica"
 }
@@ -676,7 +676,7 @@ private fun FixedEntryManualActionsDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 SecondaryButton(
-                    text = "Quincena anterior",
+                    text = "Ciclo anterior",
                     onClick = { onAdd(previousFortnightEnd(today)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -894,7 +894,7 @@ private fun FixedHourField(hour: Int, onHourChange: (Int) -> Unit) {
 
 private fun scheduleModeLabel(mode: FixedScheduleMode): String = when (mode) {
     FixedScheduleMode.MANUAL -> "Sin programación"
-    FixedScheduleMode.AFTER_FORTNIGHT -> "Después de cada quincena"
+    FixedScheduleMode.AFTER_FORTNIGHT -> "Después de cada ciclo"
     FixedScheduleMode.AFTER_MONTH -> "Después de cada mes"
     FixedScheduleMode.SPECIFIC_DATE_TIME -> "Fecha específica"
 }

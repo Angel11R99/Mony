@@ -57,9 +57,12 @@ import com.angel.mony.presentation.components.FinanceSelectionField
 import com.angel.mony.presentation.components.FinanceSelectionSheet
 import com.angel.mony.presentation.components.FinanceTextField
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
+import com.angel.mony.presentation.components.LoadingContent
 import com.angel.mony.presentation.components.ModuleTitle
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SelectionOption
+import com.angel.mony.presentation.components.SkeletonHost
+import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.presentation.components.sanitizeAmountInput
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,7 +87,7 @@ fun FortnightTemplatesScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    ModuleTitle(if (state.isMonthly) "Plantillas del mes" else "Plantillas de quincena")
+                    ModuleTitle(if (state.isMonthly) "Plantillas del mes" else "Plantillas de ciclo")
                 },
                 actions = {
                     GlobalOutlinedIconButton(
@@ -104,56 +107,70 @@ fun FortnightTemplatesScreen(
             )
         },
     ) { padding ->
-        when {
-            state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            state.hasError -> Text(
-                "No se pudieron cargar las plantillas.",
-                Modifier.padding(padding).padding(18.dp),
-                color = MaterialTheme.colorScheme.error,
-            )
-            state.templates.isEmpty() -> Column(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(18.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+        SkeletonHost(isLoading = state.isLoading) {
+            LoadingContent(
+                isLoading = state.isLoading,
+                modifier = Modifier.padding(padding),
+                skeleton = { FortnightTemplatesSkeleton() },
             ) {
-                com.angel.mony.ui.iconography.MonyIcon(
-                    com.angel.mony.ui.iconography.MonyIcon.Template,
-                    contentDescription = null,
-                    modifier = Modifier.size(36.dp),
-                )
-                Text(
-                    "Todavía no tienes plantillas.",
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    if (state.isMonthly) {
-                        "Crea una plantilla con los conceptos que se repiten cada mes " +
-                            "para planificar más rápido."
-                    } else {
-                        "Crea una plantilla con los conceptos que se repiten cada quincena " +
-                            "para planificar más rápido."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                PrimaryButton("Crear plantilla", viewModel::startCreate, Modifier.fillMaxWidth())
-            }
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-                contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(state.templates, key = { it.id }) { template ->
-                    TemplateCard(
-                        template = template,
-                        isMonthly = state.isMonthly,
-                        enabled = !isSaving,
-                        onEdit = { viewModel.startEdit(template) },
-                        onDelete = { viewModel.requestDelete(template) },
-                        onActiveChange = { viewModel.setActive(template, it) },
-                    )
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    StaggeredReveal {
+                        add {
+                            when {
+                                state.hasError -> Text(
+                                    "No se pudieron cargar las plantillas.",
+                                    Modifier.padding(18.dp),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                                state.templates.isEmpty() -> Column(
+                                    modifier = Modifier.fillMaxSize().padding(18.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    com.angel.mony.ui.iconography.MonyIcon(
+                                        com.angel.mony.ui.iconography.MonyIcon.Template,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(36.dp),
+                                    )
+                                    Text(
+                                        "Todavía no tienes plantillas.",
+                                        style = MaterialTheme.typography.titleSmall,
+                                    )
+                                    Text(
+                                        if (state.isMonthly) {
+                                            "Crea una plantilla con los conceptos que se repiten cada mes " +
+                                                "para planificar más rápido."
+                                        } else {
+                                            "Crea una plantilla con los conceptos que se repiten en tus ciclos " +
+                                                "para planificar más rápido."
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    PrimaryButton("Crear plantilla", viewModel::startCreate, Modifier.fillMaxWidth())
+                                }
+                                else -> LazyColumn(
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    items(state.templates, key = { it.id }) { template ->
+                                        TemplateCard(
+                                            template = template,
+                                            isMonthly = state.isMonthly,
+                                            enabled = !isSaving,
+                                            onEdit = { viewModel.startEdit(template) },
+                                            onDelete = { viewModel.requestDelete(template) },
+                                            onActiveChange = { viewModel.setActive(template, it) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -183,7 +200,7 @@ fun FortnightTemplatesScreen(
 }
 
 @Composable
-private fun TemplateCard(
+fun TemplateCard(
     template: FortnightTemplate,
     isMonthly: Boolean,
     enabled: Boolean,
@@ -251,7 +268,7 @@ private fun TemplateCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TemplateSheet(
+fun TemplateSheet(
     draft: FortnightTemplateDraft,
     categoryNames: List<Pair<Long, String>>,
     isMonthly: Boolean,
@@ -296,7 +313,7 @@ private fun TemplateSheet(
             FinanceTextField(
                 value = draft.firstAmountText,
                 onValueChange = { text -> onChange { it.copy(firstAmountText = sanitizeAmountInput(text)) } },
-                label = if (isMonthly) "Monto mensual (opcional)" else "Monto 1ra quincena (opcional)",
+                label = if (isMonthly) "Monto mensual (opcional)" else "Monto 1.er ciclo (opcional)",
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 visualTransformation = AmountVisualTransformation,
@@ -305,7 +322,7 @@ private fun TemplateSheet(
                 FinanceTextField(
                     value = draft.secondAmountText,
                     onValueChange = { text -> onChange { it.copy(secondAmountText = sanitizeAmountInput(text)) } },
-                    label = "Monto 2da quincena (opcional)",
+                    label = "Monto 2.º ciclo (opcional)",
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     visualTransformation = AmountVisualTransformation,
@@ -339,5 +356,37 @@ private fun TemplateSheet(
             onDismiss = { categoryPickerOpen = false },
             emptyMessage = "Todavía no tienes categorías activas.",
         )
+    }
+}
+
+@Composable
+fun FortnightTemplatesSkeleton() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        com.angel.mony.presentation.components.SkeletonCard(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        ) {
+            com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(0.6f), height = 16.dp)
+            com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(0.4f), height = 12.dp)
+        }
+        repeat(4) {
+            com.angel.mony.presentation.components.SkeletonCard(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            ) {
+                com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(0.7f), height = 14.dp)
+                com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(0.4f), height = 11.dp)
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    com.angel.mony.presentation.components.SkeletonLine(Modifier.width(60.dp), height = 12.dp)
+                    com.angel.mony.presentation.components.SkeletonLine(Modifier.width(80.dp), height = 12.dp)
+                }
+            }
+        }
     }
 }

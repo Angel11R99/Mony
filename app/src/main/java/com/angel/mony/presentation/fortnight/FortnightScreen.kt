@@ -70,6 +70,7 @@ import com.angel.mony.domain.model.FortnightPayment
 import com.angel.mony.domain.model.FortnightPeriodStyle
 import com.angel.mony.domain.model.FortnightPlanDetails
 import com.angel.mony.domain.model.FortnightPlanItem
+import com.angel.mony.domain.model.FortnightSlot
 import com.angel.mony.domain.model.SavingsGoalProgress
 import com.angel.mony.domain.model.fortnightPeriodStyle
 import com.angel.mony.domain.model.label
@@ -81,10 +82,13 @@ import com.angel.mony.presentation.components.FinanceSelectionSheet
 import com.angel.mony.presentation.components.FinanceTextField
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.GlobalSettingsButton
+import com.angel.mony.presentation.components.LoadingContent
 import com.angel.mony.presentation.components.ModuleTitle
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.presentation.components.SelectionOption
+import com.angel.mony.presentation.components.SkeletonHost
+import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.presentation.components.sanitizeAmountInput
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -124,7 +128,7 @@ fun FortnightScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { ModuleTitle(if (isMonthly) "Mes" else "Quincena") },
+                title = { ModuleTitle("Plan de ciclo") },
                 actions = {
                     if (state.canEditItems) {
                         GlobalOutlinedIconButton(
@@ -147,50 +151,56 @@ fun FortnightScreen(
             )
         },
     ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp).padding(top = 12.dp),
-        ) {
-            PeriodNavigator(
-                periodLabel = buildString {
-                    append(if (isMonthly) "Mes" else state.slot.label())
-                    append(" · ")
-                    append(state.period.start.format(dayMonthFormatter))
-                    append(" – ")
-                    append(state.period.endInclusive.format(dayMonthFormatter))
-                },
-                onPrevious = viewModel::goToPreviousPeriod,
-                onNext = viewModel::goToNextPeriod,
-                onCurrent = viewModel::goToCurrentPeriod,
-            )
-            Spacer(Modifier.height(12.dp))
-
-            when {
-                state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-                state.hasError -> Text(
-                    "No se pudo cargar el período.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                !state.hasPlan -> LazyColumn(
-                    contentPadding = PaddingValues(bottom = 24.dp),
+        SkeletonHost(isLoading = state.isLoading) {
+            LoadingContent(
+                isLoading = state.isLoading,
+                modifier = Modifier.padding(padding).padding(horizontal = 18.dp).padding(top = 12.dp),
+                skeleton = { FortnightSkeleton() },
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    item { EmptyPlanCard(isMonthly = isMonthly, onCreate = viewModel::showCreatePlan) }
+                    StaggeredReveal {
+                        add {
+                            PeriodNavigator(
+                                periodLabel = buildString {
+                                    append(if (isMonthly) "Ciclo mensual" else com.angel.mony.domain.model.cycleLabelForSlot(state.slot))
+                                    append(" · ")
+                                    append(state.period.start.format(dayMonthFormatter))
+                                    append(" – ")
+                                    append(state.period.endInclusive.format(dayMonthFormatter))
+                                },
+                                onPrevious = viewModel::goToPreviousPeriod,
+                                onNext = viewModel::goToNextPeriod,
+                                onCurrent = viewModel::goToCurrentPeriod,
+                            )
+                        }
+
+                        add {
+                            when {
+                                state.hasError -> Text(
+                                    "No se pudo cargar el período.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                                !state.hasPlan -> EmptyPlanCard(isMonthly = isMonthly, onCreate = viewModel::showCreatePlan)
+                                else -> PlanContent(
+                                    state = state,
+                                    isSaving = isSaving,
+                                    isMonthly = isMonthly,
+                                    onPay = viewModel::startPayment,
+                                    onEditItem = viewModel::startEditItem,
+                                    onDeleteItem = viewModel::requestDeleteItem,
+                                    onRevertPayment = viewModel::requestDeletePayment,
+                                    onClosePlan = viewModel::requestClosePlan,
+                                    onReopenPlan = viewModel::reopenPlan,
+                                    onDeletePlan = viewModel::requestDeletePlan,
+                                )
+                            }
+                        }
+                    }
                 }
-                else -> PlanContent(
-                    state = state,
-                    isSaving = isSaving,
-                    isMonthly = isMonthly,
-                    onPay = viewModel::startPayment,
-                    onEditItem = viewModel::startEditItem,
-                    onDeleteItem = viewModel::requestDeleteItem,
-                    onRevertPayment = viewModel::requestDeletePayment,
-                    onClosePlan = viewModel::requestClosePlan,
-                    onReopenPlan = viewModel::reopenPlan,
-                    onDeletePlan = viewModel::requestDeletePlan,
-                )
             }
         }
     }
@@ -248,7 +258,7 @@ fun FortnightScreen(
     if (isCloseConfirm) {
         AlertDialog(
             onDismissRequest = viewModel::cancelClosePlan,
-            title = { Text(if (isMonthly) "¿Cerrar el mes?" else "¿Cerrar la quincena?") },
+            title = { Text(if (isMonthly) "¿Cerrar el ciclo mensual?" else "¿Cerrar el ciclo?") },
             text = {
                 Text(
                     "Dejarás de poder agregar, editar o pagar conceptos de este período. " +
@@ -344,7 +354,7 @@ private fun EmptyPlanCard(isMonthly: Boolean, onCreate: () -> Unit) {
                 modifier = Modifier.size(36.dp),
             )
             Text(
-                if (isMonthly) "Este mes todavía no tiene plan." else "Esta quincena todavía no tiene plan.",
+                if (isMonthly) "Este mes todavía no tiene plan." else "Este ciclo todavía no tiene plan.",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -354,7 +364,7 @@ private fun EmptyPlanCard(isMonthly: Boolean, onCreate: () -> Unit) {
                         "que prevés. Después registra un abono cada vez que pagues. Planificar no " +
                         "registra ningún gasto."
                 } else {
-                    "Crea el plan con el presupuesto de la quincena y agrega los gastos y ahorros " +
+                    "Crea el plan con el presupuesto del ciclo y agrega los gastos y ahorros " +
                         "que prevés. Después registra un abono cada vez que pagues. Planificar no " +
                         "registra ningún gasto."
                 },
@@ -380,83 +390,95 @@ private fun PlanContent(
     onDeletePlan: () -> Unit,
 ) {
     val details = state.details ?: return
-    LazyColumn(
-        contentPadding = PaddingValues(bottom = 24.dp),
+    Column(
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { SummaryCard(details, isMonthly) }
+        StaggeredReveal {
+            add { SummaryCard(details, isMonthly) }
 
-        if (details.items.isEmpty()) {
-            item {
-                FinanceCard(Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            "No has planificado conceptos.",
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                        if (!state.isClosed) {
+            add {
+                if (details.items.isEmpty()) {
+                    FinanceCard(Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             Text(
-                                if (isMonthly) {
-                                    "Agrega tus gastos y ahorros previstos del mes."
-                                } else {
-                                    "Agrega tus gastos y ahorros previstos de la quincena."
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                "No has planificado conceptos.",
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            if (!state.isClosed) {
+                                Text(
+                                    if (isMonthly) {
+                                        "Agrega tus gastos y ahorros previstos del mes."
+                                    } else {
+                                        "Agrega tus gastos y ahorros previstos del ciclo."
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        details.itemProgress.forEach { progress ->
+                            FortnightItemCard(
+                                progress = progress,
+                                categories = state.categories,
+                                savingsGoals = state.savingsGoals,
+                                canEdit = state.canEditItems,
+                                enabled = !isSaving,
+                                onPay = { onPay(progress.item) },
+                                onEdit = { onEditItem(progress.item) },
+                                onDelete = { onDeleteItem(progress.item) },
                             )
                         }
                     }
                 }
             }
-        } else {
-            items(details.itemProgress, key = { it.item.id }) { progress ->
-                FortnightItemCard(
-                    progress = progress,
-                    categories = state.categories,
-                    savingsGoals = state.savingsGoals,
-                    canEdit = state.canEditItems,
-                    enabled = !isSaving,
-                    onPay = { onPay(progress.item) },
-                    onEdit = { onEditItem(progress.item) },
-                    onDelete = { onDeleteItem(progress.item) },
-                )
-            }
-        }
 
-        if (details.payments.isNotEmpty()) {
-            item {
-                Text(
-                    "Abonos registrados",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+            if (details.payments.isNotEmpty()) {
+                add {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            "Abonos registrados",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        details.payments.forEach { payment ->
+                            PaymentRow(
+                                payment = payment,
+                                itemDescription = details.items
+                                    .firstOrNull { it.id == payment.itemId }?.description ?: "Concepto",
+                                canRevert = !state.isClosed,
+                                enabled = !isSaving,
+                                onRevert = { onRevertPayment(payment.id) },
+                            )
+                        }
+                    }
+                }
             }
-            items(details.payments, key = { it.id }) { payment ->
-                PaymentRow(
-                    payment = payment,
-                    itemDescription = details.items
-                        .firstOrNull { it.id == payment.itemId }?.description ?: "Concepto",
-                    canRevert = !state.isClosed,
-                    enabled = !isSaving,
-                    onRevert = { onRevertPayment(payment.id) },
-                )
-            }
-        }
 
-        item {
-            PlanActions(
-                isClosed = state.isClosed,
-                isMonthly = isMonthly,
-                enabled = !isSaving,
-                onClosePlan = onClosePlan,
-                onReopenPlan = onReopenPlan,
-                onDeletePlan = onDeletePlan,
-            )
+            add {
+                PlanActions(
+                    isClosed = state.isClosed,
+                    isMonthly = isMonthly,
+                    enabled = !isSaving,
+                    onClosePlan = onClosePlan,
+                    onReopenPlan = onReopenPlan,
+                    onDeletePlan = onDeletePlan,
+                )
+            }
         }
     }
 }
@@ -475,7 +497,7 @@ private fun SummaryCard(details: FortnightPlanDetails, isMonthly: Boolean) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    if (isMonthly) "Resumen del mes" else "Resumen de la quincena",
+                    if (isMonthly) "Resumen del mes" else "Resumen del ciclo",
                     style = MaterialTheme.typography.titleSmall,
                 )
                 if (details.plan.isClosed) {
@@ -515,7 +537,7 @@ private fun SummaryCard(details: FortnightPlanDetails, isMonthly: Boolean) {
                     if (isMonthly) {
                         "Has planificado más que el presupuesto del mes."
                     } else {
-                        "Has planificado más que el presupuesto de la quincena."
+                        "Has planificado más que el presupuesto del ciclo."
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = errorColor,
@@ -694,7 +716,7 @@ private fun PlanActions(
     ) {
         if (isClosed) {
             SecondaryButton(
-                text = if (isMonthly) "Reabrir mes" else "Reabrir quincena",
+                text = if (isMonthly) "Reabrir mes" else "Reabrir ciclo",
                 onClick = onReopenPlan,
                 modifier = Modifier.fillMaxWidth(),
                 semanticLeadingIcon = com.angel.mony.ui.iconography.MonyIcon.Unlock,
@@ -704,14 +726,14 @@ private fun PlanActions(
                 if (isMonthly) {
                     "Este mes está cerrado. Reábrelo para volver a registrar abonos."
                 } else {
-                    "Esta quincena está cerrada. Reábrela para volver a registrar abonos."
+                    "Este ciclo está cerrado. Reábrelo para volver a registrar abonos."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
             SecondaryButton(
-                text = if (isMonthly) "Cerrar mes" else "Cerrar quincena",
+                text = if (isMonthly) "Cerrar mes" else "Cerrar ciclo",
                 onClick = onClosePlan,
                 modifier = Modifier.fillMaxWidth(),
                 semanticLeadingIcon = com.angel.mony.ui.iconography.MonyIcon.Lock,
@@ -754,7 +776,7 @@ private fun CreatePlanSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                if (isMonthly) "Plan del mes" else "Plan de la quincena",
+                if (isMonthly) "Plan del mes" else "Plan del ciclo",
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
@@ -765,7 +787,7 @@ private fun CreatePlanSheet(
             FinanceTextField(
                 value = budgetText,
                 onValueChange = { onBudgetChange(sanitizeAmountInput(it)) },
-                label = if (isMonthly) "Presupuesto del mes" else "Presupuesto de la quincena",
+                label = if (isMonthly) "Presupuesto del mes" else "Presupuesto del ciclo",
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 visualTransformation = AmountVisualTransformation,
@@ -1094,5 +1116,43 @@ private fun PaymentDialog(
             },
             dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") } },
         ) { DatePicker(pickerState) }
+    }
+}
+
+@Composable
+private fun FortnightSkeleton() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        com.angel.mony.presentation.components.SkeletonCard(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        ) {
+            com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(0.6f), height = 16.dp)
+            com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(0.4f), height = 12.dp)
+        }
+        com.angel.mony.presentation.components.SkeletonCard(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        ) {
+            com.angel.mony.presentation.components.SkeletonLine(Modifier.width(120.dp), height = 11.dp)
+            com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(0.45f), height = 34.dp, tone = com.angel.mony.presentation.components.SkeletonTone.Accent)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                repeat(3) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(0.8f), height = 10.dp)
+                        com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(), height = 14.dp)
+                    }
+                }
+            }
+        }
+        repeat(3) {
+            com.angel.mony.presentation.components.SkeletonCard(modifier = Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
+                com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(0.7f), height = 14.dp)
+                com.angel.mony.presentation.components.SkeletonLine(Modifier.fillMaxWidth(0.4f), height = 11.dp)
+                com.angel.mony.presentation.components.SkeletonLine(Modifier.width(80.dp), height = 14.dp, tone = com.angel.mony.presentation.components.SkeletonTone.Accent)
+            }
+        }
     }
 }

@@ -46,7 +46,7 @@ internal val moduleDestinations = listOf(
     ModuleDestination("Ahorros", "savings", MonyIcon.Savings),
     ModuleDestination("Lista", "list", MonyIcon.Shopping),
     ModuleDestination("Estadísticas", "statistics", MonyIcon.Statistics),
-    ModuleDestination("Quincena", "fortnight", MonyIcon.Fortnight),
+    ModuleDestination("Plan de ciclo", "fortnight", MonyIcon.Fortnight),
     ModuleDestination("Historial", "history", MonyIcon.History),
 )
 

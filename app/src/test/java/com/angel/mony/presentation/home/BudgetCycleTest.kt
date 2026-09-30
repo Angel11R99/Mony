@@ -305,7 +305,7 @@ class BudgetCycleTest {
     }
 
     @Test fun `budget income description identifies its period`() {
-        assertEquals("Ingreso quincenal", budgetIncomeDescription(BudgetPeriod.FORTNIGHTLY))
+        assertEquals("Ingreso por ciclo", budgetIncomeDescription(BudgetPeriod.FORTNIGHTLY))
         assertEquals("Ingreso mensual", budgetIncomeDescription(BudgetPeriod.MONTHLY))
     }
 

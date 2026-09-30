@@ -91,7 +91,7 @@ class StatisticsReportTest {
             StatisticsPeriod(LocalDate.of(2026, 8, 16), LocalDate.of(2026, 8, 31)),
             statisticsPeriod(StatisticsRange.CURRENT_BUDGET, today, budget),
         )
-        assertEquals("Esta quincena", StatisticsRange.CURRENT_BUDGET.displayLabel(budget))
+        assertEquals("Este ciclo", StatisticsRange.CURRENT_BUDGET.displayLabel(budget))
     }
 
     @Test fun `custom cycle filter uses its current month occurrence and label`() {
