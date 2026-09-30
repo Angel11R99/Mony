@@ -3,6 +3,7 @@ package com.angel.mony.ui.theme
 import androidx.test.platform.app.InstrumentationRegistry
 import com.angel.mony.ui.iconography.IconColorMode
 import com.angel.mony.ui.iconography.IconPack
+import com.angel.mony.ui.iconography.MonyColorStyle
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -40,6 +41,23 @@ class AppearancePreferencesIconTest {
         assertEquals(AppThemeMode.SYSTEM, restored.themeMode)
         assertEquals(IconPack.MATERIAL, restored.iconPack)
         assertEquals(IconColorMode.AUTOMATIC, restored.iconColorMode)
+        // Una instalación que nunca eligió diseño debe seguir viendo el artwork multicolor.
+        assertEquals(MonyColorStyle.MULTI_COLOR, restored.monyColorStyle)
+    }
+
+    @Test
+    fun monyColorStyleSurvivesPreferenceRecreation() {
+        MonyColorStyle.entries.forEach { style ->
+            AppearancePreferences(context).apply {
+                setIconPack(IconPack.MONY_COLOR)
+                setMonyColorStyle(style)
+                assertEquals(style, settings.value.monyColorStyle)
+            }
+
+            val restored = AppearancePreferences(context).settings.value
+
+            assertEquals(style, restored.monyColorStyle)
+        }
     }
 
     @Test

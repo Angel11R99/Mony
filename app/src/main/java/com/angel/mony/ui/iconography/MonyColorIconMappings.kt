@@ -1,8 +1,8 @@
 package com.angel.mony.ui.iconography
 
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.angel.mony.ui.iconography.vendor.iconpark.IconPark
+import com.angel.mony.ui.iconography.vendor.iconpark.IconParkPalette
 import com.angel.mony.ui.iconography.vendor.iconpark.addOne
 import com.angel.mony.ui.iconography.vendor.iconpark.adjustment
 import com.angel.mony.ui.iconography.vendor.iconpark.alarmClock
@@ -55,7 +55,7 @@ import com.angel.mony.ui.iconography.vendor.iconpark.wallet
 import com.angel.mony.ui.iconography.vendor.iconpark.wifi
 
 /** Builds a Mony Color vector for the outline colour the current theme asks for. */
-typealias MonyColorVector = (Color) -> ImageVector
+typealias MonyColorVector = (IconParkPalette) -> ImageVector
 
 /**
  * Mony Color artwork: real IconPark glyphs (IconPark by ByteDance, Apache-2.0) generated into

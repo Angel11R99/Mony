@@ -4,7 +4,6 @@ package com.angel.mony.ui.iconography.vendor.iconpark
 // Source: @iconify-json/icon-park@1.2.4 (IconPark by ByteDance, Apache-2.0).
 // Regenerate with: node tools/iconpark/generate.mjs --source <extracted>/package/icons.json
 
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -16,11 +15,11 @@ import androidx.compose.ui.unit.dp
 /**
  * IconPark `refresh-one` (48x48) as a Compose [ImageVector].
  *
- * [ink] replaces the collection's #000 outline so the artwork follows light and dark themes
- * while the #2F88FF, #43CCF8 and #fff fills stay untouched. A fresh vector is built on every
- * call, so callers should cache it for the composition (for example with `remember`).
+ * The geometry is shared by every IconPark theme; [palette] selects the theme by supplying the
+ * four colour slots IconPark remaps at runtime. A fresh vector is built on every call, so callers
+ * should cache it for the composition (for example with `remember`).
  */
-public fun IconPark.refreshOne(ink: Color): ImageVector = ImageVector.Builder(
+public fun IconPark.refreshOne(palette: IconParkPalette): ImageVector = ImageVector.Builder(
     name = "IconPark.refresh-one",
     defaultWidth = 24.dp,
     defaultHeight = 24.dp,
@@ -34,9 +33,9 @@ public fun IconPark.refreshOne(ink: Color): ImageVector = ImageVector.Builder(
     )
     addPath(
         pathData = PathParser().parsePathString("M19,24.071H25A2,2 0 0 1 27,26.071V32.071A2,2 0 0 1 25,34.071H19A2,2 0 0 1 17,32.071V26.071A2,2 0 0 1 19,24.071Z").toNodes(),
-        fill = SolidColor(Color(0xFF2F88FF)),
+        fill = palette.outerFill.brush(),
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,
@@ -49,7 +48,7 @@ public fun IconPark.refreshOne(ink: Color): ImageVector = ImageVector.Builder(
         pathData = PathParser().parsePathString("M40.1201 16C37.1747 10.0731 31.0586 6 23.9912 6C16.9237 6 10.9454 10.0731 8 16").toNodes(),
         fill = null,
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,
@@ -61,7 +60,7 @@ public fun IconPark.refreshOne(ink: Color): ImageVector = ImageVector.Builder(
         pathData = PathParser().parsePathString("M8 8V16").toNodes(),
         fill = null,
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,
@@ -73,7 +72,7 @@ public fun IconPark.refreshOne(ink: Color): ImageVector = ImageVector.Builder(
         pathData = PathParser().parsePathString("M14.7803 16L8.00013 16").toNodes(),
         fill = null,
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,
@@ -85,7 +84,7 @@ public fun IconPark.refreshOne(ink: Color): ImageVector = ImageVector.Builder(
         pathData = PathParser().parsePathString("M8 32C10.9454 37.9269 17.0615 42 24.129 42C31.1964 42 37.1747 37.9269 40.1201 32").toNodes(),
         fill = null,
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,
@@ -97,7 +96,7 @@ public fun IconPark.refreshOne(ink: Color): ImageVector = ImageVector.Builder(
         pathData = PathParser().parsePathString("M40.1201 40V32").toNodes(),
         fill = null,
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,
@@ -109,7 +108,7 @@ public fun IconPark.refreshOne(ink: Color): ImageVector = ImageVector.Builder(
         pathData = PathParser().parsePathString("M33.3398 32L40.12 32").toNodes(),
         fill = null,
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,

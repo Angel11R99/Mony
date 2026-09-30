@@ -13,7 +13,10 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import com.angel.mony.ui.theme.PersonalFinanceTrackerTheme
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -113,6 +116,73 @@ class MonyColorIconTest {
     }
 
     @Test
+    fun outlineStyleDropsIconParkFills() {
+        val outlineColors = colorsOfSavings(MonyColorStyle.OUTLINE, tag = "outline-savings")
+        val multiColors = colorsOfSavings(MonyColorStyle.MULTI_COLOR, tag = "multi-savings")
+
+        assertFalse(
+            "Contorno no debe rellenar con el azul de IconPark",
+            outlineColors.contains(ICONPARK_BLUE),
+        )
+        assertFalse(
+            "Contorno no debe rellenar con el cian de IconPark",
+            outlineColors.contains(ICONPARK_CYAN),
+        )
+        assertNotEquals(
+            "Cambiar de diseño debe cambiar el relleno",
+            multiColors,
+            outlineColors,
+        )
+    }
+
+    @Test
+    fun twoToneStyleKeepsAccentButDropsTheCyanHighlight() {
+        val colors = colorsOfSavings(MonyColorStyle.TWO_TONE, tag = "two-tone-savings")
+
+        assertTrue(
+            "Bicolor conserva el azul de IconPark",
+            colors.contains(ICONPARK_BLUE),
+        )
+        assertFalse(
+            "Bicolor no usa el cian reservado al diseño multicolor",
+            colors.contains(ICONPARK_CYAN),
+        )
+    }
+
+    @Test
+    fun filledStyleCutsItsDetailOutOfTheBackgroundInDarkTheme() {
+        var background = Color.Unspecified
+        val colors = colorsOfSavings(
+            style = MonyColorStyle.FILLED,
+            tag = "filled-savings",
+            darkTheme = true,
+        ) { background = it }
+
+        assertNotEquals("El fondo debe estar resuelto", Color.Unspecified, background)
+        assertFalse(
+            "Sólido no debe conservar los rellenos ilustrados de multicolor",
+            colors.contains(ICONPARK_BLUE) || colors.contains(ICONPARK_CYAN),
+        )
+        assertTrue(
+            "Sólido debe pintar el cuerpo y recortar el detalle contra el fondo",
+            colors.contains(background.toArgb()) && colors.size >= 2,
+        )
+    }
+
+    @Test
+    fun everyStyleIsSelectableAndProducesArtwork() {
+        MonyColorStyle.entries.forEach { style ->
+            val vector = MonyIconResolver.resolveMonyColor(
+                MonyIcon.Savings,
+                style.palette(Color.Black),
+            )
+
+            assertNotNull("$style debe producir artwork", vector)
+            assertEquals("IconPark.strongbox", vector!!.name)
+        }
+    }
+
+    @Test
     fun defaultSizeMatchesMonochromePacks() {
         composeRule.setContent {
             PersonalFinanceTrackerTheme {
@@ -137,6 +207,37 @@ class MonyColorIconTest {
         composeRule.onNodeWithTag("mony-color-size")
             .assertWidthIsEqualTo(24.dp)
             .assertHeightIsEqualTo(24.dp)
+    }
+
+    /**
+     * Renders [MonyIcon.Savings] with the given IconPark design and returns its opaque colours.
+     *
+     * @param onBackground receives the theme background so a test can assert the filled design
+     *   cuts its detail out with the surrounding surface instead of a hardcoded white.
+     */
+    private fun colorsOfSavings(
+        style: MonyColorStyle,
+        tag: String,
+        darkTheme: Boolean = false,
+        onBackground: (Color) -> Unit = {},
+    ): Set<Int> {
+        composeRule.setContent {
+            PersonalFinanceTrackerTheme(
+                darkTheme = darkTheme,
+                iconPack = IconPack.MONY_COLOR,
+                monyColorStyle = style,
+            ) {
+                onBackground(MaterialTheme.colorScheme.background)
+                MonyIcon(
+                    icon = MonyIcon.Savings,
+                    contentDescription = "Ahorro $style",
+                    modifier = Modifier.testTag(tag),
+                    size = 64.dp,
+                )
+            }
+        }
+
+        return opaqueColorsOf(tag)
     }
 
     private fun opaqueColorsOf(tag: String): Set<Int> {

@@ -4,7 +4,6 @@ package com.angel.mony.ui.iconography.vendor.iconpark
 // Source: @iconify-json/icon-park@1.2.4 (IconPark by ByteDance, Apache-2.0).
 // Regenerate with: node tools/iconpark/generate.mjs --source <extracted>/package/icons.json
 
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -16,11 +15,11 @@ import androidx.compose.ui.unit.dp
 /**
  * IconPark `history` (48x48) as a Compose [ImageVector].
  *
- * [ink] replaces the collection's #000 outline so the artwork follows light and dark themes
- * while the #2F88FF, #43CCF8 and #fff fills stay untouched. A fresh vector is built on every
- * call, so callers should cache it for the composition (for example with `remember`).
+ * The geometry is shared by every IconPark theme; [palette] selects the theme by supplying the
+ * four colour slots IconPark remaps at runtime. A fresh vector is built on every call, so callers
+ * should cache it for the composition (for example with `remember`).
  */
-public fun IconPark.history(ink: Color): ImageVector = ImageVector.Builder(
+public fun IconPark.history(palette: IconParkPalette): ImageVector = ImageVector.Builder(
     name = "IconPark.history",
     defaultWidth = 24.dp,
     defaultHeight = 24.dp,
@@ -31,7 +30,7 @@ public fun IconPark.history(ink: Color): ImageVector = ImageVector.Builder(
         pathData = PathParser().parsePathString("M5.81836 6.72729V14H13.0911").toNodes(),
         fill = null,
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,
@@ -43,7 +42,7 @@ public fun IconPark.history(ink: Color): ImageVector = ImageVector.Builder(
         pathData = PathParser().parsePathString("M4 24C4 35.0457 12.9543 44 24 44V44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C16.598 4 10.1351 8.02111 6.67677 13.9981").toNodes(),
         fill = null,
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,
@@ -55,7 +54,7 @@ public fun IconPark.history(ink: Color): ImageVector = ImageVector.Builder(
         pathData = PathParser().parsePathString("M24.005 12L24.0038 24.0088L32.4832 32.4882").toNodes(),
         fill = null,
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,

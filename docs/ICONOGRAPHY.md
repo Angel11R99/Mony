@@ -15,10 +15,45 @@ Mony Color usa el set real **IconPark** (IconPark de ByteDance, Apache-2.0) empa
 `ImageVector` de 48 x 48 en `ui/iconography/vendor/iconpark`. La app sigue siendo totalmente
 offline: no hay dependencia runtime, descarga ni render de SVG.
 
-El artwork conserva su paleta original (`#2F88FF`, `#43CCF8`, `#fff`). Solo el trazo `#000` se
-sustituye por `MaterialTheme.colorScheme.onSurface`, de modo que el marco del icono mantiene
-contraste en Light y Dark Mode sin verse afectado por los modos Automático, Color principal o
-Personalizado. Un `tint` explícito no reemplaza esos rellenos.
+### Diseños
+
+IconPark no publica un archivo distinto por diseño: dibuja cada glifo una sola vez y deriva sus
+cuatro diseños oficiales (**outline**, **filled**, **two-tone**, **multi-color**) reasignando cuatro
+slots de color. El generador reproduce ese criterio, por lo que los 50 vectores se emiten una única
+vez como `IconPark.<glifo>(palette: IconParkPalette)` y cambiar de diseño solo cambia la paleta.
+
+Los slots son los del runtime de IconPark (`packages/svg/src/runtime`):
+
+| Token del artwork | Slot de `IconParkPalette` | Papel |
+| --- | --- | --- |
+| `#000` | `outerStroke` | Contorno exterior, y relleno en glifos como `car` o `wifi` |
+| `#2F88FF` | `outerFill` | Relleno exterior |
+| `#fff` | `innerStroke` | Contorno interior, y relleno en `more-two`, `pin`, `strongbox`, `upload`, `view-list` |
+| `#43CCF8` | `innerFill` | Relleno interior |
+
+Un slot puede pintarse como relleno o como trazo según el path, por eso el código generado lo
+resuelve por nombre y no asume un papel fijo. `outerFill` e `innerFill` admiten `null` porque el
+diseño *Contorno* no pinta relleno.
+
+Los cuatro diseños disponibles son:
+
+| `MonyColorStyle` | Nombre en UI | Paleta |
+| --- | --- | --- |
+| `MULTI_COLOR` | Multicolor | `onSurface`, `#2F88FF`, `#fff`, `#43CCF8` |
+| `TWO_TONE` | Bicolor | `onSurface`, `#2F88FF`, `onSurface`, `#2F88FF` |
+| `OUTLINE` | Contorno | `onSurface`, sin relleno, `onSurface`, sin relleno |
+| `FILLED` | Sólido | `onSurface`, `onSurface`, recorte, recorte |
+
+`MULTI_COLOR` es el default y reproduce el aspecto previo del pack, de modo que las instalaciones
+existentes no cambian al actualizar. El recorte de *Sólido* usa `ColorScheme.knockoutColor()` en
+lugar de un blanco literal: en Dark Mode el cuerpo es claro y un detalle blanco sería invisible.
+
+El diseño se guarda con la clave `mony_color_style` y, al no existir, se resuelve en `MULTI_COLOR`.
+Solo aparece en Ajustes → Apariencia cuando el pack activo es Mony Color, y se previsualiza con la
+paleta real del tema antes de elegirlo.
+
+Un `tint` explícito o `MonyIconRole.STATE` nunca reemplaza la paleta del artwork, y los modos
+Automático, Color principal y Personalizado siguen sin aplicarse a Mony Color.
 
 Estados semánticos y controles estructurales (`Back`, `Check`, `Close`, `Completed`, `Delete`,
 `Error`, `Warning`, `Info`, `Dropdown`, `ExpandMore`, `ExpandLess`, `AlertsDisabled`, `Restore`,

@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
                 iconPack = appearance.iconPack,
                 iconColorMode = appearance.iconColorMode,
                 customIconColor = Color(appearance.customIconColorArgb),
+                monyColorStyle = appearance.monyColorStyle,
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize()) {
@@ -167,6 +168,11 @@ class MainActivity : ComponentActivity() {
                             onIconColorModeChange = {
                                 appearancePreferences.setIconColorMode(it)
                                 applicationContext.showToast("Color de iconos actualizado")
+                                lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
+                            },
+                            onMonyColorStyleChange = {
+                                appearancePreferences.setMonyColorStyle(it)
+                                applicationContext.showToast("Estilo de Mony Color actualizado")
                                 lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
                             },
                             onCustomIconColorChange = {

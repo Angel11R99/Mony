@@ -86,10 +86,14 @@ import com.angel.mony.ui.theme.recommendedFont
 import com.angel.mony.ui.theme.toComposeFontFamily
 import com.angel.mony.ui.iconography.IconColorMode
 import com.angel.mony.ui.iconography.IconPack
+import com.angel.mony.ui.iconography.MonyColorStyle
 import com.angel.mony.ui.iconography.MonyIcon
+import com.angel.mony.ui.iconography.MonyIconResolver
 import com.angel.mony.ui.iconography.MonyIconRole
 import com.angel.mony.ui.iconography.MonyIconSize
 import com.angel.mony.ui.iconography.hasIconContrast
+import com.angel.mony.ui.iconography.knockoutColor
+import com.angel.mony.ui.iconography.palette
 
 @Composable
 fun AppearanceSettingsRoute(
@@ -107,6 +111,7 @@ fun AppearanceSettingsRoute(
     onIconPackChange: (IconPack) -> Unit,
     onIconColorModeChange: (IconColorMode) -> Unit,
     onCustomIconColorChange: (Int) -> Unit,
+    onMonyColorStyleChange: (MonyColorStyle) -> Unit,
 ) {
     var editingColor by remember { mutableStateOf<ColorRole?>(null) }
     AppearanceSettingsScreen(
@@ -126,6 +131,7 @@ fun AppearanceSettingsRoute(
         onIconPackChange = onIconPackChange,
         onIconColorModeChange = onIconColorModeChange,
         onCustomIconColorChange = onCustomIconColorChange,
+        onMonyColorStyleChange = onMonyColorStyleChange,
         editingColor = editingColor,
         onEditingColorChange = { editingColor = it },
     )
@@ -150,6 +156,7 @@ fun AppearanceSettingsScreen(
     onIconPackChange: (IconPack) -> Unit,
     onIconColorModeChange: (IconColorMode) -> Unit,
     onCustomIconColorChange: (Int) -> Unit,
+    onMonyColorStyleChange: (MonyColorStyle) -> Unit,
     editingColor: ColorRole?,
     onEditingColorChange: (ColorRole?) -> Unit,
 ) {
@@ -244,7 +251,21 @@ fun AppearanceSettingsScreen(
         item {
             Text("Estilo", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
-            IconPackSelector(selected = appearance.iconPack, onSelect = onIconPackChange)
+            IconPackSelector(
+                selected = appearance.iconPack,
+                monyColorStyle = appearance.monyColorStyle,
+                onSelect = onIconPackChange,
+            )
+        }
+        if (appearance.iconPack == IconPack.MONY_COLOR) {
+            item {
+                Text("Diseño de Mony Color", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                MonyColorStyleSelector(
+                    selected = appearance.monyColorStyle,
+                    onSelect = onMonyColorStyleChange,
+                )
+            }
         }
         item {
             Text("Color de iconos", style = MaterialTheme.typography.titleMedium)
@@ -264,7 +285,7 @@ fun AppearanceSettingsScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text("Colores originales", style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "Mony Color conserva sus rellenos ilustrados y los estados de alerta mantienen su color semántico; el color global no se aplica.",
+                                "Mony Color conserva la paleta del diseño elegido y los estados de alerta mantienen su color semántico; el color global no se aplica.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -525,8 +546,112 @@ internal fun IconColorPaletteSelector(
     }
 }
 
+/**
+ * Selector de los cuatro diseños oficiales de IconPark.
+ *
+ * Cada tarjeta muestra el mismo icono en el diseño correspondiente usando la paleta real del
+ * tema, de modo que la diferencia entre "Contorno", "Bicolor", "Multicolor" y "Sólido" sea visible
+ * antes de guardar. Solo se ofrecen los diseños disponibles en el pack Mony Color.
+ */
 @Composable
-private fun IconPackSelector(selected: IconPack, onSelect: (IconPack) -> Unit) {
+private fun MonyColorStyleSelector(
+    selected: MonyColorStyle,
+    onSelect: (MonyColorStyle) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val palettes = remember(colorScheme) {
+        MonyColorStyle.entries.associateWith {
+            it.palette(colorScheme.onSurface, colorScheme.knockoutColor())
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        MonyColorStyle.entries.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { style ->
+                    val isSelected = style == selected
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .selectable(
+                                selected = isSelected,
+                                onClick = { onSelect(style) },
+                                role = Role.RadioButton,
+                            )
+                            .semantics {
+                                stateDescription =
+                                    if (isSelected) "Seleccionado" else "No seleccionado"
+                            },
+                        shape = MaterialTheme.shapes.small,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        border = BorderStroke(
+                            if (isSelected) 2.dp else 1.dp,
+                            if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.outlineVariant
+                            },
+                        ),
+                    ) {
+                        Column(
+                            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(style.displayName, style = MaterialTheme.typography.labelLarge)
+                                if (isSelected) {
+                                    MonyIcon(
+                                        MonyIcon.Check,
+                                        contentDescription = "Seleccionado",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        role = MonyIconRole.STATE,
+                                        size = MonyIconSize.Small,
+                                    )
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                // Transport y Pin recorren los cuatro slots, incluido el que se
+                                // pinta como relleno, así que el preview delata los cuatro diseños.
+                                listOf(MonyIcon.Transport, MonyIcon.Pin).forEach { icon ->
+                                    val vector = remember(style, icon, palettes) {
+                                        MonyIconResolver.resolveMonyColor(icon, palettes.getValue(style))
+                                    }
+                                    if (vector != null) {
+                                        Icon(
+                                            imageVector = vector,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(MonyIconSize.Medium),
+                                            tint = Color.Unspecified,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IconPackSelector(
+    selected: IconPack,
+    monyColorStyle: MonyColorStyle,
+    onSelect: (IconPack) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(end = 4.dp),
@@ -579,15 +704,36 @@ private fun IconPackSelector(selected: IconPack, onSelect: (IconPack) -> Unit) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         listOf(MonyIcon.Home, MonyIcon.Add, MonyIcon.Savings, MonyIcon.Settings).forEach { icon ->
-                            MonyIcon(
-                                icon = icon,
-                                contentDescription = null,
-                                packOverride = pack,
-                                tint = if (pack == IconPack.MONY_COLOR) Color.Unspecified
-                                else MaterialTheme.colorScheme.onSurface,
-                                role = MonyIconRole.STATE,
-                                size = MonyIconSize.Medium,
-                            )
+                            if (pack == IconPack.MONY_COLOR) {
+                                // Cada tarjeta debe previsualizar su propio diseño con la paleta
+                                // real, así que se salta MonyIcon y toma el vector ya construido.
+                                val vector = remember(icon, monyColorStyle, colorScheme) {
+                                    MonyIconResolver.resolveMonyColor(
+                                        icon,
+                                        monyColorStyle.palette(
+                                            colorScheme.onSurface,
+                                            colorScheme.knockoutColor(),
+                                        ),
+                                    )
+                                }
+                                if (vector != null) {
+                                    Icon(
+                                        imageVector = vector,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(MonyIconSize.Medium),
+                                        tint = Color.Unspecified,
+                                    )
+                                }
+                            } else {
+                                MonyIcon(
+                                    icon = icon,
+                                    contentDescription = null,
+                                    packOverride = pack,
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    role = MonyIconRole.STATE,
+                                    size = MonyIconSize.Medium,
+                                )
+                            }
                         }
                     }
                 }

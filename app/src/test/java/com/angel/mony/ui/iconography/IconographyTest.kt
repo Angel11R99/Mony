@@ -5,13 +5,15 @@ import com.angel.mony.ui.theme.AppAppearance
 import com.angel.mony.ui.theme.monyColorPalette
 import com.angel.mony.ui.theme.parseIconColorMode
 import com.angel.mony.ui.theme.parseIconPack
+import com.angel.mony.ui.theme.parseMonyColorStyle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
-
 import org.junit.Test
 
 class IconographyTest {
@@ -23,12 +25,20 @@ class IconographyTest {
         assertEquals(IconColorMode.AUTOMATIC, appearance.iconColorMode)
         assertEquals(IconPack.MATERIAL, parseIconPack(null))
         assertEquals(IconColorMode.AUTOMATIC, parseIconColorMode("unknown"))
+        // Las instalaciones previas nunca guardaron estilo, así que el default debe ser
+        // MULTI_COLOR para no alterar el aspecto que ya tenía el pack.
+        assertEquals(MonyColorStyle.MULTI_COLOR, appearance.monyColorStyle)
+        assertEquals(MonyColorStyle.MULTI_COLOR, parseMonyColorStyle(null))
+        assertEquals(MonyColorStyle.MULTI_COLOR, parseMonyColorStyle("unknown"))
     }
 
     @Test
     fun `stored pack names restore all supported packs`() {
         IconPack.entries.forEach { pack -> assertEquals(pack, parseIconPack(pack.name)) }
         IconColorMode.entries.forEach { mode -> assertEquals(mode, parseIconColorMode(mode.name)) }
+        MonyColorStyle.entries.forEach { style ->
+            assertEquals(style, parseMonyColorStyle(style.name))
+        }
     }
 
     @Test
@@ -127,7 +137,9 @@ class IconographyTest {
         categories.forEach { icon ->
             val asset = MonyIconResolver.resolve(icon, IconPack.MONY_COLOR)
             assertTrue("$icon debe usar arte Mony Color", asset is MonyIconAsset.Multicolor)
-            val vector = (asset as MonyIconAsset.Multicolor).build(Color.Black)
+            val vector = (asset as MonyIconAsset.Multicolor).build(
+                MonyColorStyle.MULTI_COLOR.palette(Color.Black)
+            )
             assertTrue("$icon debe venir de IconPark", vector.name.startsWith("IconPark."))
             assertEquals(48f, vector.viewportWidth, 0f)
             assertEquals(48f, vector.viewportHeight, 0f)
@@ -153,12 +165,61 @@ class IconographyTest {
     fun `Mony Color builds a distinct vector per theme ink`() {
         val savings = MonyIconResolver.resolve(MonyIcon.Savings, IconPack.MONY_COLOR) as MonyIconAsset.Multicolor
 
-        val light = savings.build(Color(0xFF1B1B1F))
-        val dark = savings.build(Color(0xFFE6E1E5))
+        val light = savings.build(MonyColorStyle.MULTI_COLOR.palette(Color(0xFF1B1B1F)))
+        val dark = savings.build(MonyColorStyle.MULTI_COLOR.palette(Color(0xFFE6E1E5)))
 
         assertEquals("IconPark.strongbox", light.name)
         assertEquals(light.name, dark.name)
         assertNotSame(light, dark)
+    }
+
+    @Test
+    fun `each Mony Color style remaps the four IconPark slots like the official runtime`() {
+        val ink = Color(0xFF1B1B1F)
+        val accent = Color(0xFF2F88FF)
+
+        val outline = MonyColorStyle.OUTLINE.palette(ink)
+        assertEquals(ink, outline.outerStroke)
+        assertEquals(ink, outline.innerStroke)
+        assertNull(outline.outerFill)
+        assertNull(outline.innerFill)
+
+        val filled = MonyColorStyle.FILLED.palette(ink, knockout = Color(0xFFF8F6FB))
+        assertEquals(ink, filled.outerStroke)
+        assertEquals(ink, filled.outerFill)
+        assertEquals(Color(0xFFF8F6FB), filled.innerStroke)
+        assertEquals(Color(0xFFF8F6FB), filled.innerFill)
+
+        val twoTone = MonyColorStyle.TWO_TONE.palette(ink)
+        assertEquals(ink, twoTone.outerStroke)
+        assertEquals(accent, twoTone.outerFill)
+        assertEquals(ink, twoTone.innerStroke)
+        assertEquals(accent, twoTone.innerFill)
+
+        val multi = MonyColorStyle.MULTI_COLOR.palette(ink)
+        assertEquals(ink, multi.outerStroke)
+        assertEquals(accent, multi.outerFill)
+        assertEquals(Color.White, multi.innerStroke)
+        assertEquals(Color(0xFF43CCF8), multi.innerFill)
+    }
+
+    @Test
+    fun `every Mony Color style builds valid artwork for the same geometry`() {
+        val icon = MonyIcon.Transport
+
+        MonyColorStyle.entries.forEach { style ->
+            val vector = MonyIconResolver.resolveMonyColor(icon, style.palette(Color.Black))
+
+            assertNotNull("$style debe producir arte Mony Color", vector)
+            assertEquals("$style comparte la geometría de IconPark", "IconPark.car", vector!!.name)
+            assertEquals(48f, vector.viewportWidth, 0f)
+            assertEquals(48f, vector.viewportHeight, 0f)
+        }
+    }
+
+    @Test
+    fun `resolveMonyColor returns null instead of falling back to Material`() {
+        assertNull(MonyIconResolver.resolveMonyColor(MonyIcon.Delete, MonyColorStyle.OUTLINE.palette(Color.Black)))
     }
 
     @Test

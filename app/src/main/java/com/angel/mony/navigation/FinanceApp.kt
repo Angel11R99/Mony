@@ -56,6 +56,7 @@ import com.angel.mony.ui.theme.AppShapeStyle
 import com.angel.mony.ui.theme.AppThemeMode
 import com.angel.mony.ui.iconography.IconColorMode
 import com.angel.mony.ui.iconography.IconPack
+import com.angel.mony.ui.iconography.MonyColorStyle
 import java.time.LocalTime
 
 @Composable
@@ -76,9 +77,10 @@ fun FinanceApp(
     onFontFamilyChange: (AppFontFamily) -> Unit,
     onBackgroundDecorationChange: (BackgroundDecoration) -> Unit,
     onBackgroundIntensityChange: (Float) -> Unit,
-    onIconPackChange: (IconPack) -> Unit,
-    onIconColorModeChange: (IconColorMode) -> Unit,
-    onCustomIconColorChange: (Int) -> Unit,
+ onIconPackChange: (IconPack) -> Unit,
+ onIconColorModeChange: (IconColorMode) -> Unit,
+ onCustomIconColorChange: (Int) -> Unit,
+ onMonyColorStyleChange: (MonyColorStyle) -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onAutomaticCloseTimeChange: (LocalTime) -> Unit,
     onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
@@ -284,6 +286,7 @@ fun FinanceApp(
                     onIconPackChange = onIconPackChange,
                     onIconColorModeChange = onIconColorModeChange,
                     onCustomIconColorChange = onCustomIconColorChange,
+                    onMonyColorStyleChange = onMonyColorStyleChange,
                 )
             }
             composable(SettingsRoutes.NAVIGATION) {

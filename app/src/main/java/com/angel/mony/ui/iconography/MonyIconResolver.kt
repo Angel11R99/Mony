@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.adamglin.PhosphorIcons
+import com.angel.mony.ui.iconography.vendor.iconpark.IconParkPalette
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.*
 import com.composables.icons.lucide.*
@@ -27,6 +28,15 @@ object MonyIconResolver {
             imageVector = resolveMaterial(icon),
             usesGlobalTint = pack != IconPack.MONY_COLOR,
         )
+
+    /**
+     * Builds a Mony Color vector directly, bypassing the material fallback.
+     *
+     * Used by the appearance preview, which must only offer the styles that actually change the
+     * artwork. Icons with no Mony Color glyph return `null` instead of silently falling back.
+     */
+    fun resolveMonyColor(icon: MonyIcon, palette: IconParkPalette): ImageVector? =
+        MONY_COLOR_VECTORS[icon]?.invoke(palette)
 
     internal fun resolveOrNull(icon: MonyIcon, pack: IconPack): MonyIconAsset? = when (pack) {
         IconPack.MATERIAL -> MonyIconAsset.Tintable(resolveMaterial(icon))

@@ -10,9 +10,20 @@
 // invented or re-scaled; the artwork keeps its original 48x48 viewport and is only scaled by
 // Compose when it is drawn at a requested size.
 //
-// Colours: the collection only uses #000 (ink), #2F88FF, #43CCF8, #fff and none. The ink is
-// emitted as the `ink` parameter so the caller can adapt the outline to light/dark themes
-// without turning the whole icon into a monochrome tint.
+// Colours: IconPark derives its four themes (outline, filled, two-tone, multi-color) from a
+// single source drawing by remapping exactly four colour slots, so the geometry is generated
+// once and every theme is reproduced by swapping the palette at runtime. The slots are the ones
+// used by IconPark's own runtime (packages/svg/src/runtime):
+//
+//   #000   -> outerStroke   IconPark colors[0], outStrokeColor
+//   #2F88FF -> outerFill    IconPark colors[1], outFillColor
+//   #fff   -> innerStroke   IconPark colors[2], innerStrokeColor
+//   #43CCF8 -> innerFill    IconPark colors[3], innerFillColor
+//
+// A slot may be painted as a fill or as a stroke depending on the source path (for example
+// `upload` fills with innerStroke), which is why the generated code resolves each slot by name
+// instead of assuming a fixed role. The two fill-capable slots are nullable because the outline
+// theme paints no fill at all.
 
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -88,12 +99,15 @@ const INHERITED = [
   'stroke-opacity',
 ]
 
-const PALETTE = {
-  '#2f88ff': 'Color(0xFF2F88FF)',
-  '#43ccf8': 'Color(0xFF43CCF8)',
-  '#ffffff': 'Color(0xFFFFFFFF)',
-  '#fff': 'Color(0xFFFFFFFF)',
-}
+/** Maps each IconPark colour slot to the `IconParkPalette` property that drives it. */
+const PALETTE_SLOTS = new Map([
+  ['#000', 'outerStroke'],
+  ['#000000', 'outerStroke'],
+  ['#2f88ff', 'outerFill'],
+  ['#43ccf8', 'innerFill'],
+  ['#ffffff', 'innerStroke'],
+  ['#fff', 'innerStroke'],
+])
 
 const TAG = /<(\/)?([a-zA-Z][\w:-]*)((?:\s+[\w:.-]+\s*=\s*"[^"]*")*)\s*(\/)?>/g
 const ATTR = /([\w:.-]+)\s*=\s*"([^"]*)"/g
@@ -147,9 +161,9 @@ function num(value, fallback = 0) {
 function color(raw, context) {
   if (raw === undefined || raw === 'none') return null
   const value = raw.trim().toLowerCase()
-  if (value === '#000' || value === '#000000') return { code: 'ink', svg: '#000' }
+  const slot = PALETTE_SLOTS.get(value)
+  if (slot) return { slot }
   if (value === 'transparent') return null
-  if (PALETTE[value]) return { code: PALETTE[value], svg: raw }
   throw new Error(`${context}: colour no soportado "${raw}"`)
 }
 
@@ -267,9 +281,9 @@ function emitPath(node, inherited, context) {
   const lines = [
     'addPath(',
     `    pathData = PathParser().parsePathString("${node.pathData}").toNodes(),`,
-    `    fill = ${fill ? `SolidColor(${fill.code})` : 'null'},`,
+    `    fill = ${fill ? `palette.${fill.slot}.brush()` : 'null'},`,
     `    fillAlpha = ${float(fillAlpha)},`,
-    `    stroke = ${stroke ? `SolidColor(${stroke.code})` : 'null'},`,
+    `    stroke = ${stroke ? `SolidColor(palette.${stroke.slot})` : 'null'},`,
     `    strokeAlpha = ${float(strokeAlpha)},`,
     `    strokeLineWidth = ${float(num(style['stroke-width'], 1))},`,
     `    strokeLineCap = ${cap(style['stroke-linecap'])},`,
@@ -357,7 +371,6 @@ function render(name, definition) {
   const blocks = emitIcon(name, definition)
   const functionName = lowerCamel(name)
   return `${HEADER}
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -369,11 +382,11 @@ import androidx.compose.ui.unit.dp
 /**
  * IconPark \`${name}\` (48x48) as a Compose [ImageVector].
  *
- * [ink] replaces the collection's #000 outline so the artwork follows light and dark themes
- * while the #2F88FF, #43CCF8 and #fff fills stay untouched. A fresh vector is built on every
- * call, so callers should cache it for the composition (for example with \`remember\`).
+ * The geometry is shared by every IconPark theme; [palette] selects the theme by supplying the
+ * four colour slots IconPark remaps at runtime. A fresh vector is built on every call, so callers
+ * should cache it for the composition (for example with \`remember\`).
  */
-public fun IconPark.${functionName}(ink: Color): ImageVector = ImageVector.Builder(
+public fun IconPark.${functionName}(palette: IconParkPalette): ImageVector = ImageVector.Builder(
     name = "IconPark.${name}",
     defaultWidth = 24.dp,
     defaultHeight = 24.dp,
@@ -386,8 +399,31 @@ ${blocks.map((block) => block.split('\n').map((line) => `    ${line}`).join('\n'
 }
 
 const CONTROLLER = `${HEADER}
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+
+/**
+ * The four colour slots IconPark remaps to render its themes.
+ *
+ * IconPark (IconPark by ByteDance, Apache-2.0) authors each glyph once and derives every theme by
+ * swapping these slots, so the vendored vectors stay theme-parameterised instead of duplicated per
+ * style. [outerFill] and [innerFill] are nullable because the outline theme paints no fill.
+ *
+ * @see MonyColorStyle for the theme presets the UI offers.
+ */
+public class IconParkPalette(
+    public val outerStroke: Color,
+    public val outerFill: Color?,
+    public val innerStroke: Color,
+    public val innerFill: Color?,
+)
+
 /** Namespace for the selected IconPark vectors bundled by Mony for the Mony Color pack. */
-object IconPark
+public object IconPark
+
+/** Resolves a nullable palette slot to a brush, or \`null\` when the theme paints no fill. */
+internal fun Color?.brush(): Brush? = this?.let { SolidColor(it) }
 `
 
 function main() {

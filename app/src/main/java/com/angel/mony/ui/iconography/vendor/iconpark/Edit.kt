@@ -4,7 +4,6 @@ package com.angel.mony.ui.iconography.vendor.iconpark
 // Source: @iconify-json/icon-park@1.2.4 (IconPark by ByteDance, Apache-2.0).
 // Regenerate with: node tools/iconpark/generate.mjs --source <extracted>/package/icons.json
 
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -16,11 +15,11 @@ import androidx.compose.ui.unit.dp
 /**
  * IconPark `edit` (48x48) as a Compose [ImageVector].
  *
- * [ink] replaces the collection's #000 outline so the artwork follows light and dark themes
- * while the #2F88FF, #43CCF8 and #fff fills stay untouched. A fresh vector is built on every
- * call, so callers should cache it for the composition (for example with `remember`).
+ * The geometry is shared by every IconPark theme; [palette] selects the theme by supplying the
+ * four colour slots IconPark remaps at runtime. A fresh vector is built on every call, so callers
+ * should cache it for the composition (for example with `remember`).
  */
-public fun IconPark.edit(ink: Color): ImageVector = ImageVector.Builder(
+public fun IconPark.edit(palette: IconParkPalette): ImageVector = ImageVector.Builder(
     name = "IconPark.edit",
     defaultWidth = 24.dp,
     defaultHeight = 24.dp,
@@ -31,7 +30,7 @@ public fun IconPark.edit(ink: Color): ImageVector = ImageVector.Builder(
         pathData = PathParser().parsePathString("M7 42H43").toNodes(),
         fill = null,
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Round,
@@ -41,9 +40,9 @@ public fun IconPark.edit(ink: Color): ImageVector = ImageVector.Builder(
     )
     addPath(
         pathData = PathParser().parsePathString("M11 26.7199V34H18.3172L39 13.3081L31.6951 6L11 26.7199Z").toNodes(),
-        fill = SolidColor(Color(0xFF2F88FF)),
+        fill = palette.outerFill.brush(),
         fillAlpha = 1f,
-        stroke = SolidColor(ink),
+        stroke = SolidColor(palette.outerStroke),
         strokeAlpha = 1f,
         strokeLineWidth = 4f,
         strokeLineCap = StrokeCap.Butt,
