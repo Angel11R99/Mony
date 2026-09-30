@@ -7,6 +7,7 @@ import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.EntryDisplayPreferences
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.EntryCardSize
+import com.angel.mony.domain.model.ExpenseCreationResult
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.FixedEntry
 import com.angel.mony.domain.model.FixedScheduleMode
@@ -140,27 +141,102 @@ class FixedEntriesViewModel @Inject constructor(
         }
     }
 
+    // Funding dialog state
+    private val _showFundingDialog = MutableStateFlow<ExpenseCreationResult.RequiresFundingSource?>(null)
+    val showFundingDialog: StateFlow<ExpenseCreationResult.RequiresFundingSource?> = _showFundingDialog
+    private var pendingFixedEntry: FixedEntry? = null
+    private var pendingPostingDate: LocalDate? = null
+
     fun addNow(entry: FixedEntry, postingDate: LocalDate) {
         if (!entry.isActive) {
             message.value = "Activa la plantilla antes de agregarla"
             return
         }
+        val now = Instant.now()
+        val transaction = entry.toTransaction(date = postingDate, now = now)
         viewModelScope.launch {
-            val now = Instant.now()
-            runCatching {
-                fixedEntries.post(
-                    entry = entry.copy(
-                        lastAddedAt = now,
-                        lastAddedDate = postingDate,
-                    ),
-                    transaction = entry.toTransaction(date = postingDate, now = now),
-                )
-                updateAllFinanceWidgets(context)
-            }.onSuccess {
+            val result = fixedEntries.post(
+                entry = entry.copy(
+                    lastAddedAt = now,
+                    lastAddedDate = postingDate,
+                ),
+                transaction = transaction,
+            )
+            handlePostResult(result, entry, postingDate, transaction)
+        }
+    }
+
+    private fun handlePostResult(
+        result: ExpenseCreationResult,
+        entry: FixedEntry,
+        postingDate: LocalDate,
+        transaction: FinanceTransaction,
+    ) {
+        when (result) {
+            is ExpenseCreationResult.Saved -> {
                 val kind = if (entry.type == TransactionType.EXPENSE) "Gasto" else "Ingreso"
                 message.value = "$kind agregado correctamente"
-            }.onFailure { message.value = "No se pudo agregar el movimiento" }
+                viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
+            }
+            is ExpenseCreationResult.RequiresFundingSource -> {
+                pendingFixedEntry = entry
+                pendingPostingDate = postingDate
+                _showFundingDialog.value = result
+            }
+            is ExpenseCreationResult.Error -> {
+                message.value = result.message
+            }
         }
+    }
+
+    fun confirmFundingSource(sourceDescription: String) {
+        val result = _showFundingDialog.value ?: return
+        val entry = pendingFixedEntry ?: return
+        val postingDate = pendingPostingDate ?: return
+        val now = Instant.now()
+        val transaction = entry.toTransaction(date = postingDate, now = now)
+
+        _showFundingDialog.value = null
+        pendingFixedEntry = null
+        pendingPostingDate = null
+
+        viewModelScope.launch {
+            val finalResult = fixedEntries.post(
+                entry = entry.copy(
+                    lastAddedAt = now,
+                    lastAddedDate = postingDate,
+                ),
+                transaction = transaction.copy(
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+                fundingSourceDescription = sourceDescription,
+            )
+            when (finalResult) {
+                is ExpenseCreationResult.Saved -> {
+                    val kind = if (entry.type == TransactionType.EXPENSE) "Gasto" else "Ingreso"
+                    message.value = "$kind agregado correctamente"
+                    viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
+                }
+                is ExpenseCreationResult.Error -> {
+                    message.value = finalResult.message
+                    _showFundingDialog.value = result
+                    pendingFixedEntry = entry
+                    pendingPostingDate = postingDate
+                }
+                is ExpenseCreationResult.RequiresFundingSource -> {
+                    _showFundingDialog.value = finalResult
+                    pendingFixedEntry = entry
+                    pendingPostingDate = postingDate
+                }
+            }
+        }
+    }
+
+    fun cancelFundingDialog() {
+        _showFundingDialog.value = null
+        pendingFixedEntry = null
+        pendingPostingDate = null
     }
 }
 

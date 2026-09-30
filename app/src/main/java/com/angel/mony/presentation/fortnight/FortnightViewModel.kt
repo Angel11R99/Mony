@@ -177,6 +177,12 @@ class FortnightViewModel @Inject constructor(
     private val mutablePendingDeletePayment = MutableStateFlow<Long?>(null)
     val pendingPaymentDelete: StateFlow<Long?> = mutablePendingDeletePayment
 
+    // Funding dialog state
+    private val _showFundingDialog = MutableStateFlow<FortnightPaymentResult.RequiresFundingSource?>(null)
+    val showFundingDialog: StateFlow<FortnightPaymentResult.RequiresFundingSource?> = _showFundingDialog
+    private var pendingFundingPaymentDraft: FortnightPaymentDraft? = null
+    private var pendingFundingAllowOverpayment: Boolean = false
+
     fun consumeMessage() { message.value = null }
 
     private val monthlyMode: Boolean
@@ -492,7 +498,12 @@ class FortnightViewModel @Inject constructor(
                     is FortnightPaymentResult.Registered -> {
                         message.value = "Abono registrado."
                         cancelPayment()
-                        runCatching { updateAllFinanceWidgets(context) }
+                        viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
+                    }
+                    is FortnightPaymentResult.RequiresFundingSource -> {
+                        pendingFundingPaymentDraft = draft
+                        pendingFundingAllowOverpayment = allowOverpayment
+                        _showFundingDialog.value = result
                     }
                     is FortnightPaymentResult.Overpayment -> mutableOverpayment.value = draft
                     FortnightPaymentResult.InvalidAmount -> message.value = "El monto del abono debe ser mayor que cero."
@@ -506,10 +517,61 @@ class FortnightViewModel @Inject constructor(
                         message.value = "El concepto ya no existe."
                         cancelPayment()
                     }
+                    is FortnightPaymentResult.Error -> message.value = result.message
                 }
             }.onFailure { message.value = "No se pudo registrar el abono." }
             isSaving.value = false
         }
+    }
+
+    fun confirmFundingSource(sourceDescription: String) {
+        val result = _showFundingDialog.value ?: return
+        val draft = pendingFundingPaymentDraft ?: return
+        val allowOverpayment = pendingFundingAllowOverpayment
+
+        _showFundingDialog.value = null
+        pendingFundingPaymentDraft = null
+
+        viewModelScope.launch {
+            isSaving.value = true
+            runCatching {
+                repository.registerPaymentWithFunding(
+                    itemId = draft.itemId,
+                    amountInCents = draft.amountInCents!!,
+                    date = draft.date,
+                    allowOverpayment = allowOverpayment,
+                    fundingSourceDescription = sourceDescription,
+                )
+            }.onSuccess { finalResult ->
+                when (finalResult) {
+                    is FortnightPaymentResult.Registered -> {
+                        message.value = "Abono registrado."
+                        cancelPayment()
+                        runCatching { updateAllFinanceWidgets(context) }
+                    }
+                    is FortnightPaymentResult.Error -> {
+                        message.value = finalResult.message
+                        _showFundingDialog.value = result
+                        pendingFundingPaymentDraft = draft
+                        pendingFundingAllowOverpayment = allowOverpayment
+                    }
+                    is FortnightPaymentResult.RequiresFundingSource -> {
+                        _showFundingDialog.value = finalResult
+                        pendingFundingPaymentDraft = draft
+                        pendingFundingAllowOverpayment = allowOverpayment
+                    }
+                    else -> {
+                        message.value = "Error inesperado."
+                    }
+                }
+            }.onFailure { message.value = "No se pudo registrar el abono." }
+            isSaving.value = false
+        }
+    }
+
+    fun cancelFundingDialog() {
+        _showFundingDialog.value = null
+        pendingFundingPaymentDraft = null
     }
 
     fun confirmOverpayment() {

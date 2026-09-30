@@ -9,6 +9,7 @@ import com.angel.mony.domain.model.EntryCardSize
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.SavingsGoalProgress
 import com.angel.mony.domain.model.TransactionType
+import com.angel.mony.domain.model.ExpenseCreationResult
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.SavingsRepository
 import com.angel.mony.domain.repository.TransactionRepository
@@ -79,6 +80,11 @@ class SavingsViewModel @Inject constructor(
             else transactions.observeBySavingsGoal(goal.goal.id)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // Funding dialog state
+    private val _showFundingDialog = MutableStateFlow<ExpenseCreationResult.RequiresFundingSource?>(null as ExpenseCreationResult.RequiresFundingSource?)
+    val showFundingDialog: StateFlow<ExpenseCreationResult.RequiresFundingSource?> = _showFundingDialog
+    private var pendingContribution: Pair<SavingsGoalProgress, FinanceTransaction>? = null
 
     fun openContributions(goal: SavingsGoalProgress) {
         selectedGoal.value = goal
@@ -179,33 +185,85 @@ class SavingsViewModel @Inject constructor(
                 message.value = "Necesitas la categoría \"$SAVINGS_CATEGORY\" activa para aportar"
                 return
             }
-            else -> viewModelScope.launch {
-                isSaving.value = true
-                val categoryId = state.value.savingsCategoryId
-                runCatching {
-                    val now = Instant.now()
-                    val note = rawDescription.trim()
-                    transactions.create(
-                        FinanceTransaction(
-                            amountInCents = cents,
-                            type = TransactionType.EXPENSE,
-                            categoryId = categoryId!!,
-                            description = if (note.isEmpty()) "$CONTRIBUTION_PREFIX${goal.goal.name}"
-                            else "$CONTRIBUTION_PREFIX${goal.goal.name} · $note",
-                            date = now.atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
-                            createdAt = now,
-                            updatedAt = now,
-                            savingsGoalId = goal.goal.id,
-                        )
-                    )
-                    updateAllFinanceWidgets(context)
-                }.onSuccess {
-                    message.value = "Aporte registrado."
-                    onDone()
-                }.onFailure { message.value = "No se pudo registrar el aporte" }
-                isSaving.value = false
+            else -> {
+                val now = Instant.now()
+                val note = rawDescription.trim()
+                val transaction = FinanceTransaction(
+                    amountInCents = cents,
+                    type = TransactionType.EXPENSE,
+                    categoryId = state.value.savingsCategoryId!!,
+                    description = if (note.isEmpty()) "$CONTRIBUTION_PREFIX${goal.goal.name}"
+                    else "$CONTRIBUTION_PREFIX${goal.goal.name} · $note",
+                    date = now.atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
+                    createdAt = now,
+                    updatedAt = now,
+                    savingsGoalId = goal.goal.id,
+                )
+                viewModelScope.launch {
+                    isSaving.value = true
+                    val result = transactions.createWithFunding(transaction, null)
+                    isSaving.value = false
+                    handleContributionResult(result, transaction, goal, onDone)
+                }
             }
         }
+    }
+
+    private fun handleContributionResult(
+        result: ExpenseCreationResult,
+        transaction: FinanceTransaction,
+        goal: SavingsGoalProgress,
+        onDone: () -> Unit,
+    ) {
+        when (result) {
+            is ExpenseCreationResult.Saved -> {
+                message.value = "Aporte registrado."
+                viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
+                onDone()
+            }
+            is ExpenseCreationResult.RequiresFundingSource -> {
+                pendingContribution = Pair(goal, transaction)
+                _showFundingDialog.value = result
+            }
+            is ExpenseCreationResult.Error -> {
+                message.value = result.message
+            }
+        }
+    }
+
+    fun confirmFundingSource(sourceDescription: String) {
+        val result = _showFundingDialog.value ?: return
+        val contribution = pendingContribution ?: return
+
+        _showFundingDialog.value = null
+        pendingContribution = null
+
+        viewModelScope.launch {
+            isSaving.value = true
+            val finalResult = transactions.createWithFunding(contribution.second, sourceDescription)
+            isSaving.value = false
+            when (finalResult) {
+                is ExpenseCreationResult.Saved -> {
+                    message.value = "Aporte registrado."
+                    viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
+                    // Note: onDone is not accessible here, the UI should handle navigation
+                }
+                is ExpenseCreationResult.Error -> {
+                    message.value = finalResult.message
+                    _showFundingDialog.value = result
+                    pendingContribution = contribution
+                }
+                is ExpenseCreationResult.RequiresFundingSource -> {
+                    _showFundingDialog.value = finalResult
+                    pendingContribution = contribution
+                }
+            }
+        }
+    }
+
+    fun cancelFundingDialog() {
+        _showFundingDialog.value = null
+        pendingContribution = null
     }
 
     private fun persist(

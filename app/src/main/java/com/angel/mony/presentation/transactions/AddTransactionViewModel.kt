@@ -8,13 +8,13 @@ import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.showToast
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
+import com.angel.mony.domain.model.ExpenseCreationResult
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.activeBudgetPeriod
 import com.angel.mony.domain.repository.BudgetRepository
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.TransactionRepository
-import com.angel.mony.domain.usecase.SaveTransaction
 import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -38,7 +38,6 @@ class AddTransactionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     categories: CategoryRepository,
     private val budgetRepository: BudgetRepository,
-    private val saveTransaction: SaveTransaction,
     private val transactionRepository: TransactionRepository,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -60,6 +59,12 @@ class AddTransactionViewModel @Inject constructor(
     val activePeriod: StateFlow<DateRange> = budgetRepository.observe()
         .map { budget -> activeBudgetPeriod(budget) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DateRange.currentFortnight())
+
+    // Funding dialog state
+    private val _showFundingDialog = MutableStateFlow<ExpenseCreationResult.RequiresFundingSource?>(null)
+    val showFundingDialog: StateFlow<ExpenseCreationResult.RequiresFundingSource?> = _showFundingDialog
+    private var pendingTransaction: FinanceTransaction? = null
+    private var pendingOnSaved: (() -> Unit)? = null
 
     init {
         if (transactionId != 0L) viewModelScope.launch {
@@ -93,25 +98,51 @@ class AddTransactionViewModel @Inject constructor(
             return
         }
 
+        val transaction = FinanceTransaction(
+            id = if (isEditing) transactionId else 0,
+            amountInCents = cents!!,
+            type = type,
+            categoryId = categoryId!!,
+            description = note,
+            date = parsedDate!!,
+            createdAt = editingTransaction.value?.createdAt ?: Instant.now(),
+            updatedAt = Instant.now(),
+            fixedEntryId = editingTransaction.value?.fixedEntryId,
+            savingsGoalId = editingTransaction.value?.savingsGoalId,
+        )
+
+        if (isEditing) {
+            saveExistingTransaction(transaction, onSaved)
+        } else {
+            saveNewTransaction(transaction, onSaved)
+        }
+    }
+
+    private fun saveNewTransaction(transaction: FinanceTransaction, onSaved: () -> Unit) {
         viewModelScope.launch {
             saving.value = true
-            val result = runCatching {
-                val existing = editingTransaction.value
-                saveTransaction(FinanceTransaction(
-                    id = existing?.id ?: 0,
-                    amountInCents = cents!!,
-                    type = type,
-                    categoryId = categoryId!!,
-                    description = note,
-                    date = parsedDate!!,
-                    createdAt = existing?.createdAt ?: Instant.now(),
-                    updatedAt = Instant.now(),
-                    fixedEntryId = existing?.fixedEntryId,
-                    savingsGoalId = existing?.savingsGoalId,
-                ))
-            }
+            val result = transactionRepository.createWithFunding(transaction, null)
             saving.value = false
-            result.onSuccess {
+            handleResult(result, transaction, onSaved)
+        }
+    }
+
+    private fun saveExistingTransaction(transaction: FinanceTransaction, onSaved: () -> Unit) {
+        viewModelScope.launch {
+            saving.value = true
+            val result = transactionRepository.updateWithFunding(transaction, transactionId, null)
+            saving.value = false
+            handleResult(result, transaction, onSaved)
+        }
+    }
+
+    private suspend fun handleResult(
+        result: ExpenseCreationResult,
+        transaction: FinanceTransaction,
+        onSaved: () -> Unit,
+    ) {
+        when (result) {
+            is ExpenseCreationResult.Saved -> {
                 context.showToast(if (isEditing) {
                     "Movimiento actualizado correctamente"
                 } else {
@@ -119,11 +150,71 @@ class AddTransactionViewModel @Inject constructor(
                 })
                 fieldErrors.value = emptyMap()
                 onSaved()
-                withContext(Dispatchers.IO + NonCancellable) {
+                runCatching { updateAllFinanceWidgets(context) }
+            }
+            is ExpenseCreationResult.RequiresFundingSource -> {
+                pendingTransaction = transaction
+                pendingOnSaved = onSaved
+                _showFundingDialog.value = result
+            }
+            is ExpenseCreationResult.Error -> {
+                error.value = result.message
+            }
+        }
+    }
+
+    fun confirmFundingSource(sourceDescription: String) {
+        val result = _showFundingDialog.value
+            ?: return
+        val transaction = pendingTransaction
+            ?: return
+        val onSaved = pendingOnSaved
+            ?: return
+
+        _showFundingDialog.value = null
+        pendingTransaction = null
+        pendingOnSaved = null
+
+        viewModelScope.launch {
+            saving.value = true
+            val finalResult = if (isEditing) {
+                transactionRepository.updateWithFunding(transaction, transactionId, sourceDescription)
+            } else {
+                transactionRepository.createWithFunding(transaction, sourceDescription)
+            }
+            saving.value = false
+            when (finalResult) {
+                is ExpenseCreationResult.Saved -> {
+                    context.showToast(if (isEditing) {
+                        "Movimiento actualizado correctamente"
+                    } else {
+                        if (type == TransactionType.EXPENSE) "Gasto guardado correctamente" else "Ingreso guardado correctamente"
+                    })
+                    fieldErrors.value = emptyMap()
+                    onSaved()
                     runCatching { updateAllFinanceWidgets(context) }
                 }
-            }.onFailure { error.value = it.message ?: "No se pudo guardar" }
+                is ExpenseCreationResult.Error -> {
+                    error.value = finalResult.message
+                    // Re-show dialog on error
+                    _showFundingDialog.value = result
+                    pendingTransaction = transaction
+                    pendingOnSaved = onSaved
+                }
+                is ExpenseCreationResult.RequiresFundingSource -> {
+                    // Should not happen since we provided a source
+                    _showFundingDialog.value = finalResult
+                    pendingTransaction = transaction
+                    pendingOnSaved = onSaved
+                }
+            }
         }
+    }
+
+    fun cancelFundingDialog() {
+        _showFundingDialog.value = null
+        pendingTransaction = null
+        pendingOnSaved = null
     }
 }
 

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.EntryDisplayPreferences
 import com.angel.mony.domain.model.Category
+import com.angel.mony.domain.model.ExpenseCreationResult
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.EntryCardSize
 import com.angel.mony.domain.model.PendingEntry
@@ -133,6 +134,12 @@ class PendingEntriesViewModel @Inject constructor(
         }
     }
 
+    // Funding dialog state
+    private val _showFundingDialog = MutableStateFlow<ExpenseCreationResult.RequiresFundingSource?>(null)
+    val showFundingDialog: StateFlow<ExpenseCreationResult.RequiresFundingSource?> = _showFundingDialog
+    private var pendingCompleteEntry: PendingEntry? = null
+    private var pendingCompleteTransaction: FinanceTransaction? = null
+
     fun toggleDone(entry: PendingEntry) {
         if (!processingEntryIds.add(entry.id)) return
         viewModelScope.launch {
@@ -145,11 +152,10 @@ class PendingEntriesViewModel @Inject constructor(
                     )
                 } else {
                     val now = Instant.now()
-                    pendingEntries.complete(
-                        entry = entry,
-                        transaction = entry.toTransaction(now),
-                    )
-                    PendingReminderScheduler.cancel(context, entry.id)
+                    val transaction = entry.toTransaction(now)
+                    val result = pendingEntries.complete(entry, transaction)
+                    handleCompleteResult(result, entry, transaction)
+                    return@launch
                 }
                 updateAllFinanceWidgets(context)
             }.onSuccess {
@@ -161,6 +167,72 @@ class PendingEntriesViewModel @Inject constructor(
             }.onFailure { message.value = "No se pudo actualizar el recordatorio" }
             processingEntryIds.remove(entry.id)
         }
+    }
+
+    private fun handleCompleteResult(
+        result: ExpenseCreationResult,
+        entry: PendingEntry,
+        transaction: FinanceTransaction,
+    ) {
+        when (result) {
+            is ExpenseCreationResult.Saved -> {
+                message.value = "${entry.type.label()} registrado en el historial"
+                viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
+                processingEntryIds.remove(entry.id)
+            }
+            is ExpenseCreationResult.RequiresFundingSource -> {
+                pendingCompleteEntry = entry
+                pendingCompleteTransaction = transaction
+                _showFundingDialog.value = result
+            }
+            is ExpenseCreationResult.Error -> {
+                message.value = result.message
+                processingEntryIds.remove(entry.id)
+            }
+        }
+    }
+
+    fun confirmFundingSource(sourceDescription: String) {
+        val result = _showFundingDialog.value ?: return
+        val entry = pendingCompleteEntry ?: return
+        val transaction = pendingCompleteTransaction ?: return
+
+        _showFundingDialog.value = null
+        pendingCompleteEntry = null
+        pendingCompleteTransaction = null
+
+        viewModelScope.launch {
+            val finalResult = pendingEntries.complete(entry, transaction.copy(
+                createdAt = Instant.now(),
+                updatedAt = Instant.now(),
+            ), fundingSourceDescription = sourceDescription)
+            when (finalResult) {
+                is ExpenseCreationResult.Saved -> {
+                    message.value = "${entry.type.label()} registrado en el historial"
+                    viewModelScope.launch { runCatching { updateAllFinanceWidgets(context) } }
+                    processingEntryIds.remove(entry.id)
+                }
+                is ExpenseCreationResult.Error -> {
+                    message.value = finalResult.message
+                    _showFundingDialog.value = result
+                    pendingCompleteEntry = entry
+                    pendingCompleteTransaction = transaction
+                    processingEntryIds.remove(entry.id)
+                }
+                is ExpenseCreationResult.RequiresFundingSource -> {
+                    _showFundingDialog.value = finalResult
+                    pendingCompleteEntry = entry
+                    pendingCompleteTransaction = transaction
+                }
+            }
+        }
+    }
+
+    fun cancelFundingDialog() {
+        _showFundingDialog.value = null
+        pendingCompleteEntry = null
+        pendingCompleteTransaction = null
+        processingEntryIds.remove(pendingCompleteEntry?.id ?: 0)
     }
 
     fun delete(entry: PendingEntry) = viewModelScope.launch {
