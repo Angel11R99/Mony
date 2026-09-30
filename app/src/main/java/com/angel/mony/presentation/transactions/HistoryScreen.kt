@@ -46,10 +46,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -87,6 +89,16 @@ import com.angel.mony.presentation.components.SkeletonTransactionRow
 import com.angel.mony.presentation.components.SkeletonHost
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+
+private data class HistoryListResult(
+    val filtered: List<FinanceTransaction>,
+    val sorted: List<FinanceTransaction>,
+    val incomeTotal: Long,
+    val expenseTotal: Long,
+)
 
 private enum class HistoryTypeFilter(val label: String, val type: TransactionType?) {
     ALL("Todos", null),
@@ -205,27 +217,59 @@ fun HistoryScreen(
     LaunchedEffect(typeFilter) {
         if (categoryId != null && availableCategories.none { it.id == categoryId }) categoryId = null
     }
-    val filtered = remember(state.transactions, typeFilter, categoryId, startDate, endDate, cycleFilter, query, state.categories) {
-        searchFinanceTransactions(
-            filterTransactions(state.transactions, typeFilter.type, categoryId, startDate, endDate, cycleFilter.range),
-            state.categories,
-            query,
-        )
+    val debouncedQuery by produceState(initialValue = query, query) {
+        if (value != query && query.isNotBlank()) delay(160)
+        value = query
     }
-    val sorted = remember(filtered, state.categories, sort) {
-        sortTransactions(filtered, state.categories, sort)
-    }
-    val (incomeTotal, expenseTotal) = remember(filtered) {
-        var income = 0L
-        var expense = 0L
-        filtered.forEach { transaction ->
-            when (transaction.type) {
-                TransactionType.INCOME -> income += transaction.amountInCents
-                TransactionType.EXPENSE -> expense += transaction.amountInCents
-            }
+    val listResult by produceState<HistoryListResult?>(
+        initialValue = null,
+        state.transactions,
+        state.categories,
+        typeFilter,
+        categoryId,
+        startDate,
+        endDate,
+        cycleFilter,
+        debouncedQuery,
+        sort,
+    ) {
+        if (!state.isReady) {
+            value = null
+            return@produceState
         }
-        income to expense
+        value = withContext(Dispatchers.Default) {
+            val filteredItems = searchFinanceTransactions(
+                filterTransactions(
+                    state.transactions,
+                    typeFilter.type,
+                    categoryId,
+                    startDate,
+                    endDate,
+                    cycleFilter.range,
+                ),
+                state.categories,
+                debouncedQuery,
+            )
+            var income = 0L
+            var expense = 0L
+            filteredItems.forEach { transaction ->
+                when (transaction.type) {
+                    TransactionType.INCOME -> income += transaction.amountInCents
+                    TransactionType.EXPENSE -> expense += transaction.amountInCents
+                }
+            }
+            HistoryListResult(
+                filtered = filteredItems,
+                sorted = sortTransactions(filteredItems, state.categories, sort),
+                incomeTotal = income,
+                expenseTotal = expense,
+            )
+        }
     }
+    val filtered = listResult?.filtered.orEmpty()
+    val sorted = listResult?.sorted.orEmpty()
+    val incomeTotal = listResult?.incomeTotal ?: 0L
+    val expenseTotal = listResult?.expenseTotal ?: 0L
 
     val pdfDateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     fun buildPdfRequest(allHistory: Boolean): HistoryPdfRequest {
@@ -309,9 +353,10 @@ fun HistoryScreen(
             )
         },
     ) { padding ->
-        SkeletonHost(isLoading = !state.isReady) {
+        val isLoadingHistory = !state.isReady || listResult == null
+        SkeletonHost(isLoading = isLoadingHistory) {
             LoadingContent(
-                isLoading = !state.isReady,
+                isLoading = isLoadingHistory,
                 modifier = Modifier.padding(padding),
                 skeleton = { HistorySkeleton() },
             ) {
@@ -776,6 +821,7 @@ private fun HistoryFilterSheet(
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
         contentColor = MaterialTheme.colorScheme.onSurface,
         shape = MaterialTheme.shapes.large,

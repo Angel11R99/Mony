@@ -6,7 +6,6 @@ import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.BudgetPeriod
-import com.angel.mony.domain.model.ExpenseFunding
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.activeBudgetPeriod
@@ -14,7 +13,6 @@ import com.angel.mony.domain.model.budgetPeriodForSchedule
 import com.angel.mony.domain.model.previousBudgetPeriod
 import com.angel.mony.domain.repository.BudgetRepository
 import com.angel.mony.domain.repository.CategoryRepository
-import com.angel.mony.domain.repository.ExpenseFundingRepository
 import com.angel.mony.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +28,6 @@ data class StatisticsUiState(
     val transactions: List<FinanceTransaction> = emptyList(),
     val categories: Map<Long, Category> = emptyMap(),
     val budget: BudgetConfig? = null,
-    val expenseFundings: List<ExpenseFunding> = emptyList(),
     val isReady: Boolean = false,
 )
 
@@ -139,19 +136,16 @@ class StatisticsViewModel @Inject constructor(
     transactions: TransactionRepository,
     categories: CategoryRepository,
     budget: BudgetRepository,
-    expenseFundingRepository: ExpenseFundingRepository,
 ) : ViewModel() {
     val state = combine(
         transactions.observeAll(),
         categories.observeAll(),
         budget.observe(),
-        expenseFundingRepository.observeAll(),
-    ) { items, categoryList, budgetConfig, fundings ->
+    ) { items, categoryList, budgetConfig ->
         StatisticsUiState(
             transactions = items,
             categories = categoryList.associateBy(Category::id),
             budget = budgetConfig,
-            expenseFundings = fundings,
             isReady = true,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatisticsUiState())
@@ -183,26 +177,38 @@ internal fun calculateStatistics(
     startDate: LocalDate?,
     endDate: LocalDate? = null,
 ): StatisticsReport {
-    val filtered = transactions.filter {
-        (startDate == null || !it.date.isBefore(startDate)) &&
-            (endDate == null || !it.date.isAfter(endDate))
-    }
-    val income = filtered.filter { it.type == TransactionType.INCOME }.sumOf(FinanceTransaction::amountInCents)
-    val expenses = filtered.filter { it.type == TransactionType.EXPENSE }
-    val expense = expenses.sumOf(FinanceTransaction::amountInCents)
-    val breakdown = expenses
-        .groupBy(FinanceTransaction::categoryId)
-        .mapNotNull { (categoryId, items) ->
-            categories[categoryId]?.let { category ->
-                CategoryStatistic(category, items.sumOf(FinanceTransaction::amountInCents))
+    var income = 0L
+    var expense = 0L
+    var transactionCount = 0
+    var expenseCount = 0
+    val expenseByCategory = HashMap<Long, Long>()
+
+    transactions.forEach { transaction ->
+        if ((startDate != null && transaction.date.isBefore(startDate)) ||
+            (endDate != null && transaction.date.isAfter(endDate))
+        ) return@forEach
+
+        transactionCount++
+        when (transaction.type) {
+            TransactionType.INCOME -> income += transaction.amountInCents
+            TransactionType.EXPENSE -> {
+                expense += transaction.amountInCents
+                expenseCount++
+                expenseByCategory[transaction.categoryId] =
+                    (expenseByCategory[transaction.categoryId] ?: 0L) + transaction.amountInCents
             }
         }
+    }
+
+    val breakdown = expenseByCategory.mapNotNull { (categoryId, amount) ->
+        categories[categoryId]?.let { category -> CategoryStatistic(category, amount) }
+    }
         .sortedByDescending(CategoryStatistic::amountInCents)
     return StatisticsReport(
         incomeInCents = income,
         expenseInCents = expense,
-        transactionCount = filtered.size,
-        averageExpenseInCents = if (expenses.isEmpty()) 0 else expense / expenses.size,
+        transactionCount = transactionCount,
+        averageExpenseInCents = if (expenseCount == 0) 0 else expense / expenseCount,
         expenseByCategory = breakdown,
     )
 }

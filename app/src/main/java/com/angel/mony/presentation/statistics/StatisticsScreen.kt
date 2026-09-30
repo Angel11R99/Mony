@@ -44,10 +44,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -86,6 +88,13 @@ import com.angel.mony.presentation.components.SkeletonLine
 import com.angel.mony.presentation.components.SkeletonTone
 import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.presentation.components.localDateNullableSaver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+private data class StatisticsReports(
+    val current: StatisticsReport,
+    val previous: StatisticsReport?,
+)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -130,14 +139,6 @@ fun StatisticsScreen(
             )
     }
     val isBudgetCycleFilter = selectedCycle != null || range == StatisticsRange.CURRENT_BUDGET
-    val report = remember(state.transactions, state.categories, period) {
-        calculateStatistics(
-            transactions = state.transactions,
-            categories = state.categories,
-            startDate = period.startDate,
-            endDate = period.endDate,
-        )
-    }
     val previousPeriod = remember(range, selectedCycle, state.budget, period) {
         previousStatisticsPeriod(
             range = range,
@@ -146,14 +147,44 @@ fun StatisticsScreen(
             current = period,
         )
     }
-    val previousReport = previousPeriod?.let { previous ->
-        calculateStatistics(
-            transactions = state.transactions,
-            categories = state.categories,
-            startDate = previous.startDate,
-            endDate = previous.endDate,
-        )
+    val reports by produceState<StatisticsReports?>(
+        initialValue = null,
+        state.transactions,
+        state.categories,
+        period,
+        previousPeriod,
+    ) {
+        if (!state.isReady) {
+            value = null
+            return@produceState
+        }
+        value = withContext(Dispatchers.Default) {
+            StatisticsReports(
+                current = calculateStatistics(
+                    transactions = state.transactions,
+                    categories = state.categories,
+                    startDate = period.startDate,
+                    endDate = period.endDate,
+                ),
+                previous = previousPeriod?.let { previous ->
+                    calculateStatistics(
+                        transactions = state.transactions,
+                        categories = state.categories,
+                        startDate = previous.startDate,
+                        endDate = previous.endDate,
+                    )
+                },
+            )
+        }
     }
+    val report = reports?.current ?: StatisticsReport(
+        incomeInCents = 0,
+        expenseInCents = 0,
+        transactionCount = 0,
+        averageExpenseInCents = 0,
+        expenseByCategory = emptyList(),
+    )
+    val previousReport = reports?.previous
     val selectedCategory = categoryId?.let(state.categories::get)
     val selectedStatistic = report.expenseByCategory.firstOrNull { it.category.id == categoryId }
     val categoryFocusLimit = selectedStatistic?.category?.budgetLimitInCents?.takeIf { it > 0 }
@@ -180,9 +211,10 @@ fun StatisticsScreen(
             )
         },
     ) { padding ->
-        SkeletonHost(isLoading = !state.isReady) {
+        val isLoadingReport = !state.isReady || reports == null
+        SkeletonHost(isLoading = isLoadingReport) {
             LoadingContent(
-                isLoading = !state.isReady,
+                isLoading = isLoadingReport,
                 modifier = Modifier.padding(padding),
                 skeleton = { StatisticsSkeleton() },
             ) {
@@ -387,6 +419,7 @@ private fun StatisticsFilterSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
         contentColor = MaterialTheme.colorScheme.onSurface,
         shape = MaterialTheme.shapes.large,
