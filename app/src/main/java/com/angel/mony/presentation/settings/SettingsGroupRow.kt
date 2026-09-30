@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.ModuleTitle
 import com.angel.mony.ui.iconography.MonyIcon
@@ -37,11 +32,9 @@ fun SettingsGroupRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    FinanceCard(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+    Row(
+            modifier = modifier.fillMaxWidth().clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -72,14 +65,12 @@ fun SettingsGroupRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            MonyIcon(
+                icon = MonyIcon.Next,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
         }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

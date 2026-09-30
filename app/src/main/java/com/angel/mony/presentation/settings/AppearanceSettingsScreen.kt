@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
@@ -56,6 +59,10 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -73,6 +80,7 @@ import com.angel.mony.ui.theme.createAppShapes
 import com.angel.mony.ui.theme.createAppTypography
 import com.angel.mony.ui.theme.displayName
 import com.angel.mony.ui.theme.isColorCompatible
+import com.angel.mony.ui.theme.monyColorPalette
 import com.angel.mony.ui.theme.primaryPresets
 import com.angel.mony.ui.theme.recommendedFont
 import com.angel.mony.ui.theme.toComposeFontFamily
@@ -82,6 +90,46 @@ import com.angel.mony.ui.iconography.MonyIcon
 import com.angel.mony.ui.iconography.MonyIconRole
 import com.angel.mony.ui.iconography.MonyIconSize
 import com.angel.mony.ui.iconography.hasIconContrast
+
+@Composable
+fun AppearanceSettingsRoute(
+    appearance: AppAppearance,
+    isDarkTheme: Boolean,
+    onBack: () -> Unit,
+    onThemeChange: (AppThemeMode) -> Unit,
+    onPrimaryChange: (Int) -> Unit,
+    onAccentChange: (Int) -> Unit,
+    onReset: () -> Unit,
+    onShapeStyleChange: (AppShapeStyle) -> Unit,
+    onFontFamilyChange: (AppFontFamily) -> Unit,
+    onBackgroundDecorationChange: (BackgroundDecoration) -> Unit,
+    onBackgroundIntensityChange: (Float) -> Unit,
+    onIconPackChange: (IconPack) -> Unit,
+    onIconColorModeChange: (IconColorMode) -> Unit,
+    onCustomIconColorChange: (Int) -> Unit,
+) {
+    var editingColor by remember { mutableStateOf<ColorRole?>(null) }
+    AppearanceSettingsScreen(
+        appearance = appearance,
+        isDarkTheme = isDarkTheme,
+        onBack = onBack,
+        onThemeChange = onThemeChange,
+        onEditPrimary = { editingColor = ColorRole.PRIMARY },
+        onEditAccent = { editingColor = ColorRole.ACCENT },
+        onPrimaryChange = onPrimaryChange,
+        onAccentChange = onAccentChange,
+        onReset = onReset,
+        onShapeStyleChange = onShapeStyleChange,
+        onFontFamilyChange = onFontFamilyChange,
+        onBackgroundDecorationChange = onBackgroundDecorationChange,
+        onBackgroundIntensityChange = onBackgroundIntensityChange,
+        onIconPackChange = onIconPackChange,
+        onIconColorModeChange = onIconColorModeChange,
+        onCustomIconColorChange = onCustomIconColorChange,
+        editingColor = editingColor,
+        onEditingColorChange = { editingColor = it },
+    )
+}
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -106,7 +154,7 @@ fun AppearanceSettingsScreen(
     onEditingColorChange: (ColorRole?) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        SettingsModuleHeader(title = "Apariencia", onBack = onBack)
+        SettingsModuleHeader(title = "Personalización", onBack = onBack)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -130,7 +178,7 @@ fun AppearanceSettingsScreen(
                         onClick = { onThemeChange(mode) },
                         label = { Text(mode.label) },
                         leadingIcon = if (appearance.themeMode == mode) {
-                            { Icon(Icons.Outlined.Check, null, Modifier.size(17.dp)) }
+                            { MonyIcon(MonyIcon.Check, null, Modifier.size(17.dp), role = MonyIconRole.STATE) }
                         } else null,
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -201,32 +249,64 @@ fun AppearanceSettingsScreen(
         item {
             Text("Color de iconos", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                IconColorMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = appearance.iconColorMode == mode,
-                        onClick = {
-                            if (mode == IconColorMode.CUSTOM) onEditingColorChange(ColorRole.ICON)
-                            else onIconColorModeChange(mode)
-                        },
-                        label = { Text(mode.displayName) },
-                        leadingIcon = if (appearance.iconColorMode == mode) {
-                            { MonyIcon(MonyIcon.Check, null, size = 17.dp, role = MonyIconRole.STATE) }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                        shape = MaterialTheme.shapes.small,
-                    )
+            if (appearance.iconPack == IconPack.MONY_COLOR) {
+                FinanceCard(Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        MonyIcon(
+                            icon = MonyIcon.Appearance,
+                            contentDescription = null,
+                            size = MonyIconSize.Large,
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("Colores originales", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "Mony Color conserva sus rellenos ilustrados; el color global no se aplica.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            } else {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    IconColorMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = appearance.iconColorMode == mode,
+                            onClick = { onIconColorModeChange(mode) },
+                            label = { Text(mode.displayName) },
+                            leadingIcon = if (appearance.iconColorMode == mode) {
+                                { MonyIcon(MonyIcon.Check, null, size = 17.dp, role = MonyIconRole.STATE) }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                            shape = MaterialTheme.shapes.small,
+                        )
+                    }
                 }
             }
-            if (appearance.iconColorMode == IconColorMode.CUSTOM) {
+            if (appearance.iconPack != IconPack.MONY_COLOR && appearance.iconColorMode == IconColorMode.CUSTOM) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Color personalizado",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(6.dp))
+                IconColorPaletteSelector(
+                    selectedArgb = appearance.customIconColorArgb,
+                    onSelect = onCustomIconColorChange,
+                )
                 val compatible = hasIconContrast(
                     Color(appearance.customIconColorArgb),
                     MaterialTheme.colorScheme.background,
@@ -239,7 +319,7 @@ fun AppearanceSettingsScreen(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     ) {}
                     Spacer(Modifier.width(8.dp))
-                    Text("Cambiar color personalizado")
+                    Text("Más colores")
                 }
                 if (!compatible) {
                     Text(
@@ -307,7 +387,7 @@ fun AppearanceSettingsScreen(
                         onClick = { onBackgroundDecorationChange(decoration) },
                         label = { Text(decoration.label) },
                         leadingIcon = if (appearance.backgroundDecoration == decoration) {
-                            { Icon(Icons.Outlined.Check, null, Modifier.size(17.dp)) }
+                            { MonyIcon(MonyIcon.Check, null, Modifier.size(17.dp), role = MonyIconRole.STATE) }
                         } else null,
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -388,6 +468,62 @@ fun AppearanceSettingsScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun IconColorPaletteSelector(
+    selectedArgb: Int,
+    onSelect: (Int) -> Unit,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        monyColorPalette.forEach { option ->
+            val selected = selectedArgb == option.argb
+            val swatchColor = Color(option.argb)
+            val checkColor = if (swatchColor.luminance() > 0.48f) Color(0xFF121016) else Color.White
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .selectable(
+                        selected = selected,
+                        onClick = { onSelect(option.argb) },
+                        role = Role.RadioButton,
+                    )
+                    .semantics {
+                        contentDescription = option.displayName
+                        stateDescription = if (selected) "Seleccionado" else "No seleccionado"
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Surface(
+                    modifier = Modifier.size(36.dp),
+                    color = swatchColor,
+                    shape = CircleShape,
+                    border = BorderStroke(
+                        width = if (selected) 3.dp else 1.dp,
+                        color = if (selected) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.outline,
+                    ),
+                ) {
+                    if (selected) {
+                        Box(contentAlignment = Alignment.Center) {
+                            MonyIcon(
+                                icon = MonyIcon.Check,
+                                contentDescription = null,
+                                tint = checkColor,
+                                role = MonyIconRole.STATE,
+                                size = MonyIconSize.Small,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun IconPackSelector(selected: IconPack, onSelect: (IconPack) -> Unit) {
     LazyRow(
@@ -402,7 +538,14 @@ private fun IconPackSelector(selected: IconPack, onSelect: (IconPack) -> Unit) {
                     .width(152.dp)
                     .height(92.dp)
                     .clip(MaterialTheme.shapes.small)
-                    .clickable { onSelect(pack) },
+                    .selectable(
+                        selected = isSelected,
+                        onClick = { onSelect(pack) },
+                        role = Role.RadioButton,
+                    )
+                    .semantics {
+                        stateDescription = if (isSelected) "Seleccionado" else "No seleccionado"
+                    },
                 shape = MaterialTheme.shapes.small,
                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                 border = BorderStroke(
@@ -439,7 +582,8 @@ private fun IconPackSelector(selected: IconPack, onSelect: (IconPack) -> Unit) {
                                 icon = icon,
                                 contentDescription = null,
                                 packOverride = pack,
-                                tint = MaterialTheme.colorScheme.onSurface,
+                                tint = if (pack == IconPack.MONY_COLOR) Color.Unspecified
+                                else MaterialTheme.colorScheme.onSurface,
                                 role = MonyIconRole.STATE,
                                 size = MonyIconSize.Medium,
                             )
@@ -563,10 +707,11 @@ internal fun ShapePreviewItem(
                         ),
                 )
                 if (selected) {
-                    Icon(
-                        Icons.Outlined.Check,
+                    MonyIcon(
+                        MonyIcon.Check,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
+                        role = MonyIconRole.STATE,
                         modifier = Modifier.size(18.dp).align(Alignment.TopEnd).padding(top = 2.dp, end = 2.dp),
                     )
                 }
@@ -680,7 +825,7 @@ internal fun FontFamilySelector(
                                     .background(MaterialTheme.colorScheme.onPrimary, CircleShape),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(Icons.Outlined.Check, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
+                                MonyIcon(MonyIcon.Check, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary, role = MonyIconRole.STATE)
                             }
                         }
                     }
@@ -768,7 +913,10 @@ internal fun ColorPickerDialog(
         icon = { MonyIcon(MonyIcon.Appearance, null) },
         title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
                 Text("Arrastra sobre la paleta hasta encontrar el color que quieras.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 SaturationBrightnessPalette(
                     hue = hue,
@@ -821,17 +969,19 @@ internal fun ColorPickerDialog(
                             ),
                         ) {
                             if (selected) Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Outlined.Check,
+                                MonyIcon(
+                                    MonyIcon.Check,
                                     null,
                                     tint = if (Color(argb).luminance() > 0.48f) Color.Black else Color.White,
+                                    role = MonyIconRole.STATE,
                                 )
                             }
                             if (incompatible) Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Outlined.Close,
+                                MonyIcon(
+                                    MonyIcon.Close,
                                     null,
                                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
+                                    role = MonyIconRole.STATE,
                                     modifier = Modifier.size(16.dp),
                                 )
                             }
@@ -921,7 +1071,7 @@ internal fun HueBar(hue: Float, onHueChange: (Float) -> Unit) {
     Canvas(
         Modifier
             .fillMaxWidth()
-            .height(28.dp)
+            .height(48.dp)
             .clip(MaterialTheme.shapes.extraSmall)
             .onSizeChanged { canvasSize = it }
             .pointerInput(Unit) {

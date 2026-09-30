@@ -69,8 +69,8 @@ fun FinanceSelectionField(
             singleLine = true,
             readOnly = true,
             trailingIcon = {
-                Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    icon = com.angel.mony.ui.iconography.MonyIcon.Dropdown,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -132,7 +132,10 @@ fun FinanceSelectionSheet(
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Cerrar el selector")
+                    com.angel.mony.ui.iconography.MonyIcon(
+                        com.angel.mony.ui.iconography.MonyIcon.Close,
+                        contentDescription = "Cerrar el selector",
+                    )
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -199,10 +202,11 @@ private fun SelectionRow(
         )
         if (selected) {
             Spacer(Modifier.width(12.dp))
-            Icon(
-                imageVector = Icons.Outlined.Check,
+            com.angel.mony.ui.iconography.MonyIcon(
+                icon = com.angel.mony.ui.iconography.MonyIcon.Check,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
+                role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                 modifier = Modifier.size(20.dp),
             )
         }

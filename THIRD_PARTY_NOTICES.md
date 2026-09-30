@@ -17,3 +17,8 @@ the MIT license. Source: <https://phosphoricons.com/> and
 <https://github.com/adamglin0/compose-phosphor-icon>.
 
 The original copyright and license terms remain applicable to these vector assets.
+
+## Mony Color
+
+Mony Color no incorpora recursos de terceros. Sus ilustraciones vectoriales son diseños
+originales del proyecto Mony y se distribuyen bajo la licencia del propio proyecto.

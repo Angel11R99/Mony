@@ -3,6 +3,7 @@ package com.angel.mony.ui.iconography
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.*
@@ -12,14 +13,30 @@ import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.*
 import com.composables.icons.lucide.*
 
-object MonyIconResolver {
-    fun resolve(icon: MonyIcon, pack: IconPack): ImageVector =
-        resolveOrNull(icon, pack) ?: resolveMaterial(icon)
+sealed interface MonyIconAsset {
+    data class Tintable(
+        val imageVector: ImageVector,
+        val usesGlobalTint: Boolean = true,
+    ) : MonyIconAsset
+    data class Multicolor(val icon: MonyIcon) : MonyIconAsset
+}
 
-    internal fun resolveOrNull(icon: MonyIcon, pack: IconPack): ImageVector? = when (pack) {
-        IconPack.MATERIAL -> resolveMaterial(icon)
-        IconPack.LUCIDE -> resolveLucide(icon)
-        IconPack.PHOSPHOR -> resolvePhosphor(icon)
+object MonyIconResolver {
+    fun resolve(icon: MonyIcon, pack: IconPack): MonyIconAsset =
+        resolveOrNull(icon, pack) ?: MonyIconAsset.Tintable(
+            imageVector = resolveMaterial(icon),
+            usesGlobalTint = pack != IconPack.MONY_COLOR,
+        )
+
+    internal fun resolveOrNull(icon: MonyIcon, pack: IconPack): MonyIconAsset? = when (pack) {
+        IconPack.MATERIAL -> MonyIconAsset.Tintable(resolveMaterial(icon))
+        IconPack.LUCIDE -> resolveLucide(icon)?.let(MonyIconAsset::Tintable)
+        IconPack.PHOSPHOR -> resolvePhosphor(icon)?.let(MonyIconAsset::Tintable)
+        IconPack.MONY_COLOR -> if (MonyColorIconPainter.supports(icon)) {
+            MonyIconAsset.Multicolor(icon)
+        } else {
+            null
+        }
     }
 
     private fun resolveMaterial(icon: MonyIcon): ImageVector = when (icon) {
@@ -75,6 +92,25 @@ object MonyIconResolver {
         MonyIcon.Pin -> Icons.Outlined.PushPin
         MonyIcon.Previous -> Icons.Outlined.ChevronLeft
         MonyIcon.Next -> Icons.Outlined.ChevronRight
+        MonyIcon.Error -> Icons.Outlined.ErrorOutline
+        MonyIcon.Dropdown -> Icons.Outlined.ArrowDropDown
+        MonyIcon.ExpandMore -> Icons.Outlined.ExpandMore
+        MonyIcon.ExpandLess -> Icons.Outlined.ExpandLess
+        MonyIcon.Remove -> Icons.Outlined.Remove
+        MonyIcon.Sort -> Icons.Outlined.SwapVert
+        MonyIcon.Time -> Icons.Outlined.AccessTime
+        MonyIcon.Notes -> Icons.AutoMirrored.Outlined.Notes
+        MonyIcon.ListView -> Icons.Outlined.ViewAgenda
+        MonyIcon.AlertsEnabled -> Icons.Outlined.NotificationsActive
+        MonyIcon.AlertsDisabled -> Icons.Outlined.NotificationsOff
+        MonyIcon.Reopen -> Icons.Outlined.Refresh
+        MonyIcon.Restore -> Icons.Outlined.Restore
+        MonyIcon.ScanBarcode -> Icons.Outlined.QrCodeScanner
+        MonyIcon.ScanDocument -> Icons.Outlined.DocumentScanner
+        MonyIcon.ScanPrice -> Icons.Outlined.PriceCheck
+        MonyIcon.TrendUp -> Icons.Outlined.ArrowDropUp
+        MonyIcon.TrendDown -> Icons.Outlined.ArrowDropDown
+        MonyIcon.TrendFlat -> Icons.Outlined.Remove
     }
 
     private fun resolveLucide(icon: MonyIcon): ImageVector? = when (icon) {
@@ -130,6 +166,14 @@ object MonyIconResolver {
         MonyIcon.Pin -> Lucide.Pin
         MonyIcon.Previous -> Lucide.ChevronLeft
         MonyIcon.Next -> Lucide.ChevronRight
+        MonyIcon.Error -> Lucide.TriangleAlert
+        MonyIcon.Dropdown, MonyIcon.ExpandMore, MonyIcon.ExpandLess, MonyIcon.Remove,
+        MonyIcon.Sort, MonyIcon.Time, MonyIcon.Notes, MonyIcon.ListView,
+        MonyIcon.AlertsDisabled, MonyIcon.Restore, MonyIcon.ScanBarcode,
+        MonyIcon.ScanDocument, MonyIcon.ScanPrice, MonyIcon.TrendUp,
+        MonyIcon.TrendDown, MonyIcon.TrendFlat -> null
+        MonyIcon.AlertsEnabled -> Lucide.Bell
+        MonyIcon.Reopen -> Lucide.RefreshCw
     }
 
     private fun resolvePhosphor(icon: MonyIcon): ImageVector? = when (icon) {
@@ -184,5 +228,13 @@ object MonyIconResolver {
         MonyIcon.Pin -> PhosphorIcons.Regular.PushPin
         MonyIcon.Previous -> PhosphorIcons.Regular.CaretLeft
         MonyIcon.Next -> PhosphorIcons.Regular.CaretRight
+        MonyIcon.Error -> PhosphorIcons.Regular.Warning
+        MonyIcon.Dropdown, MonyIcon.ExpandMore, MonyIcon.ExpandLess, MonyIcon.Remove,
+        MonyIcon.Sort, MonyIcon.Time, MonyIcon.Notes, MonyIcon.ListView,
+        MonyIcon.AlertsDisabled, MonyIcon.Restore, MonyIcon.ScanBarcode,
+        MonyIcon.ScanDocument, MonyIcon.ScanPrice, MonyIcon.TrendUp,
+        MonyIcon.TrendDown, MonyIcon.TrendFlat -> null
+        MonyIcon.AlertsEnabled -> PhosphorIcons.Regular.Bell
+        MonyIcon.Reopen -> PhosphorIcons.Regular.ArrowsClockwise
     }
 }

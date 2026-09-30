@@ -1,5 +1,6 @@
 package com.angel.mony.presentation.categories
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
@@ -7,7 +8,9 @@ import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.CategoryValidator
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.repository.CategoryRepository
+import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +39,7 @@ internal fun parseBudgetLimit(raw: String): BudgetLimitInput {
 @HiltViewModel
 class CategoriesViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository,
+    @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val state = combine(
         categoryRepository.observeAll(),
@@ -76,7 +80,10 @@ class CategoriesViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            runCatching { categoryRepository.setActive(category.id, target) }
+            runCatching {
+                categoryRepository.setActive(category.id, target)
+                updateAllFinanceWidgets(context)
+            }
                 .onFailure { message.value = "No se pudo actualizar la categoría" }
         }
     }
@@ -100,6 +107,7 @@ class CategoriesViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { categoryRepository.deleteIfUnused(category.id) }
                 .onSuccess { deleted ->
+                    if (deleted) updateAllFinanceWidgets(context)
                     message.value = if (deleted) "Categoría eliminada."
                     else "No se puede eliminar porque está en uso"
                 }
@@ -137,7 +145,10 @@ class CategoriesViewModel @Inject constructor(
         }
         viewModelScope.launch {
             isSaving.value = true
-            runCatching { action(rawName.trim(), limit) }
+            runCatching {
+                action(rawName.trim(), limit)
+                updateAllFinanceWidgets(context)
+            }
                 .onSuccess {
                     message.value = successMessage
                     onSaved()

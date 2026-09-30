@@ -130,7 +130,7 @@ fun ShoppingListsScreen(
             TopAppBar(
                 title = { ModuleTitle("Lista") },
                 actions = {
-                    GlobalOutlinedIconButton(Icons.Outlined.Add, "Nueva lista", { showCreate = true })
+                    GlobalOutlinedIconButton(com.angel.mony.ui.iconography.MonyIcon.Add, "Nueva lista", { showCreate = true })
                     Spacer(Modifier.width(8.dp))
                     GlobalSettingsButton(onSettings)
                     Spacer(Modifier.width(14.dp))
@@ -263,10 +263,10 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, modifier: 
         onValueChange = onQueryChange,
         modifier = modifier,
         placeholder = { Text("Buscar listas…") },
-        leadingIcon = { Icon(Icons.Outlined.Search, null) },
+        leadingIcon = { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Search, null) },
         trailingIcon = {
             if (query.isNotBlank()) {
-                IconButton({ onQueryChange("") }) { Icon(Icons.Outlined.Close, "Limpiar") }
+                IconButton({ onQueryChange("") }) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Close, "Limpiar") }
             }
         },
         singleLine = true,
@@ -294,12 +294,12 @@ private fun ListFilterButton(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
     ) {
-        Icon(Icons.Outlined.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Filter, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
             Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
         }
-        Icon(Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.ExpandMore, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
     }
 }
 
@@ -335,7 +335,7 @@ private fun ListFilterSheet(
                     Text("FILTROS", style = MaterialTheme.typography.headlineMedium)
                     Text("Filtra por estado de la lista", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros") }
+                IconButton(onClick = onDismiss) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Close, "Cerrar filtros") }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text("ESTADO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
@@ -377,7 +377,7 @@ private fun ListFilterSheet(
 private fun CardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSize) -> Unit, expanded: Boolean, onExpandedChange: (Boolean) -> Unit) {
     Box {
         TextButton(onClick = { onExpandedChange(true) }) {
-            Icon(Icons.Outlined.ViewAgenda, contentDescription = null, modifier = Modifier.size(18.dp))
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.ListView, null, modifier = Modifier.size(18.dp))
             Text(selected.label, modifier = Modifier.padding(start = 6.dp))
         }
         DropdownMenu(expanded, { onExpandedChange(false) }) {
@@ -385,7 +385,7 @@ private fun CardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSize) -> U
                 DropdownMenuItem(
                     text = { Text(option.label) },
                     leadingIcon = if (option == selected) {
-                        { Icon(Icons.Outlined.Check, null, tint = MaterialTheme.colorScheme.primary) }
+                        { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Check, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                     } else null,
                     onClick = { onSelect(option); onExpandedChange(false) },
                 )
@@ -398,7 +398,7 @@ private fun CardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSize) -> U
 private fun EmptyListsCard(text: String, modifier: Modifier, onCreate: (() -> Unit)? = null) {
     FinanceCard(modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(Icons.Outlined.ShoppingCart, null, tint = MaterialTheme.colorScheme.primary)
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Shopping, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
             Text(text, style = MaterialTheme.typography.titleMedium)
             if (onCreate != null) {
                 Text("Organiza productos, presupuesto y el gasto final desde un solo lugar.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -439,11 +439,11 @@ private fun CompactListCard(
                     Text(list.status.spanishLabel(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
                 }
                 Row {
-                    IconButton(onClick = onDuplicate, enabled = enabled, modifier = Modifier.heightIn(min = 36.dp)) { Icon(Icons.Outlined.ContentCopy, "Duplicar lista", modifier = Modifier.padding(0.dp)) }
+                    IconButton(onClick = onDuplicate, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp)) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Copy, "Duplicar lista", modifier = Modifier.padding(0.dp), role = if (enabled) com.angel.mony.ui.iconography.MonyIconRole.NORMAL else com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                     if (list.status != ShoppingListStatus.COMPLETED) {
-                        IconButton(onClick = onDelete, enabled = enabled, modifier = Modifier.heightIn(min = 36.dp)) { Icon(Icons.Outlined.Delete, "Eliminar lista", modifier = Modifier.padding(0.dp)) }
+                        IconButton(onClick = onDelete, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp)) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar lista", modifier = Modifier.padding(0.dp), role = if (enabled) com.angel.mony.ui.iconography.MonyIconRole.NORMAL else com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                     } else {
-                        IconButton(onClick = onReopen, enabled = enabled, modifier = Modifier.heightIn(min = 36.dp)) { Icon(Icons.Outlined.Refresh, "Reabrir lista", modifier = Modifier.padding(0.dp)) }
+                        IconButton(onClick = onReopen, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp)) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Reopen, "Reabrir lista", modifier = Modifier.padding(0.dp), role = if (enabled) com.angel.mony.ui.iconography.MonyIconRole.NORMAL else com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                     }
                 }
             }
@@ -469,11 +469,11 @@ private fun NormalListCard(
                     Text(list.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(list.status.spanishLabel(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                 }
-                IconButton(onClick = onDuplicate, enabled = enabled) { Icon(Icons.Outlined.ContentCopy, "Duplicar lista") }
+                IconButton(onClick = onDuplicate, enabled = enabled) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Copy, "Duplicar lista", role = if (enabled) com.angel.mony.ui.iconography.MonyIconRole.NORMAL else com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                 if (list.status != ShoppingListStatus.COMPLETED) {
-                    IconButton(onClick = onDelete, enabled = enabled) { Icon(Icons.Outlined.Delete, "Eliminar lista") }
+                    IconButton(onClick = onDelete, enabled = enabled) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar lista", role = if (enabled) com.angel.mony.ui.iconography.MonyIconRole.NORMAL else com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                 } else {
-                    IconButton(onClick = onReopen, enabled = enabled) { Icon(Icons.Outlined.Refresh, "Reabrir lista") }
+                    IconButton(onClick = onReopen, enabled = enabled) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Reopen, "Reabrir lista", role = if (enabled) com.angel.mony.ui.iconography.MonyIconRole.NORMAL else com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                 }
             }
             val date = list.updatedAt.atZone(ZoneId.systemDefault()).toLocalDate()
@@ -501,11 +501,11 @@ private fun DetailedListCard(
                     Text(list.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     Text(list.status.spanishLabel(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
                 }
-                IconButton(onClick = onDuplicate, enabled = enabled) { Icon(Icons.Outlined.ContentCopy, "Duplicar lista") }
+                IconButton(onClick = onDuplicate, enabled = enabled) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Copy, "Duplicar lista", role = if (enabled) com.angel.mony.ui.iconography.MonyIconRole.NORMAL else com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                 if (list.status != ShoppingListStatus.COMPLETED) {
-                    IconButton(onClick = onDelete, enabled = enabled) { Icon(Icons.Outlined.Delete, "Eliminar lista") }
+                    IconButton(onClick = onDelete, enabled = enabled) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar lista", role = if (enabled) com.angel.mony.ui.iconography.MonyIconRole.NORMAL else com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                 } else {
-                    IconButton(onClick = onReopen, enabled = enabled) { Icon(Icons.Outlined.Refresh, "Reabrir lista") }
+                    IconButton(onClick = onReopen, enabled = enabled) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Reopen, "Reabrir lista", role = if (enabled) com.angel.mony.ui.iconography.MonyIconRole.NORMAL else com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                 }
             }
             val zone = ZoneId.systemDefault()

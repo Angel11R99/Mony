@@ -210,7 +210,7 @@ fun PendingEntriesScreen(
                 title = { ModuleTitle("Recordatorios") },
                 actions = {
                     GlobalOutlinedIconButton(
-                        icon = Icons.Outlined.Add,
+                        semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Add,
                         contentDescription = "Nuevo recordatorio",
                         onClick = {
                             editorEntry = null
@@ -266,15 +266,15 @@ fun PendingEntriesScreen(
                         modifier = Modifier.weight(1f),
                         placeholder = "Buscar...",
                         singleLine = true,
-                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                        leadingIcon = { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Search, null) },
                         trailingIcon = {
                             if (query.isNotBlank()) {
                                 IconButton(
                                     onClick = { query = "" },
                                     modifier = Modifier.size(32.dp),
                                 ) {
-                                    Icon(
-                                        Icons.Outlined.Close,
+                                    com.angel.mony.ui.iconography.MonyIcon(
+                                        com.angel.mony.ui.iconography.MonyIcon.Close,
                                         contentDescription = "Limpiar búsqueda",
                                         modifier = Modifier.size(18.dp),
                                     )
@@ -299,7 +299,7 @@ fun PendingEntriesScreen(
                 item {
                     FinanceCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.AutoMirrored.Outlined.PlaylistAdd, null, tint = MaterialTheme.colorScheme.primary)
+                            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Add, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
                             Text("Todavía no hay recordatorios", style = MaterialTheme.typography.titleLarge)
                             Text(
                                 "Guarda aquí las cosas que piensas pagar o cobrar y ponles la fecha. Aparecerán en la quincena o el mes que elijas.",
@@ -461,10 +461,11 @@ private fun PendingEntryDetailsDialog(
         shape = MaterialTheme.shapes.medium,
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
         icon = {
-            Icon(
-                Icons.AutoMirrored.Outlined.PlaylistAdd,
+            com.angel.mony.ui.iconography.MonyIcon(
+                com.angel.mony.ui.iconography.MonyIcon.Pending,
                 contentDescription = null,
                 tint = amountColor,
+                role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
             )
         },
         title = { Text("Detalle del recordatorio") },
@@ -619,19 +620,21 @@ private fun PendingFilterButton(
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
     ) {
-        Icon(
-            androidx.compose.material.icons.Icons.Outlined.FilterList,
+        com.angel.mony.ui.iconography.MonyIcon(
+            com.angel.mony.ui.iconography.MonyIcon.Filter,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
+            role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
         )
         Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
             Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             Text("$typeLabel · $periodLabel · $statusLabel", style = MaterialTheme.typography.bodyMedium, maxLines = 1)
         }
-        Icon(
-            androidx.compose.material.icons.Icons.Outlined.ExpandMore,
+        com.angel.mony.ui.iconography.MonyIcon(
+            com.angel.mony.ui.iconography.MonyIcon.ExpandMore,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
         )
     }
 }
@@ -676,7 +679,7 @@ private fun PendingFilterSheet(
                     )
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros")
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Close, "Cerrar filtros")
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -796,10 +799,10 @@ private fun PendingEditAction(
 ) {
     if (sourceShoppingListId != null) {
         IconButton(onClick = { onOpenList(listName) }) {
-            Icon(Icons.Outlined.ShoppingCart, "Ir a Lista", modifier = Modifier.size(20.dp))
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Shopping, "Ir a Lista", modifier = Modifier.size(20.dp))
         }
     } else {
-        IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Editar", modifier = Modifier.size(20.dp)) }
+        IconButton(onClick = onEdit) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Edit, "Editar", modifier = Modifier.size(20.dp)) }
     }
 }
 
@@ -831,10 +834,11 @@ private fun PendingCompactCardContent(
                 )
             }
             if (!entry.comment.isNullOrBlank()) {
-                Icon(
-                    Icons.Outlined.Notes,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Notes,
                     contentDescription = "Tiene comentario",
                     tint = MaterialTheme.colorScheme.secondary,
+                    role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -846,10 +850,11 @@ private fun PendingCompactCardContent(
             PendingStatusBadge(entry)
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Outlined.CalendarMonth,
+            com.angel.mony.ui.iconography.MonyIcon(
+                com.angel.mony.ui.iconography.MonyIcon.Calendar,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.secondary,
+                role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                 modifier = Modifier.size(14.dp),
             )
             Spacer(Modifier.width(4.dp))
@@ -862,17 +867,18 @@ private fun PendingCompactCardContent(
             )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onToggleDone, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    if (entry.isDone) Icons.AutoMirrored.Outlined.Undo else Icons.Outlined.CheckCircle,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    if (entry.isDone) com.angel.mony.ui.iconography.MonyIcon.Undo else com.angel.mony.ui.iconography.MonyIcon.Completed,
                     contentDescription = if (entry.isDone) "Reabrir" else "Marcar hecho",
                     tint = if (entry.isDone) MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.primary,
+                    role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                     modifier = Modifier.size(20.dp),
                 )
             }
             PendingEditAction(entry.sourceShoppingListId, entry.description, onEdit, onOpenList)
             IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -942,8 +948,8 @@ private fun PendingDetailedCardContent(
         )
         PendingCardDateRow(entry, formatter)
         TextButton(onClick = { expanded = !expanded }) {
-            Icon(
-                if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+            com.angel.mony.ui.iconography.MonyIcon(
+                if (expanded) com.angel.mony.ui.iconography.MonyIcon.ExpandLess else com.angel.mony.ui.iconography.MonyIcon.ExpandMore,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
             )
@@ -996,10 +1002,11 @@ private fun PendingCardHeader(entry: PendingEntry, category: Category?) {
 @Composable
 private fun PendingCardDateRow(entry: PendingEntry, formatter: DateTimeFormatter) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            Icons.Outlined.CalendarMonth,
+        com.angel.mony.ui.iconography.MonyIcon(
+            com.angel.mony.ui.iconography.MonyIcon.Calendar,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.secondary,
+            role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
             modifier = Modifier.size(16.dp),
         )
         Spacer(Modifier.width(4.dp))
@@ -1034,7 +1041,7 @@ private fun PendingCardActionsRow(
         )
         PendingEditAction(sourceShoppingListId, listName, onEdit, onOpenList)
         IconButton(onClick = onDelete) {
-            Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
         }
     }
 }
@@ -1049,7 +1056,7 @@ private fun EntryCardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSize)
     var expanded by remember { mutableStateOf(false) }
     Box {
         TextButton(onClick = { expanded = true }) {
-            Icon(Icons.Outlined.ViewAgenda, contentDescription = null, modifier = Modifier.size(18.dp))
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.ListView, null, modifier = Modifier.size(18.dp))
             Text(selected.label, modifier = Modifier.padding(start = 6.dp))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -1057,7 +1064,7 @@ private fun EntryCardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSize)
                 DropdownMenuItem(
                     text = { Text(option.label) },
                     leadingIcon = if (selected == option) {
-                        { Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                        { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Check, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                     } else null,
                     onClick = {
                         onSelect(option)
@@ -1080,11 +1087,12 @@ private fun PendingStatusBadge(entry: PendingEntry) {
             Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                if (entry.isDone) Icons.Outlined.CheckCircle else Icons.AutoMirrored.Outlined.Undo,
+            com.angel.mony.ui.iconography.MonyIcon(
+                if (entry.isDone) com.angel.mony.ui.iconography.MonyIcon.Completed else com.angel.mony.ui.iconography.MonyIcon.Pending,
                 contentDescription = null,
                 tint = if (entry.isDone) MaterialTheme.colorScheme.onSecondaryContainer
                 else MaterialTheme.colorScheme.onPrimaryContainer,
+                role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                 modifier = Modifier.size(14.dp),
             )
             Spacer(Modifier.width(4.dp))
@@ -1195,7 +1203,7 @@ private fun PendingEntryDialog(
                             },
                             label = { Text("Buscar categoría") },
                             placeholder = { Text("Escribe o selecciona") },
-                            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                            leadingIcon = { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Search, null) },
                             trailingIcon = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (categorySearch.isNotBlank() || categoryId != null) {
@@ -1207,8 +1215,8 @@ private fun PendingEntryDialog(
                                             },
                                             modifier = Modifier.size(32.dp),
                                         ) {
-                                            Icon(
-                                                Icons.Outlined.Close,
+                                            com.angel.mony.ui.iconography.MonyIcon(
+                                                com.angel.mony.ui.iconography.MonyIcon.Close,
                                                 contentDescription = "Limpiar categoría",
                                                 modifier = Modifier.size(18.dp),
                                             )
@@ -1346,10 +1354,10 @@ private fun PendingReminderField(
             }
             if (value != null) {
                 IconButton(onClick = { onValueChange(null) }) {
-                    Icon(Icons.Outlined.NotificationsOff, "Quitar alerta")
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.AlertsDisabled, "Quitar alerta")
                 }
             } else {
-                Icon(Icons.Outlined.NotificationsActive, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.AlertsEnabled, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
             }
         }
     }
@@ -1418,7 +1426,7 @@ private fun PendingDateField(
                     Text(errorMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
-            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Calendar, null, tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
         }
     }
     if (showPicker) {

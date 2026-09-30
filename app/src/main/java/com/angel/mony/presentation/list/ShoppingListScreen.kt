@@ -295,12 +295,12 @@ fun ShoppingListScreen(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
-                navigationIcon = { IconButton(onBack, Modifier.size(54.dp)) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver") } },
+                navigationIcon = { IconButton(onBack, Modifier.size(54.dp)) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Back, "Volver") } },
                 title = { Text(details?.list?.name ?: "Lista de compra", maxLines = 1) },
                 actions = {
                     if (state.editable && details != null) {
                         IconButton({ showListEditor = true }, enabled = !isSaving, modifier = Modifier.size(54.dp)) {
-                            Icon(Icons.Outlined.Edit, "Editar lista")
+                            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Edit, "Editar lista")
                         }
                     }
                 },
@@ -328,11 +328,11 @@ fun ShoppingListScreen(
                 if (state.editable && details.list.status != ShoppingListStatus.COMPLETED) {
                     item {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            QuickAction("Producto", Icons.Outlined.Add, Modifier.weight(1f)) {
+                            QuickAction("Producto", com.angel.mony.ui.iconography.MonyIcon.Add, Modifier.weight(1f)) {
                                 itemEditor = ItemEditorData(null, initialPurchased = lastNewItemPurchased)
                             }
-                            QuickAction("Código", Icons.Outlined.QrCodeScanner, Modifier.weight(1f), onClick = ::launchBarcodeScanner)
-                            QuickAction("Ticket", Icons.Outlined.DocumentScanner, Modifier.weight(1f)) { launchDocumentScanner(DocumentScanPurpose.TICKET) }
+                            QuickAction("Código", com.angel.mony.ui.iconography.MonyIcon.ScanBarcode, Modifier.weight(1f), onClick = ::launchBarcodeScanner)
+                            QuickAction("Ticket", com.angel.mony.ui.iconography.MonyIcon.ScanDocument, Modifier.weight(1f)) { launchDocumentScanner(DocumentScanPurpose.TICKET) }
                         }
                     }
                 }
@@ -354,7 +354,7 @@ fun ShoppingListScreen(
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("Ajustes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        if (state.editable) IconButton({ adjustmentEditor = null; showAdjustmentEditor = true }) { Icon(Icons.Outlined.Add, "Agregar ajuste") }
+                        if (state.editable) IconButton({ adjustmentEditor = null; showAdjustmentEditor = true }) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Add, "Agregar ajuste") }
                     }
                 }
                 if (details.adjustments.isEmpty()) item { Text("Sin impuestos, descuentos u otros ajustes.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -460,10 +460,10 @@ fun ShoppingListScreen(
     FinanceCard(modifier.fillMaxWidth()) { Text(text, Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }
 
-@Composable private fun QuickAction(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, onClick: () -> Unit) {
+@Composable private fun QuickAction(text: String, icon: com.angel.mony.ui.iconography.MonyIcon, modifier: Modifier, onClick: () -> Unit) {
     Surface(modifier.heightIn(min = 54.dp).clickable(onClick = onClick), shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Icon(icon, null, Modifier.size(22.dp)); Text(text, style = MaterialTheme.typography.labelSmall)
+            com.angel.mony.ui.iconography.MonyIcon(icon, null, Modifier.size(22.dp)); Text(text, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -494,14 +494,14 @@ fun ShoppingListScreen(
                 Text("Cantidad: ${item.quantity}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (editable) {
-                IconButton(onEdit, enabled = !isSaving) { Icon(Icons.Outlined.Edit, "Editar producto") }
-                IconButton(onDelete, enabled = !isSaving) { Icon(Icons.Outlined.Delete, "Eliminar producto") }
+                IconButton(onEdit, enabled = !isSaving) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Edit, "Editar producto", role = if (isSaving) com.angel.mony.ui.iconography.MonyIconRole.STATE else com.angel.mony.ui.iconography.MonyIconRole.NORMAL) }
+                IconButton(onDelete, enabled = !isSaving) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar producto", role = if (isSaving) com.angel.mony.ui.iconography.MonyIconRole.STATE else com.angel.mony.ui.iconography.MonyIconRole.NORMAL) }
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (editable) {
-                IconButton(onMinus, enabled = !isSaving, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Remove, "Reducir cantidad") }
-                IconButton(onPlus, enabled = !isSaving, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Add, "Aumentar cantidad") }
+                IconButton(onMinus, enabled = !isSaving, modifier = Modifier.size(48.dp)) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Remove, "Reducir cantidad", role = if (isSaving) com.angel.mony.ui.iconography.MonyIconRole.STATE else com.angel.mony.ui.iconography.MonyIconRole.NORMAL) }
+                IconButton(onPlus, enabled = !isSaving, modifier = Modifier.size(48.dp)) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Add, "Aumentar cantidad", role = if (isSaving) com.angel.mony.ui.iconography.MonyIconRole.STATE else com.angel.mony.ui.iconography.MonyIconRole.NORMAL) }
             }
             Column(Modifier.weight(1f)) {
                 item.estimatedUnitPriceInCents?.let { Text("Estimado: ${MoneyFormatter.format(it)} c/u", style = MaterialTheme.typography.bodySmall) }
@@ -511,7 +511,7 @@ fun ShoppingListScreen(
             item.actualUnitPriceInCents?.let {
                 Text("Subtotal: ${MoneyFormatter.format(Math.multiplyExact(item.quantity.toLong(), it))}", fontWeight = FontWeight.SemiBold)
             }
-            if (editable) IconButton(onOcr, enabled = !isSaving, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.PointOfSale, "Leer precio") }
+            if (editable) IconButton(onOcr, enabled = !isSaving, modifier = Modifier.size(48.dp)) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.ScanPrice, "Leer precio", role = if (isSaving) com.angel.mony.ui.iconography.MonyIconRole.STATE else com.angel.mony.ui.iconography.MonyIconRole.NORMAL) }
         }
         item.barcode?.let { Text("Código: $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -523,8 +523,8 @@ fun ShoppingListScreen(
         Text(adjustment.name, Modifier.weight(1f))
         Text((if (adjustment.isPositive) "+" else "−") + MoneyFormatter.format(adjustment.amountInCents), fontWeight = FontWeight.SemiBold)
         if (editable) {
-            IconButton(onEdit) { Icon(Icons.Outlined.Edit, "Editar ajuste") }
-            IconButton(onDelete) { Icon(Icons.Outlined.Delete, "Eliminar ajuste") }
+            IconButton(onEdit) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Edit, "Editar ajuste") }
+            IconButton(onDelete) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar ajuste") }
         }
     } }
 }
@@ -599,7 +599,7 @@ fun ShoppingListScreen(
                     errorMessage = formState["name"],
                 )
             }
-             item { Row(verticalAlignment = Alignment.CenterVertically) { Text("Cantidad", Modifier.weight(1f)); IconButton({ quantity = (quantity - 1).coerceAtLeast(1) }) { Icon(Icons.Outlined.Remove, "Reducir") }; Text(quantity.toString()); IconButton({ if (quantity < Int.MAX_VALUE) quantity++ }) { Icon(Icons.Outlined.Add, "Aumentar") } } }
+             item { Row(verticalAlignment = Alignment.CenterVertically) { Text("Cantidad", Modifier.weight(1f)); IconButton({ quantity = (quantity - 1).coerceAtLeast(1) }) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Remove, "Reducir") }; Text(quantity.toString()); IconButton({ if (quantity < Int.MAX_VALUE) quantity++ }) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Add, "Aumentar") } } }
             item { MoneyField(estimated, { estimated = it }, "Precio estimado (opcional)") }
             item { MoneyField(actual, { actual = it }, "Precio real (opcional)") }
             item { FinanceTextField(barcode, { barcode = it.filter(Char::isLetterOrDigit) }, "Código de barras (opcional)", singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)) }
@@ -713,9 +713,9 @@ fun ShoppingListScreen(
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Cantidad", Modifier.weight(1f))
-                            IconButton({ if (product.quantity > 1) products = products.updated(index, product.copy(quantity = product.quantity - 1)) }) { Icon(Icons.Outlined.Remove, "Reducir") }
+                            IconButton({ if (product.quantity > 1) products = products.updated(index, product.copy(quantity = product.quantity - 1)) }) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Remove, "Reducir") }
                             Text(product.quantity.toString())
-                            IconButton({ if (product.quantity < Int.MAX_VALUE) products = products.updated(index, product.copy(quantity = product.quantity + 1)) }) { Icon(Icons.Outlined.Add, "Aumentar") }
+                            IconButton({ if (product.quantity < Int.MAX_VALUE) products = products.updated(index, product.copy(quantity = product.quantity + 1)) }) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Add, "Aumentar") }
                         }
                         MoneyField(centsInput(product.unitPriceInCents), { raw -> MoneyFormatter.parseToCents(raw)?.let { products = products.updated(index, product.copy(unitPriceInCents = it)) } }, "Precio unitario")
                         Text("Subtotal: ${MoneyFormatter.format(product.quantity.toLong() * product.unitPriceInCents)}", fontWeight = FontWeight.SemiBold)

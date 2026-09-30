@@ -23,18 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.Savings
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -137,7 +125,7 @@ fun SavingsScreen(
                 actions = {
                     if (!showCompleted) {
                         GlobalOutlinedIconButton(
-                            icon = Icons.Outlined.Add,
+                            semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Add,
                             contentDescription = "Nueva meta",
                             onClick = {
                                 editingGoal = null
@@ -193,15 +181,15 @@ fun SavingsScreen(
                             modifier = Modifier.weight(1f),
                             placeholder = "Buscar...",
                             singleLine = true,
-                            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                            leadingIcon = { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Search, null) },
                             trailingIcon = {
                                 if (query.isNotBlank()) {
                                     IconButton(
                                         onClick = { query = "" },
                                         modifier = Modifier.size(32.dp),
                                     ) {
-                                        Icon(
-                                            Icons.Outlined.Close,
+                                        com.angel.mony.ui.iconography.MonyIcon(
+                                            com.angel.mony.ui.iconography.MonyIcon.Close,
                                             contentDescription = "Limpiar búsqueda",
                                             modifier = Modifier.size(18.dp),
                                         )
@@ -217,7 +205,7 @@ fun SavingsScreen(
                 item {
                     FinanceCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.Outlined.Savings, null, tint = MaterialTheme.colorScheme.primary)
+                            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Savings, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
                             Text("Todavía no tienes metas de ahorro", style = MaterialTheme.typography.titleLarge)
                             Text(
                                 "Crea una meta y registra aportes para ver tu avance. Cada aporte se guarda como un gasto en la categoría \"Ahorro\".",
@@ -321,8 +309,8 @@ fun SavingsScreen(
         AlertDialog(
             onDismissRequest = viewModel::cancelComplete,
             icon = {
-                Icon(
-                    Icons.Outlined.Check,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Check,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                 )
@@ -346,8 +334,8 @@ fun SavingsScreen(
         AlertDialog(
             onDismissRequest = viewModel::cancelReopen,
             icon = {
-                Icon(
-                    Icons.Outlined.Savings,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Savings,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.tertiary,
                 )
@@ -398,12 +386,12 @@ private fun SavingsFilterButton(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
     ) {
-        Icon(Icons.Outlined.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Filter, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
             Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
         }
-        Icon(Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.ExpandMore, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
     }
 }
 
@@ -439,7 +427,7 @@ private fun SavingsFilterSheet(
                     Text("FILTROS", style = MaterialTheme.typography.headlineMedium)
                     Text("Filtra por estado de la meta", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros") }
+                IconButton(onClick = onDismiss) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Close, "Cerrar filtros") }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text("ESTADO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
@@ -545,20 +533,20 @@ private fun SavingsCompactCardContent(
             )
             if (progress.canComplete) {
                 IconButton(onClick = onComplete, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Check, contentDescription = "Finalizar", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Completed, "Finalizar", tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
                 }
             }
             if (progress.goal.completedAt != null) {
                 IconButton(onClick = onReopen, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Savings, contentDescription = "Reabrir", tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Reopen, "Reabrir", tint = MaterialTheme.colorScheme.tertiary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
                 }
             }
             if (progress.isActive) {
                 IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Edit, "Editar", modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Edit, "Editar", modifier = Modifier.size(20.dp))
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -604,20 +592,20 @@ private fun SavingsNormalCardContent(
             }
             if (progress.canComplete) {
                 IconButton(onClick = onComplete, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Check, "Finalizar ${progress.goal.name}", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Completed, "Finalizar ${progress.goal.name}", tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
                 }
             }
             if (progress.goal.completedAt != null) {
                 IconButton(onClick = onReopen, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Savings, contentDescription = "Reabrir ${progress.goal.name}", tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Reopen, "Reabrir ${progress.goal.name}", tint = MaterialTheme.colorScheme.tertiary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
                 }
             }
             if (progress.isActive) {
                 IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Edit, "Editar ${progress.goal.name}", modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Edit, "Editar ${progress.goal.name}", modifier = Modifier.size(20.dp))
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Delete, contentDescription = "Eliminar ${progress.goal.name}", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar ${progress.goal.name}", tint = MaterialTheme.colorScheme.error, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -688,12 +676,12 @@ private fun SavingsDetailedCardContent(
             }
             if (progress.canComplete) {
                 IconButton(onClick = onComplete, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Check, "Finalizar ${progress.goal.name}", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Completed, "Finalizar ${progress.goal.name}", tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
                 }
             }
             if (progress.goal.completedAt != null) {
                 IconButton(onClick = onReopen, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Savings, contentDescription = "Reabrir ${progress.goal.name}", tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Reopen, "Reabrir ${progress.goal.name}", tint = MaterialTheme.colorScheme.tertiary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -732,10 +720,10 @@ private fun SavingsDetailedCardContent(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (progress.isActive) {
                 IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Edit, "Editar ${progress.goal.name}", modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Edit, "Editar ${progress.goal.name}", modifier = Modifier.size(20.dp))
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.Delete, contentDescription = "Eliminar ${progress.goal.name}", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar ${progress.goal.name}", tint = MaterialTheme.colorScheme.error, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -776,7 +764,7 @@ private fun SavingsCardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSiz
     var expanded by remember { mutableStateOf(false) }
     Box {
         TextButton(onClick = { expanded = true }) {
-            Icon(Icons.Outlined.ViewAgenda, contentDescription = null, modifier = Modifier.size(18.dp))
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.ListView, null, modifier = Modifier.size(18.dp))
             Text(selected.label, modifier = Modifier.padding(start = 6.dp))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -784,7 +772,7 @@ private fun SavingsCardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSiz
                 DropdownMenuItem(
                     text = { Text(option.label) },
                     leadingIcon = if (selected == option) {
-                        { Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                        { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Check, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                     } else null,
                     onClick = {
                         onSelect(option)
@@ -972,7 +960,7 @@ private fun ContributionsSheet(
                     )
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Cerrar aportes")
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Close, "Cerrar aportes")
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -1004,10 +992,11 @@ private fun ContributionRow(contribution: FinanceTransaction) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            Icons.AutoMirrored.Outlined.ReceiptLong,
+        com.angel.mony.ui.iconography.MonyIcon(
+            com.angel.mony.ui.iconography.MonyIcon.Expense,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
+            role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
         )
         Column(Modifier.weight(1f)) {
             Text(

@@ -265,9 +265,9 @@ private fun AppToastCard(
         AppToastTone.INFO -> MaterialTheme.colorScheme.secondary
     }
     val icon = when (message.tone) {
-        AppToastTone.SUCCESS -> Icons.Outlined.CheckCircle
-        AppToastTone.ERROR -> Icons.Outlined.ErrorOutline
-        AppToastTone.INFO -> Icons.Outlined.Info
+        AppToastTone.SUCCESS -> com.angel.mony.ui.iconography.MonyIcon.Completed
+        AppToastTone.ERROR -> com.angel.mony.ui.iconography.MonyIcon.Error
+        AppToastTone.INFO -> com.angel.mony.ui.iconography.MonyIcon.Info
     }
     val title = when (message.tone) {
         AppToastTone.SUCCESS -> "Listo"
@@ -303,10 +303,11 @@ private fun AppToastCard(
                     .background(accent.copy(alpha = 0.14f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = icon,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    icon = icon,
                     contentDescription = null,
                     tint = accent,
+                    role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                     modifier = Modifier.size(21.dp),
                 )
             }
@@ -334,10 +335,11 @@ private fun AppToastCard(
                 onClick = onDismiss,
                 modifier = Modifier.size(48.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Close,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    icon = com.angel.mony.ui.iconography.MonyIcon.Close,
                     contentDescription = "Cerrar aviso",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                     modifier = Modifier.size(19.dp),
                 )
             }

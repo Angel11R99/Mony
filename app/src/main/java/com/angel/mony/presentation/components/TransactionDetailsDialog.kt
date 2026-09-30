@@ -39,10 +39,12 @@ fun TransactionDetailsDialog(
         shape = LocalAppShapes.current.dialogShape,
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
         icon = {
-            Icon(
-                Icons.AutoMirrored.Outlined.ReceiptLong,
+            com.angel.mony.ui.iconography.MonyIcon(
+                if (isExpense) com.angel.mony.ui.iconography.MonyIcon.Expense
+                else com.angel.mony.ui.iconography.MonyIcon.Income,
                 contentDescription = null,
                 tint = movementColor,
+                role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
             )
         },
         title = { Text("Detalle del ${if (isExpense) "gasto" else "ingreso"}") },

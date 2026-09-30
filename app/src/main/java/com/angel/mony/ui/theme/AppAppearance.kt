@@ -180,11 +180,7 @@ fun isColorCompatible(argb: Int, isDarkTheme: Boolean): Boolean {
     else luminance <= LIGHT_INCOMPATIBLE_LUMINANCE_THRESHOLD
 }
 
-val primaryPresets: List<Int> = listOf(
-    0xFF7C3AED.toInt(), 0xFF2563EB.toInt(), 0xFF0891B2.toInt(), 0xFF059669.toInt(),
-    0xFFCA8A04.toInt(), 0xFFEA580C.toInt(), 0xFFDB2777.toInt(), 0xFF52525B.toInt(),
-    0xFFFFFFFF.toInt(), 0xFF78350F.toInt(),
-)
+val primaryPresets: List<Int> = monyColorPalette.map(AppColorOption::argb)
 
 val accentPresets: List<Int> = listOf(
     0xFFFF6B73.toInt(), 0xFFDC2626.toInt(), 0xFFF97316.toInt(), 0xFFDB2777.toInt(),

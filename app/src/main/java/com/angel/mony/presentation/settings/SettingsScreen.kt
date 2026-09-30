@@ -1,180 +1,60 @@
 package com.angel.mony.presentation.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.domain.model.BudgetPeriod
+import com.angel.mony.navigation.FloatingModuleBarConfig
+import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.ModuleTitle
-import com.angel.mony.core.showToast
-import com.angel.mony.domain.model.BudgetPeriod
-import com.angel.mony.domain.model.defaultCycleSchedules
-import com.angel.mony.ui.theme.AppAppearance
-import com.angel.mony.ui.theme.AppFontFamily
-import com.angel.mony.ui.theme.AppShapeStyle
-import com.angel.mony.ui.theme.AppThemeMode
-import com.angel.mony.ui.theme.BackgroundDecoration
-import com.angel.mony.navigation.ModuleTransitionStyle
-import com.angel.mony.ui.iconography.IconColorMode
-import com.angel.mony.ui.iconography.IconPack
 import com.angel.mony.ui.iconography.MonyIcon
+import com.angel.mony.ui.theme.AppAppearance
 
-import java.time.LocalTime
+object SettingsRoutes {
+    const val ROOT = "settings"
+    const val PERSONALIZATION = "settings/personalization"
+    const val NAVIGATION = "settings/navigation"
+    const val FINANCE = "settings/finance"
+    const val CATEGORIES = "settings/categories"
 
-private enum class SettingsGroup { MAIN, APPEARANCE, NAVIGATION, FINANCE }
+    val destinations = setOf(PERSONALIZATION, NAVIGATION, FINANCE, CATEGORIES)
+
+    fun parentOf(route: String): String? = if (route in destinations) ROOT else null
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     appearance: AppAppearance,
-    isDarkTheme: Boolean,
-    moduleBarConfig: com.angel.mony.navigation.FloatingModuleBarConfig,
-    automaticCycleClose: Boolean,
-    automaticCloseTime: LocalTime,
+    moduleBarConfig: FloatingModuleBarConfig,
     onBack: () -> Unit,
-    onThemeChange: (AppThemeMode) -> Unit,
-    onPrimaryChange: (Int) -> Unit,
-    onAccentChange: (Int) -> Unit,
-    onReset: () -> Unit,
-    onShapeStyleChange: (AppShapeStyle) -> Unit,
-    onFontFamilyChange: (AppFontFamily) -> Unit,
-    onBackgroundDecorationChange: (BackgroundDecoration) -> Unit,
-    onBackgroundIntensityChange: (Float) -> Unit,
-    onIconPackChange: (IconPack) -> Unit,
-    onIconColorModeChange: (IconColorMode) -> Unit,
-    onCustomIconColorChange: (Int) -> Unit,
-    onAutomaticCycleCloseChange: (Boolean) -> Unit,
-    onAutomaticCloseTimeChange: (LocalTime) -> Unit,
-    onModuleBarVisibleRoutesChange: (Set<String>) -> Unit,
-    onModuleBarShowLabelsChange: (Boolean) -> Unit,
-    onModuleBarLabelTextSizeChange: (Float) -> Unit,
-    onModuleTransitionStyleChange: (ModuleTransitionStyle) -> Unit,
+    onNavigate: (String) -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-    var currentGroup by rememberSaveable { mutableStateOf(SettingsGroup.MAIN) }
-    var editingColor by remember { mutableStateOf<ColorRole?>(null) }
     val budget by viewModel.budget.collectAsStateWithLifecycle()
-    val message by viewModel.message.collectAsStateWithLifecycle()
-    val isSavingCycles by viewModel.isSavingCycles.collectAsStateWithLifecycle()
-    val isSavingBudget by viewModel.isSavingBudget.collectAsStateWithLifecycle()
-    val alertsEnabled by viewModel.alertsEnabled.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
-    LaunchedEffect(message) {
-        message?.let {
-            context.showToast(it)
-            viewModel.consumeMessage()
-        }
-    }
-
-    when (currentGroup) {
-        SettingsGroup.MAIN -> SettingsMainScreen(
-            appearance = appearance,
-            moduleBarConfig = moduleBarConfig,
-            currentPeriod = budget?.period,
-            budgetAmountInCents = budget?.amountInCents,
-            onBack = onBack,
-            onGroupClick = { currentGroup = it },
-        )
-        SettingsGroup.APPEARANCE -> AppearanceSettingsScreen(
-            appearance = appearance,
-            isDarkTheme = isDarkTheme,
-            onBack = { currentGroup = SettingsGroup.MAIN },
-            onThemeChange = onThemeChange,
-            onEditPrimary = { editingColor = ColorRole.PRIMARY },
-            onEditAccent = { editingColor = ColorRole.ACCENT },
-            onPrimaryChange = onPrimaryChange,
-            onAccentChange = onAccentChange,
-            onReset = onReset,
-            onShapeStyleChange = onShapeStyleChange,
-            onFontFamilyChange = onFontFamilyChange,
-            onBackgroundDecorationChange = onBackgroundDecorationChange,
-            onBackgroundIntensityChange = onBackgroundIntensityChange,
-            onIconPackChange = onIconPackChange,
-            onIconColorModeChange = onIconColorModeChange,
-            onCustomIconColorChange = onCustomIconColorChange,
-            editingColor = editingColor,
-            onEditingColorChange = { editingColor = it },
-        )
-        SettingsGroup.NAVIGATION -> NavigationSettingsScreen(
-            moduleBarConfig = moduleBarConfig,
-            onBack = { currentGroup = SettingsGroup.MAIN },
-            onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
-            onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
-            onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
-            onModuleTransitionStyleChange = onModuleTransitionStyleChange,
-        )
-        SettingsGroup.FINANCE -> FinanceSettingsScreen(
-            automaticCycleClose = automaticCycleClose,
-            automaticCloseTime = automaticCloseTime,
-            currentSchedules = budget?.cycleSchedules
-                ?: defaultCycleSchedules(budget?.period ?: BudgetPeriod.FORTNIGHTLY),
-            currentPeriod = budget?.period ?: BudgetPeriod.FORTNIGHTLY,
-            budgetAmountInCents = budget?.amountInCents,
-            isSavingCycles = isSavingCycles,
-            isSavingBudget = isSavingBudget,
-            alertsEnabled = alertsEnabled,
-            onBack = { currentGroup = SettingsGroup.MAIN },
-            onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
-            onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
-            onAlertsEnabledChange = viewModel::setAlertsEnabled,
-            onSchedulesSave = viewModel::updateCycleSchedules,
-            onPeriodChange = { period ->
-                if (budget == null) {
-                    viewModel.saveBudget(
-                        amount = "",
-                        period = period,
-                        onSaved = {},
-                    )
-                } else {
-                    viewModel.updateBudgetPeriod(period)
-                }
-            },
-            onBudgetSave = { amount, period, onSaved ->
-                viewModel.saveBudget(amount = amount, period = period, onSaved = onSaved)
-            },
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SettingsMainScreen(
-    appearance: AppAppearance,
-    moduleBarConfig: com.angel.mony.navigation.FloatingModuleBarConfig,
-    currentPeriod: BudgetPeriod?,
-    budgetAmountInCents: Long?,
-    onBack: () -> Unit,
-    onGroupClick: (SettingsGroup) -> Unit,
-) {
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -202,56 +82,63 @@ private fun SettingsMainScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text(
-                    "Personaliza cómo funciona la aplicación.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            // ── APARIENCIA ──
-            item {
-                SettingsGroupRow(
-                    icon = MonyIcon.Appearance,
-                    title = "Apariencia",
-                    description = "Tema, colores, estilo y fondo",
-                    summary = appearance.themeMode.label,
-                    onClick = { onGroupClick(SettingsGroup.APPEARANCE) },
-                )
-            }
-
-            // ── NAVEGACIÓN ──
-            item {
-                val visibleCount = moduleBarConfig.visibleRoutes.size
-                SettingsGroupRow(
-                    icon = MonyIcon.Navigation,
-                    title = "Navegación",
-                    description = "Barra, módulos y animaciones",
-                    summary = "$visibleCount módulos · ${moduleBarConfig.transitionStyle.label}",
-                    onClick = { onGroupClick(SettingsGroup.NAVIGATION) },
-                )
-            }
-
-            // ── FINANZAS ──
-            item {
-                val periodLabel = when (currentPeriod) {
-                    BudgetPeriod.MONTHLY -> "Mensual"
-                    BudgetPeriod.FORTNIGHTLY -> "Quincenal"
-                    null -> null
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        "¿Qué quieres configurar?",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        "Elige una sección para encontrar sus opciones.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                val summaryParts = buildList {
-                    periodLabel?.let { add(it) }
-                    if (budgetAmountInCents != null) {
-                        add(com.angel.mony.core.MoneyFormatter.format(budgetAmountInCents))
+            }
+            item {
+                FinanceCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.fillMaxWidth()) {
+                        SettingsGroupRow(
+                            icon = MonyIcon.Appearance,
+                            title = "Personalización",
+                            description = "Tema, colores, iconos y estilo",
+                            summary = appearance.themeMode.label,
+                            onClick = { onNavigate(SettingsRoutes.PERSONALIZATION) },
+                        )
+                        HorizontalDivider()
+                        SettingsGroupRow(
+                            icon = MonyIcon.Navigation,
+                            title = "Navegación",
+                            description = "Barra, módulos y animaciones",
+                            summary = "${moduleBarConfig.visibleRoutes.size} módulos",
+                            onClick = { onNavigate(SettingsRoutes.NAVIGATION) },
+                        )
+                        HorizontalDivider()
+                        val periodLabel = when (budget?.period) {
+                            BudgetPeriod.MONTHLY -> "Mensual"
+                            BudgetPeriod.FORTNIGHTLY -> "Quincenal"
+                            null -> null
+                        }
+                        val financeSummary = buildList {
+                            periodLabel?.let(::add)
+                            budget?.amountInCents?.let { add(MoneyFormatter.format(it)) }
+                        }.joinToString(" · ").ifEmpty { null }
+                        SettingsGroupRow(
+                            icon = MonyIcon.Finance,
+                            title = "Finanzas",
+                            description = "Presupuesto, ciclos y alertas",
+                            summary = financeSummary,
+                            onClick = { onNavigate(SettingsRoutes.FINANCE) },
+                        )
+                        HorizontalDivider()
+                        SettingsGroupRow(
+                            icon = MonyIcon.Category,
+                            title = "Categorías",
+                            description = "Organiza ingresos y gastos",
+                            onClick = { onNavigate(SettingsRoutes.CATEGORIES) },
+                        )
                     }
                 }
-                SettingsGroupRow(
-                    icon = MonyIcon.Finance,
-                    title = "Finanzas",
-                    description = "Ciclos, presupuesto y categorías",
-                    summary = summaryParts.joinToString(" · ").ifEmpty { null },
-                    onClick = { onGroupClick(SettingsGroup.FINANCE) },
-                )
             }
         }
     }

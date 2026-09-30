@@ -1396,6 +1396,21 @@ unless the design system explicitly requires it.
 
 # Settings Screens
 
+The main Settings screen is an index of real Navigation Compose destinations. Do not turn it back
+into one long list of controls or emulate navigation with local composable state.
+
+Use these rules:
+
+* complex configuration, CRUD, or long forms → a sub-screen;
+* simple switches and short selectors → inline inside their logical sub-screen;
+* keep most flows to `Settings → destination`;
+* dialogs and bottom sheets are only for short contextual tasks;
+* group related navigation rows in one light surface instead of one card per row;
+* use semantic `MonyIcon` values for every Settings destination and action;
+* every sub-screen must have predictable app-bar and system Back behavior.
+
+See `docs/SETTINGS.md` and `docs/ICONOGRAPHY.md` before expanding Settings.
+
 Settings changes must define:
 
 ```text

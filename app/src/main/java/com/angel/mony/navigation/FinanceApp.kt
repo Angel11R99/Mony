@@ -43,6 +43,11 @@ import com.angel.mony.presentation.fortnight.FortnightTemplatesScreen
 import com.angel.mony.presentation.transactions.AddTransactionScreen
 import com.angel.mony.presentation.transactions.HistoryScreen
 import com.angel.mony.presentation.settings.SettingsScreen
+import com.angel.mony.presentation.settings.SettingsRoutes
+import com.angel.mony.presentation.settings.AppearanceSettingsRoute
+import com.angel.mony.presentation.settings.NavigationSettingsScreen
+import com.angel.mony.presentation.settings.FinanceSettingsRoute
+import com.angel.mony.presentation.settings.CategoriesSettingsScreen
 import com.angel.mony.presentation.background.DecorativeBackground
 import com.angel.mony.ui.theme.AppAppearance
 import com.angel.mony.ui.theme.BackgroundDecoration
@@ -255,13 +260,18 @@ fun FinanceApp(
                     onBack = { if (!navController.popBackStack()) navigateToModule("fortnight") },
                 )
             }
-            composable("settings") {
+            composable(SettingsRoutes.ROOT) {
                 SettingsScreen(
                     appearance = appearance,
-                    isDarkTheme = isDarkTheme,
                     moduleBarConfig = moduleBarConfig,
-                    automaticCycleClose = automaticCycleClose,
-                    automaticCloseTime = automaticCloseTime,
+                    onBack = { navController.popBackStack() },
+                    onNavigate = navController::navigate,
+                )
+            }
+            composable(SettingsRoutes.PERSONALIZATION) {
+                AppearanceSettingsRoute(
+                    appearance = appearance,
+                    isDarkTheme = isDarkTheme,
                     onBack = { navController.popBackStack() },
                     onThemeChange = onThemeChange,
                     onPrimaryChange = onPrimaryChange,
@@ -274,13 +284,29 @@ fun FinanceApp(
                     onIconPackChange = onIconPackChange,
                     onIconColorModeChange = onIconColorModeChange,
                     onCustomIconColorChange = onCustomIconColorChange,
-                    onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
-                    onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
+                )
+            }
+            composable(SettingsRoutes.NAVIGATION) {
+                NavigationSettingsScreen(
+                    moduleBarConfig = moduleBarConfig,
+                    onBack = { navController.popBackStack() },
                     onModuleBarVisibleRoutesChange = onModuleBarVisibleRoutesChange,
                     onModuleBarShowLabelsChange = onModuleBarShowLabelsChange,
                     onModuleBarLabelTextSizeChange = onModuleBarLabelTextSizeChange,
                     onModuleTransitionStyleChange = onModuleTransitionStyleChange,
                 )
+            }
+            composable(SettingsRoutes.FINANCE) {
+                FinanceSettingsRoute(
+                    automaticCycleClose = automaticCycleClose,
+                    automaticCloseTime = automaticCloseTime,
+                    onBack = { navController.popBackStack() },
+                    onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
+                    onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
+                )
+            }
+            composable(SettingsRoutes.CATEGORIES) {
+                CategoriesSettingsScreen(onBack = { navController.popBackStack() })
             }
             composable("savings") {
                 SavingsScreen(

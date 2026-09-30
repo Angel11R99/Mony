@@ -49,7 +49,10 @@ import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.presentation.components.sanitizeAmountInput
 
 @Composable
-fun CategoriesTab(viewModel: CategoriesViewModel = hiltViewModel()) {
+fun CategoriesTab(
+    modifier: Modifier = Modifier,
+    viewModel: CategoriesViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
@@ -66,7 +69,7 @@ fun CategoriesTab(viewModel: CategoriesViewModel = hiltViewModel()) {
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -231,7 +234,7 @@ private fun CategoryRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+        IconButton(onClick = onEdit, modifier = Modifier.size(48.dp)) {
             com.angel.mony.ui.iconography.MonyIcon(
                 com.angel.mony.ui.iconography.MonyIcon.Edit,
                 "Editar ${category.name}",
@@ -239,7 +242,7 @@ private fun CategoryRow(
             )
         }
         if (!isInUse) {
-            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
                 com.angel.mony.ui.iconography.MonyIcon(
                     com.angel.mony.ui.iconography.MonyIcon.Delete,
                     contentDescription = "Eliminar ${category.name}",

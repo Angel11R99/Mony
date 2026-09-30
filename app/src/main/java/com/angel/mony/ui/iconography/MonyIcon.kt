@@ -56,12 +56,32 @@ enum class MonyIcon {
     Pin,
     Previous,
     Next,
+    Error,
+    Dropdown,
+    ExpandMore,
+    ExpandLess,
+    Remove,
+    Sort,
+    Time,
+    Notes,
+    ListView,
+    AlertsEnabled,
+    AlertsDisabled,
+    Reopen,
+    Restore,
+    ScanBarcode,
+    ScanDocument,
+    ScanPrice,
+    TrendUp,
+    TrendDown,
+    TrendFlat,
 }
 
 enum class IconPack(val displayName: String) {
     MATERIAL("Material"),
     LUCIDE("Lucide"),
     PHOSPHOR("Phosphor"),
+    MONY_COLOR("Mony Color"),
 }
 
 enum class IconColorMode(val displayName: String) {

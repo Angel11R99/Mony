@@ -25,13 +25,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowDropDown
-import androidx.compose.material.icons.outlined.ArrowDropUp
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -602,10 +595,11 @@ private fun TrendDeltaLabel(delta: TrendDelta, upIsGood: Boolean) {
             color = goodColor,
         )
         TrendDirection.FLAT -> Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Outlined.Remove,
+            com.angel.mony.ui.iconography.MonyIcon(
+                com.angel.mony.ui.iconography.MonyIcon.TrendFlat,
                 contentDescription = "Sin cambios",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                 modifier = Modifier.size(20.dp),
             )
             Text(
@@ -617,10 +611,11 @@ private fun TrendDeltaLabel(delta: TrendDelta, upIsGood: Boolean) {
         TrendDirection.UP -> {
             val color = if (upIsGood) goodColor else badColor
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.ArrowDropUp,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.TrendUp,
                     contentDescription = "Subió",
                     tint = color,
+                    role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                     modifier = Modifier.size(24.dp),
                 )
                 Text(
@@ -634,10 +629,11 @@ private fun TrendDeltaLabel(delta: TrendDelta, upIsGood: Boolean) {
         TrendDirection.DOWN -> {
             val color = if (upIsGood) badColor else goodColor
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.ArrowDropDown,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.TrendDown,
                     contentDescription = "Bajó",
                     tint = color,
+                    role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                     modifier = Modifier.size(24.dp),
                 )
                 Text(

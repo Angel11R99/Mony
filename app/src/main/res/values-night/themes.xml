@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.PersonalFinanceTracker" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">#1C1C1C</item>
         <item name="android:colorAccent">#7C3AED</item>
         <item name="android:navigationBarColor">#1C1C1C</item>
         <item name="android:statusBarColor">#1C1C1C</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
     </style>
 </resources>

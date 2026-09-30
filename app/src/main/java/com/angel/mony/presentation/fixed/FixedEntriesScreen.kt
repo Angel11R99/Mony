@@ -22,21 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.AccessTime
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -159,7 +144,7 @@ fun FixedEntriesScreen(
                 title = { ModuleTitle("Fijos") },
                 actions = {
                     GlobalOutlinedIconButton(
-                        icon = Icons.Outlined.Add,
+                        semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Add,
                         contentDescription = "Nueva plantilla",
                         onClick = {
                             editorEntry = null
@@ -211,15 +196,15 @@ fun FixedEntriesScreen(
                         modifier = Modifier.weight(1f),
                         placeholder = "Buscar...",
                         singleLine = true,
-                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                        leadingIcon = { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Search, null) },
                         trailingIcon = {
                             if (query.isNotBlank()) {
                                 IconButton(
                                     onClick = { query = "" },
                                     modifier = Modifier.size(32.dp),
                                 ) {
-                                    Icon(
-                                        Icons.Outlined.Close,
+                                    com.angel.mony.ui.iconography.MonyIcon(
+                                        com.angel.mony.ui.iconography.MonyIcon.Close,
                                         contentDescription = "Limpiar búsqueda",
                                         modifier = Modifier.size(18.dp),
                                     )
@@ -241,7 +226,7 @@ fun FixedEntriesScreen(
                 item {
                     FinanceCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.AutoMirrored.Outlined.PlaylistAdd, null, tint = MaterialTheme.colorScheme.primary)
+                            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Add, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
                             Text("Todavía no tienes plantillas", style = MaterialTheme.typography.titleLarge)
                             Text(
                                 "Guarda aquí los movimientos que repites y agrégalos con la fecha que elijas.",
@@ -455,22 +440,23 @@ private fun FixedCompactCardContent(
                 modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onAddNow, enabled = entry.isActive, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    Icons.Outlined.Add,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Add,
                     contentDescription = "Agregar ahora",
                     tint = if (entry.isActive) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                    role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                     modifier = Modifier.size(20.dp),
                 )
             }
             IconButton(onClick = onConfigure, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Outlined.Settings, "Configurar fechas", modifier = Modifier.size(20.dp))
+                com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Settings, "Configurar fechas", modifier = Modifier.size(20.dp))
             }
             IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Outlined.Edit, "Editar", modifier = Modifier.size(20.dp))
+                com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Edit, "Editar", modifier = Modifier.size(20.dp))
             }
             IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error, role = com.angel.mony.ui.iconography.MonyIconRole.STATE, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -542,8 +528,8 @@ private fun FixedDetailedCardContent(
         )
         FixedEntryTimingStatus(entry)
         TextButton(onClick = { expanded = !expanded }) {
-            Icon(
-                if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+            com.angel.mony.ui.iconography.MonyIcon(
+                if (expanded) com.angel.mony.ui.iconography.MonyIcon.ExpandLess else com.angel.mony.ui.iconography.MonyIcon.ExpandMore,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
             )
@@ -589,10 +575,10 @@ private fun FixedEntryActionsRow(
             modifier = Modifier.weight(1f),
             enabled = entry.isActive,
         )
-        IconButton(onClick = onConfigure) { Icon(Icons.Outlined.Settings, "Configurar fechas") }
-        IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Editar") }
+        IconButton(onClick = onConfigure) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Settings, "Configurar fechas") }
+        IconButton(onClick = onEdit) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Edit, "Editar") }
         IconButton(onClick = onDelete) {
-            Icon(Icons.Outlined.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
         }
     }
 }
@@ -622,7 +608,7 @@ private fun EntryCardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSize)
     var expanded by remember { mutableStateOf(false) }
     Box {
         TextButton(onClick = { expanded = true }) {
-            Icon(Icons.Outlined.ViewAgenda, contentDescription = null, modifier = Modifier.size(18.dp))
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.ListView, null, modifier = Modifier.size(18.dp))
             Text(selected.label, modifier = Modifier.padding(start = 6.dp))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -630,7 +616,7 @@ private fun EntryCardSizeMenu(selected: EntryCardSize, onSelect: (EntryCardSize)
                 DropdownMenuItem(
                     text = { Text(option.label) },
                     leadingIcon = if (selected == option) {
-                        { Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                        { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Check, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                     } else null,
                     onClick = {
                         onSelect(option)
@@ -842,7 +828,7 @@ private fun FixedDateField(label: String, value: LocalDate?, onValueChange: (Loc
                 Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                 Text(value?.format(formatter) ?: "Seleccionar fecha")
             }
-            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Calendar, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
         }
     }
     if (showPicker) {
@@ -885,7 +871,7 @@ private fun FixedHourField(hour: Int, onHourChange: (Int) -> Unit) {
                 Text("Hora aproximada", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                 Text(display)
             }
-            Icon(Icons.Outlined.AccessTime, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Time, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
         }
     }
     if (showPicker) {
@@ -1049,7 +1035,7 @@ private fun FixedEntryDialog(
                             },
                             label = { Text("Buscar categoría") },
                             placeholder = { Text("Escribe o selecciona") },
-                            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                            leadingIcon = { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Search, null) },
                             trailingIcon = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (categorySearch.isNotBlank() || categoryId != null) {
@@ -1061,8 +1047,8 @@ private fun FixedEntryDialog(
                                             },
                                             modifier = Modifier.size(32.dp),
                                         ) {
-                                            Icon(
-                                                Icons.Outlined.Close,
+                                            com.angel.mony.ui.iconography.MonyIcon(
+                                                com.angel.mony.ui.iconography.MonyIcon.Close,
                                                 contentDescription = "Limpiar categoría",
                                                 modifier = Modifier.size(18.dp),
                                             )
@@ -1155,12 +1141,12 @@ private fun FixedFilterButton(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
     ) {
-        Icon(Icons.Outlined.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Filter, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
             Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
         }
-        Icon(Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.ExpandMore, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
     }
 }
 
@@ -1195,7 +1181,7 @@ private fun FixedFilterSheet(
                     Text("FILTROS", style = MaterialTheme.typography.headlineMedium)
                     Text("Filtra por tipo de plantilla", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros") }
+                IconButton(onClick = onDismiss) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Close, "Cerrar filtros") }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text("TIPO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)

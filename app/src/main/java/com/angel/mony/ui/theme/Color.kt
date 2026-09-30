@@ -21,3 +21,28 @@ val LightBorder = Color(0xFFCBC3D2)
 val LightPurple = Color(0xFF6D28D9)
 val LightPurpleMuted = Color(0xFF7043A8)
 val LightExpenseRed = Color(0xFFC5283D)
+
+data class AppColorOption(
+    val id: String,
+    val displayName: String,
+    val argb: Int,
+)
+
+/** Paleta compartida por la personalización principal y de iconos. */
+val monyColorPalette: List<AppColorOption> = listOf(
+    AppColorOption("red", "Rojo", 0xFFEF4444.toInt()),
+    AppColorOption("pink", "Rosa", 0xFFEC4899.toInt()),
+    AppColorOption("purple", "Morado", 0xFF9333EA.toInt()),
+    AppColorOption("violet", "Violeta", 0xFF7C3AED.toInt()),
+    AppColorOption("blue", "Azul", 0xFF3B82F6.toInt()),
+    AppColorOption("cyan", "Azul claro", 0xFF0891B2.toInt()),
+    AppColorOption("turquoise", "Turquesa", 0xFF0D9488.toInt()),
+    AppColorOption("green", "Verde", 0xFF16A34A.toInt()),
+    AppColorOption("lime", "Lima", 0xFF65A30D.toInt()),
+    AppColorOption("yellow", "Amarillo", 0xFFEAB308.toInt()),
+    AppColorOption("amber", "Ámbar", 0xFFD97706.toInt()),
+    AppColorOption("orange", "Naranja", 0xFFEA580C.toInt()),
+    AppColorOption("white", "Blanco", 0xFFFFFFFF.toInt()),
+    AppColorOption("gray", "Gris", 0xFF71717A.toInt()),
+    AppColorOption("black", "Negro", 0xFF000000.toInt()),
+)

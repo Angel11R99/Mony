@@ -15,12 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -146,7 +140,7 @@ fun AddTransactionScreen(
                     } else "Editar movimiento",
                 )
             },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver") } },
+            navigationIcon = { IconButton(onClick = onBack) { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Back, "Volver") } },
             actions = {
                 GlobalSaveButton(
                     onClick = {
@@ -227,10 +221,11 @@ fun AddTransactionScreen(
                         singleLine = true,
                         readOnly = true,
                         trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.CalendarMonth,
+                            com.angel.mony.ui.iconography.MonyIcon(
+                                icon = com.angel.mony.ui.iconography.MonyIcon.Calendar,
                                 contentDescription = null,
                                 tint = if (dateError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                             )
                         },
                         isError = dateError,
@@ -335,7 +330,7 @@ private fun CategorySearchSelect(
             label = "Buscar o seleccionar categoría",
             placeholder = "Nombre de la categoría",
             singleLine = true,
-            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+            leadingIcon = { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Search, contentDescription = null) },
             trailingIcon = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (query.isNotBlank()) {
@@ -347,8 +342,8 @@ private fun CategorySearchSelect(
                             },
                             modifier = Modifier.size(32.dp),
                         ) {
-                            Icon(
-                                Icons.Outlined.Close,
+                            com.angel.mony.ui.iconography.MonyIcon(
+                                com.angel.mony.ui.iconography.MonyIcon.Close,
                                 contentDescription = "Limpiar categoría",
                                 modifier = Modifier.size(18.dp),
                             )
@@ -373,10 +368,11 @@ private fun CategorySearchSelect(
                     text = { Text(category.name) },
                     trailingIcon = if (category.id == selectedCategoryId) {
                         {
-                            Icon(
-                                Icons.Outlined.Check,
+                            com.angel.mony.ui.iconography.MonyIcon(
+                                com.angel.mony.ui.iconography.MonyIcon.Check,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
+                                role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                             )
                         }
                     } else null,

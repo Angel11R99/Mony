@@ -152,6 +152,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onResetAppearance = {
                                 appearancePreferences.reset()
+                                applicationContext.showToast("Apariencia restaurada")
                                 lifecycleScope.launch { runCatching { updateAllFinanceWidgets(applicationContext) } }
                             },
                             onShapeStyleChange = appearancePreferences::setShapeStyle,

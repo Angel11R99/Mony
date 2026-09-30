@@ -1,16 +1,19 @@
 package com.angel.mony.ui.iconography
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.size
 import kotlin.math.max
 import kotlin.math.min
 
@@ -39,6 +42,9 @@ fun MonyIcon(
     size: Dp? = null,
 ) {
     val config = LocalIconography.current
+    val pack = packOverride ?: config.pack
+    val asset = MonyIconResolver.resolve(icon, pack)
+    val iconModifier = if (size == null) modifier else modifier.size(size)
     val resolvedTint = resolveIconTint(
         config = config,
         role = role,
@@ -47,12 +53,33 @@ fun MonyIcon(
         primaryColor = MaterialTheme.colorScheme.primary,
         backgroundColor = MaterialTheme.colorScheme.background,
     )
-    Icon(
-        imageVector = MonyIconResolver.resolve(icon, packOverride ?: config.pack),
-        contentDescription = contentDescription,
-        modifier = if (size == null) modifier else modifier.size(size),
-        tint = resolvedTint,
-    )
+    when (asset) {
+        is MonyIconAsset.Tintable -> Icon(
+            imageVector = asset.imageVector,
+            contentDescription = contentDescription,
+            modifier = iconModifier,
+            tint = if (asset.usesGlobalTint || tint != Color.Unspecified || role == MonyIconRole.STATE) {
+                resolvedTint
+            } else {
+                LocalContentColor.current
+            },
+        )
+        is MonyIconAsset.Multicolor -> {
+            val outlineColor = MaterialTheme.colorScheme.onSurface
+            val painter = remember(asset.icon, outlineColor) {
+                MonyColorIconPainter(asset.icon, outlineColor)
+            }
+            Image(
+                painter = painter,
+                contentDescription = contentDescription,
+                modifier = if (size == null) {
+                    modifier.defaultMinSize(MonyIconSize.Medium, MonyIconSize.Medium)
+                } else {
+                    iconModifier
+                },
+            )
+        }
+    }
 }
 
 fun resolveIconTint(

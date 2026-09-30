@@ -2,9 +2,12 @@ package com.angel.mony.ui.iconography
 
 import androidx.compose.ui.graphics.Color
 import com.angel.mony.ui.theme.AppAppearance
+import com.angel.mony.ui.theme.monyColorPalette
 import com.angel.mony.ui.theme.parseIconColorMode
 import com.angel.mony.ui.theme.parseIconPack
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -27,21 +30,33 @@ class IconographyTest {
     }
 
     @Test
+    fun `every semantic icon resolves safely in every pack`() {
+        MonyIcon.entries.forEach { icon ->
+            IconPack.entries.forEach { pack ->
+                val asset = MonyIconResolver.resolve(icon, pack)
+                assertTrue(asset is MonyIconAsset.Tintable || asset is MonyIconAsset.Multicolor)
+            }
+        }
+    }
+
+    @Test
     fun `packs resolve different graphics without restarting`() {
         val material = MonyIconResolver.resolve(MonyIcon.Home, IconPack.MATERIAL)
         val lucide = MonyIconResolver.resolve(MonyIcon.Home, IconPack.LUCIDE)
         val phosphor = MonyIconResolver.resolve(MonyIcon.Home, IconPack.PHOSPHOR)
+        val monyColor = MonyIconResolver.resolve(MonyIcon.Home, IconPack.MONY_COLOR)
 
-        assertNotEquals(material.name, lucide.name)
-        assertNotEquals(lucide.name, phosphor.name)
+        assertNotEquals(material.vector.name, lucide.vector.name)
+        assertNotEquals(lucide.vector.name, phosphor.vector.name)
+        assertTrue(monyColor is MonyIconAsset.Multicolor)
     }
 
     @Test
     fun `missing directional icon falls back to auto mirrored material`() {
         val material = MonyIconResolver.resolve(MonyIcon.Back, IconPack.MATERIAL)
 
-        assertSame(material, MonyIconResolver.resolve(MonyIcon.Back, IconPack.LUCIDE))
-        assertSame(material, MonyIconResolver.resolve(MonyIcon.Back, IconPack.PHOSPHOR))
+        assertSame(material.vector, MonyIconResolver.resolve(MonyIcon.Back, IconPack.LUCIDE).vector)
+        assertSame(material.vector, MonyIconResolver.resolve(MonyIcon.Back, IconPack.PHOSPHOR).vector)
     }
 
     @Test
@@ -90,11 +105,81 @@ class IconographyTest {
 
     @Test
     fun `custom color persists conceptually and falls back when contrast is insufficient`() {
-        val custom = Color(0xFF0066CC)
-        val config = IconographyConfig(colorMode = IconColorMode.CUSTOM, customColor = custom)
+        val blue = Color(monyColorPalette.single { it.id == "blue" }.argb)
+        val config = IconographyConfig(colorMode = IconColorMode.CUSTOM, customColor = blue)
 
-        assertEquals(custom, tint(config, background = Color.White))
+        assertEquals(blue, tint(config, background = Color.White))
         assertEquals(Color.Black, tint(config.copy(customColor = Color.White), background = Color.White))
+        assertEquals(Color.White, tint(config.copy(customColor = Color.Black), local = Color.White, background = Color.Black))
+    }
+
+    @Test
+    fun `Mony Color categories resolve to real multicolor assets`() {
+        val categories = listOf(
+            MonyIcon.Savings, MonyIcon.Food, MonyIcon.Shopping, MonyIcon.Debt,
+            MonyIcon.Education, MonyIcon.Emergency, MonyIcon.Entertainment, MonyIcon.Family,
+            MonyIcon.Internet, MonyIcon.Other, MonyIcon.Health, MonyIcon.Services,
+            MonyIcon.Subscription, MonyIcon.Phone, MonyIcon.Transport, MonyIcon.Housing,
+        )
+
+        categories.forEach { icon ->
+            assertTrue(MonyIconResolver.resolve(icon, IconPack.MONY_COLOR) is MonyIconAsset.Multicolor)
+            assertTrue(MonyColorIconPainter.colorCount(icon) >= 3)
+        }
+    }
+
+    @Test
+    fun `Mony Color ignores monochrome tint while unsupported icons fall back safely`() {
+        val savings = MonyIconResolver.resolve(MonyIcon.Savings, IconPack.MONY_COLOR)
+        val fallback = MonyIconResolver.resolve(MonyIcon.Lock, IconPack.MONY_COLOR)
+
+        assertTrue(savings is MonyIconAsset.Multicolor)
+        assertFalse(savings is MonyIconAsset.Tintable)
+        assertTrue(fallback is MonyIconAsset.Tintable)
+        assertFalse((fallback as MonyIconAsset.Tintable).usesGlobalTint)
+        assertSame(
+            MonyIconResolver.resolve(MonyIcon.Lock, IconPack.MATERIAL).vector,
+            fallback.vector,
+        )
+    }
+
+    @Test
+    fun `Mony Color covers main navigation and semantic states`() {
+        val icons = listOf(
+            MonyIcon.Home, MonyIcon.Fortnight, MonyIcon.Expense, MonyIcon.Income,
+            MonyIcon.Savings, MonyIcon.Statistics, MonyIcon.Calendar, MonyIcon.Settings,
+            MonyIcon.Warning, MonyIcon.Completed,
+        )
+
+        icons.forEach { icon ->
+            assertTrue(MonyIconResolver.resolve(icon, IconPack.MONY_COLOR) is MonyIconAsset.Multicolor)
+        }
+        assertEquals(MonyColorPalette.Coral, MonyColorIconPainter.semanticAccent(MonyIcon.Delete))
+        assertEquals(MonyColorPalette.Yellow, MonyColorIconPainter.semanticAccent(MonyIcon.Warning))
+        assertEquals(MonyColorPalette.Mint, MonyColorIconPainter.semanticAccent(MonyIcon.Completed))
+    }
+
+    @Test
+    fun `shared palette has stable unique options for every required color family`() {
+        assertEquals(monyColorPalette.size, monyColorPalette.map { it.id }.distinct().size)
+        assertEquals(monyColorPalette.size, monyColorPalette.map { it.argb }.distinct().size)
+        assertEquals(
+            setOf(
+                "red", "pink", "purple", "violet", "blue", "cyan", "turquoise", "green",
+                "lime", "yellow", "amber", "orange", "white", "gray", "black",
+            ),
+            monyColorPalette.map { it.id }.toSet(),
+        )
+    }
+
+    @Test
+    fun `custom purple is applied immediately by global tint resolution`() {
+        val purple = Color(monyColorPalette.single { it.id == "purple" }.argb)
+
+        assertEquals(
+            purple,
+            tint(IconographyConfig(IconPack.MATERIAL, IconColorMode.CUSTOM, purple)),
+        )
     }
 
     @Test
@@ -119,4 +204,7 @@ class IconographyTest {
         primary: Color = Color.Magenta,
         background: Color = Color.White,
     ) = resolveIconTint(config, role, requested, local, primary, background)
+
+    private val MonyIconAsset.vector
+        get() = (this as MonyIconAsset.Tintable).imageVector
 }

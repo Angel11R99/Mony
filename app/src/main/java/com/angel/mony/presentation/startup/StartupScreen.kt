@@ -56,18 +56,18 @@ import kotlinx.coroutines.delay
 private data class IconSlot(val x: Dp, val y: Dp)
 
 private val financeIcons = listOf(
-    Icons.Rounded.Wallet,
-    Icons.Rounded.Savings,
-    Icons.Rounded.Payments,
-    Icons.AutoMirrored.Rounded.ReceiptLong,
-    Icons.Rounded.CreditCard,
-    Icons.Rounded.AccountBalance,
-    Icons.Rounded.AttachMoney,
-    Icons.AutoMirrored.Rounded.TrendingUp,
-    Icons.Rounded.BarChart,
-    Icons.Rounded.PieChart,
-    Icons.Rounded.CurrencyExchange,
-    Icons.Rounded.ShoppingCart,
+    com.angel.mony.ui.iconography.MonyIcon.Finance,
+    com.angel.mony.ui.iconography.MonyIcon.Savings,
+    com.angel.mony.ui.iconography.MonyIcon.Income,
+    com.angel.mony.ui.iconography.MonyIcon.Expense,
+    com.angel.mony.ui.iconography.MonyIcon.Debt,
+    com.angel.mony.ui.iconography.MonyIcon.Home,
+    com.angel.mony.ui.iconography.MonyIcon.Add,
+    com.angel.mony.ui.iconography.MonyIcon.TrendUp,
+    com.angel.mony.ui.iconography.MonyIcon.Statistics,
+    com.angel.mony.ui.iconography.MonyIcon.Category,
+    com.angel.mony.ui.iconography.MonyIcon.Reopen,
+    com.angel.mony.ui.iconography.MonyIcon.Shopping,
 )
 
 @Composable
@@ -175,7 +175,7 @@ private fun AnimatedFinanceBackground() {
 @Composable
 private fun AnimatedFinanceIcon(
     index: Int,
-    icon: ImageVector,
+    icon: com.angel.mony.ui.iconography.MonyIcon,
     slots: List<IconSlot>,
     assignments: MutableList<Int>,
 ) {
@@ -201,10 +201,11 @@ private fun AnimatedFinanceIcon(
     }
 
     val slot = slots.getOrNull(assignments.getOrElse(index) { index }) ?: return
-    Icon(
-        imageVector = icon,
+    com.angel.mony.ui.iconography.MonyIcon(
+        icon = icon,
         contentDescription = null,
         tint = MaterialTheme.colorScheme.onBackground,
+        role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
         modifier = Modifier
             .offset(x = slot.x - iconSize / 2, y = slot.y - iconSize / 2)
             .size(iconSize)

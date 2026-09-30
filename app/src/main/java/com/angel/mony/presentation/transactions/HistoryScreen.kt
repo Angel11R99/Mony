@@ -22,23 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.FileUpload
-import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.Restore
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.AlertDialog
@@ -284,14 +267,14 @@ fun HistoryScreen(
                 title = { ModuleTitle("Historial") },
                 actions = {
                     GlobalOutlinedIconButton(
-                        icon = Icons.Outlined.FileDownload,
+                        semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Download,
                         contentDescription = "Importar respaldo",
                         onClick = { importLauncher.launch(arrayOf("*/*", "application/json", "text/csv")) },
                         size = 48.dp,
                     )
                     Spacer(Modifier.width(6.dp))
                     GlobalOutlinedIconButton(
-                        icon = Icons.Outlined.FileUpload,
+                        semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Upload,
                         contentDescription = "Exportar respaldo completo",
                         onClick = {
                             exportLauncher.launch("mony-respaldo-${LocalDate.now()}.json")
@@ -300,7 +283,7 @@ fun HistoryScreen(
                     )
                     Spacer(Modifier.width(6.dp))
                     GlobalOutlinedIconButton(
-                        icon = Icons.Outlined.Share,
+                        semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Share,
                         contentDescription = "Compartir historial",
                         onClick = {
                             pdfScopeAllHistory = false
@@ -310,7 +293,7 @@ fun HistoryScreen(
                     )
                     Spacer(Modifier.width(8.dp))
                     GlobalOutlinedIconButton(
-                        icon = Icons.Outlined.Settings,
+                        semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Settings,
                         contentDescription = "Ajustes de la app",
                         onClick = onSettings,
                         size = 48.dp,
@@ -368,15 +351,15 @@ fun HistoryScreen(
                         modifier = Modifier.weight(1f),
                         placeholder = "Buscar movimientos...",
                         singleLine = true,
-                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                        leadingIcon = { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Search, null) },
                         trailingIcon = {
                             if (query.isNotBlank()) {
                                 IconButton(
                                     onClick = { query = "" },
                                     modifier = Modifier.size(32.dp),
                                 ) {
-                                    Icon(
-                                        Icons.Outlined.Close,
+                                    com.angel.mony.ui.iconography.MonyIcon(
+                                        com.angel.mony.ui.iconography.MonyIcon.Close,
                                         contentDescription = "Limpiar búsqueda",
                                         modifier = Modifier.size(18.dp),
                                     )
@@ -415,19 +398,19 @@ fun HistoryScreen(
                         onClick = { onEdit(transaction.id, transaction.type) },
                         enabled = linkedShoppingList == null,
                     ) {
-                        Icon(
-                            Icons.Outlined.Edit,
+                        com.angel.mony.ui.iconography.MonyIcon(
+                            com.angel.mony.ui.iconography.MonyIcon.Edit,
                             if (linkedShoppingList == null) "Editar" else "El gasto de una lista finalizada no se puede editar",
                         )
                     }
                     IconButton(onClick = { pendingDuplicate = transaction }) {
-                        Icon(Icons.Outlined.ContentCopy, "Duplicar")
+                        com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Copy, "Duplicar")
                     }
                     IconButton(
                         onClick = { pendingDelete = transaction },
                         enabled = linkedShoppingList == null,
                     ) {
-                        Icon(Icons.Outlined.Delete, if (linkedShoppingList == null) "Eliminar" else "El movimiento se administra desde la compra", tint = MaterialTheme.colorScheme.error)
+                        com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Delete, if (linkedShoppingList == null) "Eliminar" else "El movimiento se administra desde la compra", tint = MaterialTheme.colorScheme.error, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
                     }
                 }
             }
@@ -481,10 +464,11 @@ fun HistoryScreen(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             icon = {
-                Icon(
-                    Icons.Outlined.Delete,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Delete,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error,
+                    role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                 )
             },
             title = { Text("¿Eliminar movimiento?") },
@@ -522,8 +506,8 @@ fun HistoryScreen(
         AlertDialog(
             onDismissRequest = { pendingDuplicate = null },
             icon = {
-                Icon(
-                    Icons.Outlined.ContentCopy,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Copy,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                 )
@@ -563,8 +547,8 @@ fun HistoryScreen(
         AlertDialog(
             onDismissRequest = { if (!isRestoring) viewModel.cancelRestore() },
             icon = {
-                Icon(
-                    Icons.Outlined.Restore,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Restore,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                 )
@@ -628,8 +612,8 @@ fun HistoryScreen(
         AlertDialog(
             onDismissRequest = { showPdfScopeDialog = false },
             icon = {
-                Icon(
-                    Icons.Outlined.Share,
+                com.angel.mony.ui.iconography.MonyIcon(
+                    com.angel.mony.ui.iconography.MonyIcon.Share,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                 )
@@ -754,12 +738,12 @@ private fun HistoryFilterButton(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
     ) {
-        Icon(Icons.Outlined.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Filter, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp), horizontalAlignment = Alignment.Start) {
             Text("FILTROS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
         }
-        Icon(Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.ExpandMore, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
     }
 }
 
@@ -816,7 +800,7 @@ private fun HistoryFilterSheet(
                     )
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Cerrar filtros")
+                    com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Close, "Cerrar filtros")
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -853,7 +837,7 @@ private fun HistoryFilterSheet(
                     },
                     label = { Text("Buscar categoría") },
                     placeholder = { Text("Todas las categorías") },
-                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    leadingIcon = { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Search, null) },
                     trailingIcon = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (categorySearch.isNotBlank() || categoryId != null) {
@@ -865,8 +849,8 @@ private fun HistoryFilterSheet(
                                     },
                                     modifier = Modifier.size(32.dp),
                                 ) {
-                                    Icon(
-                                        Icons.Outlined.Close,
+                                    com.angel.mony.ui.iconography.MonyIcon(
+                                        com.angel.mony.ui.iconography.MonyIcon.Close,
                                         contentDescription = "Limpiar categoría",
                                         modifier = Modifier.size(18.dp),
                                     )
@@ -929,7 +913,7 @@ private fun HistorySortMenu(sort: HistorySort, onSortChange: (HistorySort) -> Un
     var expanded by remember { mutableStateOf(false) }
     Box {
         TextButton(onClick = { expanded = true }) {
-            Icon(Icons.Outlined.SwapVert, contentDescription = null, modifier = Modifier.size(18.dp))
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Sort, null, modifier = Modifier.size(18.dp))
             Text(sort.label, modifier = Modifier.padding(start = 6.dp))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -937,7 +921,7 @@ private fun HistorySortMenu(sort: HistorySort, onSortChange: (HistorySort) -> Un
                 DropdownMenuItem(
                     text = { Text(option.label) },
                     leadingIcon = if (sort == option) {
-                        { Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                        { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Check, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                     } else null,
                     onClick = {
                         onSortChange(option)
@@ -976,7 +960,7 @@ private fun HistoryDateField(
                 Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(value?.format(formatter) ?: "Cualquier día", style = MaterialTheme.typography.bodyMedium, maxLines = 1)
             }
-            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Calendar, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
         }
     }
     if (showPicker) {
@@ -1171,7 +1155,7 @@ private fun HistoryCycleMenu(
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded)
             },
             leadingIcon = {
-                Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Calendar, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE)
             },
             modifier = Modifier
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable)
@@ -1185,7 +1169,7 @@ private fun HistoryCycleMenu(
                 DropdownMenuItem(
                     text = { Text(option.label) },
                     leadingIcon = if (selected.label == option.label && selected.range == option.range) {
-                        { Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                        { com.angel.mony.ui.iconography.MonyIcon(com.angel.mony.ui.iconography.MonyIcon.Check, null, tint = MaterialTheme.colorScheme.primary, role = com.angel.mony.ui.iconography.MonyIconRole.STATE) }
                     } else null,
                     onClick = {
                         onSelect(option)
