@@ -10,10 +10,11 @@ data class BackupRestoreResult(
     val insertedBudgetCycles: Int = 0,
     val insertedFortnightPlans: Int = 0,
     val insertedFortnightPayments: Int = 0,
+    val insertedExpenseFunding: Int = 0,
     val skippedTransactions: Int = 0,
     val isLegacyCsv: Boolean = false,
 ) {
-    val totalInserted: Int get() = insertedTransactions + insertedCategories + insertedFixedEntries + insertedPendingEntries + insertedSavingsGoals + insertedShoppingLists + insertedBudgetCycles + insertedFortnightPlans + insertedFortnightPayments
+    val totalInserted: Int get() = insertedTransactions + insertedCategories + insertedFixedEntries + insertedPendingEntries + insertedSavingsGoals + insertedShoppingLists + insertedBudgetCycles + insertedFortnightPlans + insertedFortnightPayments + insertedExpenseFunding
 }
 
 interface BackupRepository {

@@ -3,6 +3,7 @@ package com.angel.mony.core
 import com.angel.mony.data.local.entity.BudgetConfigEntity
 import com.angel.mony.data.local.entity.BudgetCycleEntity
 import com.angel.mony.data.local.entity.CategoryEntity
+import com.angel.mony.data.local.entity.ExpenseFundingEntity
 import com.angel.mony.data.local.entity.FixedEntryEntity
 import com.angel.mony.data.local.entity.FortnightPaymentEntity
 import com.angel.mony.data.local.entity.FortnightPlanEntity
@@ -37,6 +38,7 @@ data class FullBackupSnapshot(
     val fortnightPlans: List<FortnightPlanEntity> = emptyList(),
     val fortnightItems: List<FortnightPlanItemEntity> = emptyList(),
     val fortnightPayments: List<FortnightPaymentEntity> = emptyList(),
+    val expenseFunding: List<ExpenseFundingEntity> = emptyList(),
 )
 
 sealed class ParsedBackup {

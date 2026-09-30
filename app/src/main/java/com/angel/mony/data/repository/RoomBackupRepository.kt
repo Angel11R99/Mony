@@ -7,6 +7,7 @@ import com.angel.mony.core.ParsedBackup
 import com.angel.mony.data.local.dao.BudgetConfigDao
 import com.angel.mony.data.local.dao.BudgetCycleDao
 import com.angel.mony.data.local.dao.CategoryDao
+import com.angel.mony.data.local.dao.ExpenseFundingDao
 import com.angel.mony.data.local.dao.FixedEntryDao
 import com.angel.mony.data.local.dao.FortnightPaymentDao
 import com.angel.mony.data.local.dao.FortnightPlanDao
@@ -19,6 +20,7 @@ import com.angel.mony.data.local.database.FinanceDatabase
 import com.angel.mony.data.local.entity.BudgetConfigEntity
 import com.angel.mony.data.local.entity.BudgetCycleEntity
 import com.angel.mony.data.local.entity.CategoryEntity
+import com.angel.mony.data.local.entity.ExpenseFundingEntity
 import com.angel.mony.data.local.entity.FortnightPaymentEntity
 import com.angel.mony.data.local.entity.FortnightPlanEntity
 import com.angel.mony.data.local.entity.FortnightPlanItemEntity
@@ -48,6 +50,7 @@ class RoomBackupRepository @Inject constructor(
     private val fortnightTemplateDao: FortnightTemplateDao,
     private val fortnightPlanDao: FortnightPlanDao,
     private val fortnightPaymentDao: FortnightPaymentDao,
+    private val expenseFundingDao: ExpenseFundingDao,
 ) : BackupRepository {
 
     override suspend fun buildFullBackupJson(): String {
@@ -68,6 +71,7 @@ class RoomBackupRepository @Inject constructor(
             fortnightPlans = fortnightPlanDao.getAllPlans(),
             fortnightItems = fortnightPlanDao.getAllItems(),
             fortnightPayments = fortnightPaymentDao.getAllPayments(),
+            expenseFunding = expenseFundingDao.getAll(),
         )
         return FullBackupExporter.buildFullBackupJson(snapshot)
     }
@@ -405,7 +409,24 @@ class RoomBackupRepository @Inject constructor(
             insertedTransactions++
         }
 
-        // 7b. Pagos quincenales (después de transactions para remapear transactionId)
+        // 7b. Expense Funding (después de transactions para remapear transactionId)
+        var insertedExpenseFunding = 0
+        for (funding in snapshot.expenseFunding) {
+            val newTransactionId = funding.transactionId?.let { transactionIdMap[it] } ?: continue
+            val entity = ExpenseFundingEntity(
+                id = 0,
+                transactionId = newTransactionId,
+                amountInCents = funding.amountInCents,
+                sourceDescription = funding.sourceDescription,
+                dateEpochDay = funding.dateEpochDay,
+                createdAtEpochMillis = funding.createdAtEpochMillis,
+                updatedAtEpochMillis = funding.updatedAtEpochMillis,
+            )
+            expenseFundingDao.insert(entity)
+            insertedExpenseFunding++
+        }
+
+        // 7c. Pagos quincenales (después de transactions para remapear transactionId)
         val existingPayments = fortnightPaymentDao.getAllPayments()
         val paymentKeySet = existingPayments.mapTo(mutableSetOf()) { paymentDedupKey(it) }
         for (payment in snapshot.fortnightPayments) {
@@ -464,6 +485,7 @@ class RoomBackupRepository @Inject constructor(
             insertedBudgetCycles = insertedBudgetCycles,
             insertedFortnightPlans = insertedFortnightPlans,
             insertedFortnightPayments = insertedFortnightPayments,
+            insertedExpenseFunding = insertedExpenseFunding,
             skippedTransactions = skipped,
             isLegacyCsv = false,
         )
