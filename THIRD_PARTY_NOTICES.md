@@ -20,5 +20,12 @@ The original copyright and license terms remain applicable to these vector asset
 
 ## Mony Color
 
-Mony Color no incorpora recursos de terceros. Sus ilustraciones vectoriales son diseños
-originales del proyecto Mony y se distribuyen bajo la licencia del propio proyecto.
+Mony Color is built from selected vectors of the IconPark set, published by ByteDance
+under the Apache License 2.0. Source: <https://github.com/bytedance/IconPark> and
+<https://icon-sets.iconify.design/icon-park/>. The vectors were converted to Compose
+`ImageVector` files by `tools/iconpark/generate.mjs` from the `@iconify-json/icon-park`
+package (Iconify JSON collection, MIT license), distributed at
+<https://github.com/iconify/icon-park>. No IconPark or Iconify code is bundled at runtime.
+
+The original copyright and license terms remain applicable to these vector assets.
+

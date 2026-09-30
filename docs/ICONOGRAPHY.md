@@ -7,22 +7,35 @@ forma centralizada.
 ## Tipos de asset
 
 - `MonyIconAsset.Tintable`: `ImageVector` monocromático para Material, Lucide y Phosphor.
-- `MonyIconAsset.Multicolor`: ilustración vectorial propia renderizada por
-  `MonyColorIconPainter` sin filtro de color global.
+- `MonyIconAsset.Multicolor`: builder de un `ImageVector` de Mony Color, sin filtro de color global.
 
 ## Mony Color
 
-Mony Color es un pack original del proyecto, sin assets ni dependencias externas. Sus dibujos
-usan primitivas vectoriales escalables en un lienzo normalizado de 24 x 24, rellenos pastel y un
-contorno obtenido de `MaterialTheme.colorScheme.onSurface` para conservar legibilidad en Light y
-Dark Mode. Los modos Automático, Color principal y Personalizado no reemplazan sus rellenos.
+Mony Color usa el set real **IconPark** (IconPark de ByteDance, Apache-2.0) empaquetado como
+`ImageVector` de 48 x 48 en `ui/iconography/vendor/iconpark`. La app sigue siendo totalmente
+offline: no hay dependencia runtime, descarga ni render de SVG.
 
-Para agregar una ilustración:
+El artwork conserva su paleta original (`#2F88FF`, `#43CCF8`, `#fff`). Solo el trazo `#000` se
+sustituye por `MaterialTheme.colorScheme.onSurface`, de modo que el marco del icono mantiene
+contraste en Light y Dark Mode sin verse afectado por los modos Automático, Color principal o
+Personalizado. Un `tint` explícito no reemplaza esos rellenos.
 
-1. Agregar el significado a `MonyIcon` si todavía no existe.
-2. Incluirlo en `MonyColorIconPainter.supported`.
-3. Dibujar el caso con la paleta controlada de `MonyColorPalette`.
-4. Agregar una prueba de resolución y representación.
+Estados semánticos y controles estructurales (`Back`, `Check`, `Close`, `Completed`, `Delete`,
+`Error`, `Warning`, `Info`, `Dropdown`, `ExpandMore`, `ExpandLess`, `AlertsDisabled`, `Restore`,
+`ScanBarcode`, `ScanDocument`, `ScanPrice`, `TrendUp`, `TrendDown`, `TrendFlat`) no tienen
+artwork propio: vuelven al fallback Material para que error, warning, éxito, selección y
+deshabilitado sigan siendo coloreables. `Back` además conserva el auto-mirroring de Android.
+
+El mapa vivo está en `MonyColorIconMappings.kt`. Para cambiar la ilustración de un significado:
+
+1. Ajustar `ICONS` en `tools/iconpark/generate.mjs` si el glifo debe cambiar o agregarse.
+2. Regenerar con
+   `node tools/iconpark/generate.mjs --source <paquete>@iconify-json/icon-park/icons.json`.
+3. Actualizar la entrada correspondiente en `MONY_COLOR_VECTORS`.
+4. Extender las pruebas de resolución, fallback y representación.
+
+El generador no tiene dependencias de npm y falla de forma explícita ante máscaras con recorte
+real, viewports inesperados o iconos ausentes.
 
 Si una ilustración Mony Color o un equivalente de otro pack no existe, el resolver devuelve el
 `ImageVector` Material del mismo significado. El fallback ignora el color global monocromático de

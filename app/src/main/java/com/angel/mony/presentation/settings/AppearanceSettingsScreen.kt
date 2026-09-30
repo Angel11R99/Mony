@@ -264,10 +264,11 @@ fun AppearanceSettingsScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text("Colores originales", style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "Mony Color conserva sus rellenos ilustrados; el color global no se aplica.",
+                                "Mony Color conserva sus rellenos ilustrados y los estados de alerta mantienen su color semántico; el color global no se aplica.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+
                         }
                     }
                 }

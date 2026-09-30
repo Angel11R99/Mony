@@ -9,7 +9,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
+
 import org.junit.Test
 
 class IconographyTest {
@@ -114,7 +116,7 @@ class IconographyTest {
     }
 
     @Test
-    fun `Mony Color categories resolve to real multicolor assets`() {
+    fun `Mony Color categories resolve to real IconPark artwork`() {
         val categories = listOf(
             MonyIcon.Savings, MonyIcon.Food, MonyIcon.Shopping, MonyIcon.Debt,
             MonyIcon.Education, MonyIcon.Emergency, MonyIcon.Entertainment, MonyIcon.Family,
@@ -123,41 +125,92 @@ class IconographyTest {
         )
 
         categories.forEach { icon ->
-            assertTrue(MonyIconResolver.resolve(icon, IconPack.MONY_COLOR) is MonyIconAsset.Multicolor)
-            assertTrue(MonyColorIconPainter.colorCount(icon) >= 3)
+            val asset = MonyIconResolver.resolve(icon, IconPack.MONY_COLOR)
+            assertTrue("$icon debe usar arte Mony Color", asset is MonyIconAsset.Multicolor)
+            val vector = (asset as MonyIconAsset.Multicolor).build(Color.Black)
+            assertTrue("$icon debe venir de IconPark", vector.name.startsWith("IconPark."))
+            assertEquals(48f, vector.viewportWidth, 0f)
+            assertEquals(48f, vector.viewportHeight, 0f)
         }
     }
 
     @Test
-    fun `Mony Color ignores monochrome tint while unsupported icons fall back safely`() {
+    fun `Mony Color ignores monochrome tint while unmapped icons fall back safely`() {
         val savings = MonyIconResolver.resolve(MonyIcon.Savings, IconPack.MONY_COLOR)
-        val fallback = MonyIconResolver.resolve(MonyIcon.Lock, IconPack.MONY_COLOR)
+        val fallback = MonyIconResolver.resolve(MonyIcon.Delete, IconPack.MONY_COLOR)
 
         assertTrue(savings is MonyIconAsset.Multicolor)
         assertFalse(savings is MonyIconAsset.Tintable)
         assertTrue(fallback is MonyIconAsset.Tintable)
         assertFalse((fallback as MonyIconAsset.Tintable).usesGlobalTint)
         assertSame(
-            MonyIconResolver.resolve(MonyIcon.Lock, IconPack.MATERIAL).vector,
+            MonyIconResolver.resolve(MonyIcon.Delete, IconPack.MATERIAL).vector,
             fallback.vector,
         )
     }
 
     @Test
-    fun `Mony Color covers main navigation and semantic states`() {
-        val icons = listOf(
+    fun `Mony Color builds a distinct vector per theme ink`() {
+        val savings = MonyIconResolver.resolve(MonyIcon.Savings, IconPack.MONY_COLOR) as MonyIconAsset.Multicolor
+
+        val light = savings.build(Color(0xFF1B1B1F))
+        val dark = savings.build(Color(0xFFE6E1E5))
+
+        assertEquals("IconPark.strongbox", light.name)
+        assertEquals(light.name, dark.name)
+        assertNotSame(light, dark)
+    }
+
+    @Test
+    fun `Mony Color covers main navigation while semantic states stay tintable`() {
+        val navigation = listOf(
             MonyIcon.Home, MonyIcon.Fortnight, MonyIcon.Expense, MonyIcon.Income,
             MonyIcon.Savings, MonyIcon.Statistics, MonyIcon.Calendar, MonyIcon.Settings,
-            MonyIcon.Warning, MonyIcon.Completed,
+        )
+        val semanticStates = listOf(
+            MonyIcon.Warning, MonyIcon.Error, MonyIcon.Completed, MonyIcon.Check,
+            MonyIcon.Delete, MonyIcon.Close, MonyIcon.Back, MonyIcon.Dropdown,
         )
 
-        icons.forEach { icon ->
-            assertTrue(MonyIconResolver.resolve(icon, IconPack.MONY_COLOR) is MonyIconAsset.Multicolor)
+        navigation.forEach { icon ->
+            assertTrue(
+                "$icon debe usar arte Mony Color",
+                MonyIconResolver.resolve(icon, IconPack.MONY_COLOR) is MonyIconAsset.Multicolor,
+            )
         }
-        assertEquals(MonyColorPalette.Coral, MonyColorIconPainter.semanticAccent(MonyIcon.Delete))
-        assertEquals(MonyColorPalette.Yellow, MonyColorIconPainter.semanticAccent(MonyIcon.Warning))
-        assertEquals(MonyColorPalette.Mint, MonyColorIconPainter.semanticAccent(MonyIcon.Completed))
+        semanticStates.forEach { icon ->
+            val asset = MonyIconResolver.resolve(icon, IconPack.MONY_COLOR)
+            assertTrue("$icon debe conservar su color semántico", asset is MonyIconAsset.Tintable)
+            assertFalse(
+                "$icon no debe recibir el tinte global de Mony Color",
+                (asset as MonyIconAsset.Tintable).usesGlobalTint,
+            )
+        }
     }
+
+    @Test
+    fun `Mony Color mapping is restricted to the documented IconPark set`() {
+        assertEquals(
+            setOf(
+                MonyIcon.Home, MonyIcon.Fixed, MonyIcon.Pending, MonyIcon.Savings,
+                MonyIcon.Shopping, MonyIcon.Statistics, MonyIcon.Fortnight, MonyIcon.Calendar,
+                MonyIcon.History, MonyIcon.Settings, MonyIcon.Appearance, MonyIcon.Navigation,
+                MonyIcon.Finance, MonyIcon.Expense, MonyIcon.Income, MonyIcon.Food,
+                MonyIcon.Debt, MonyIcon.Education, MonyIcon.Emergency, MonyIcon.Entertainment,
+                MonyIcon.Family, MonyIcon.Internet, MonyIcon.Health, MonyIcon.Services,
+                MonyIcon.Subscription, MonyIcon.Phone, MonyIcon.Transport, MonyIcon.Housing,
+                MonyIcon.More, MonyIcon.Other, MonyIcon.Add, MonyIcon.Edit,
+                MonyIcon.Search, MonyIcon.Download, MonyIcon.Upload, MonyIcon.Share,
+                MonyIcon.Copy, MonyIcon.Undo, MonyIcon.Pin, MonyIcon.Filter,
+                MonyIcon.Sort, MonyIcon.Lock, MonyIcon.Unlock, MonyIcon.Template,
+                MonyIcon.Save, MonyIcon.Time, MonyIcon.Notes, MonyIcon.ListView,
+                MonyIcon.Category, MonyIcon.Previous, MonyIcon.Next, MonyIcon.Remove,
+                MonyIcon.AlertsEnabled, MonyIcon.Reopen,
+            ),
+            MONY_COLOR_VECTORS.keys,
+        )
+    }
+
 
     @Test
     fun `shared palette has stable unique options for every required color family`() {

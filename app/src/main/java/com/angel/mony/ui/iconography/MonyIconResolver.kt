@@ -18,7 +18,7 @@ sealed interface MonyIconAsset {
         val imageVector: ImageVector,
         val usesGlobalTint: Boolean = true,
     ) : MonyIconAsset
-    data class Multicolor(val icon: MonyIcon) : MonyIconAsset
+    data class Multicolor(val build: MonyColorVector) : MonyIconAsset
 }
 
 object MonyIconResolver {
@@ -32,12 +32,9 @@ object MonyIconResolver {
         IconPack.MATERIAL -> MonyIconAsset.Tintable(resolveMaterial(icon))
         IconPack.LUCIDE -> resolveLucide(icon)?.let(MonyIconAsset::Tintable)
         IconPack.PHOSPHOR -> resolvePhosphor(icon)?.let(MonyIconAsset::Tintable)
-        IconPack.MONY_COLOR -> if (MonyColorIconPainter.supports(icon)) {
-            MonyIconAsset.Multicolor(icon)
-        } else {
-            null
-        }
+        IconPack.MONY_COLOR -> MONY_COLOR_VECTORS[icon]?.let(MonyIconAsset::Multicolor)
     }
+
 
     private fun resolveMaterial(icon: MonyIcon): ImageVector = when (icon) {
         MonyIcon.Home -> Icons.Outlined.AccountBalanceWallet

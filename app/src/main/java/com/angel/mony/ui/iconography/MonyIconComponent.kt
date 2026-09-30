@@ -1,9 +1,8 @@
 package com.angel.mony.ui.iconography
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -65,20 +64,19 @@ fun MonyIcon(
             },
         )
         is MonyIconAsset.Multicolor -> {
-            val outlineColor = MaterialTheme.colorScheme.onSurface
-            val painter = remember(asset.icon, outlineColor) {
-                MonyColorIconPainter(asset.icon, outlineColor)
-            }
-            Image(
-                painter = painter,
+            // The vendored artwork carries its own #2F88FF/#43CCF8/#fff accents, so only the
+            // #000 outline follows the theme. onSurface keeps a stable, always contrasting frame
+            // even inside containers whose content colour would fight the blue accents.
+            val ink = MaterialTheme.colorScheme.onSurface
+            val imageVector = remember(asset.build, ink) { asset.build(ink) }
+            Icon(
+                imageVector = imageVector,
                 contentDescription = contentDescription,
-                modifier = if (size == null) {
-                    modifier.defaultMinSize(MonyIconSize.Medium, MonyIconSize.Medium)
-                } else {
-                    iconModifier
-                },
+                modifier = iconModifier,
+                tint = Color.Unspecified,
             )
         }
+
     }
 }
 
