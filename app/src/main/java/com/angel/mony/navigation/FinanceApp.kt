@@ -2,8 +2,7 @@ package com.angel.mony.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -334,8 +333,8 @@ fun FinanceApp(
 
     internal val topLevelRoutes = setOf("home", "history", "statistics", "fixed", "pending", "savings", "list", "fortnight")
 
-private const val ModuleEnterDurationMillis = 220
-private const val ModuleExitDurationMillis = 160
+private const val ModuleEnterDurationMillis = 300
+private const val ModuleExitDurationMillis = 240
 
 private fun isModuleTransition(initialRoute: String?, targetRoute: String?): Boolean =
     initialRoute?.substringBefore('?') in topLevelRoutes &&
@@ -353,16 +352,20 @@ internal fun moduleEnterTransition(
 ): EnterTransition = when (style) {
     ModuleTransitionStyle.NONE -> EnterTransition.None
     ModuleTransitionStyle.FADE -> fadeIn(
-        animationSpec = tween(ModuleEnterDurationMillis, easing = LinearOutSlowInEasing),
+        animationSpec = tween(ModuleEnterDurationMillis, easing = FastOutSlowInEasing),
     )
     ModuleTransitionStyle.SLIDE -> slideInHorizontally(
-        animationSpec = tween(ModuleEnterDurationMillis, easing = LinearOutSlowInEasing),
-        initialOffsetX = { width -> if (forward) width / 3 else -width / 3 },
-    ) + fadeIn(animationSpec = tween(ModuleEnterDurationMillis))
+        animationSpec = tween(ModuleEnterDurationMillis, easing = FastOutSlowInEasing),
+        initialOffsetX = { width -> if (forward) width / 5 else -width / 5 },
+    ) + fadeIn(
+        animationSpec = tween(ModuleEnterDurationMillis, easing = FastOutSlowInEasing),
+    )
     ModuleTransitionStyle.SCALE -> scaleIn(
-        initialScale = 0.94f,
-        animationSpec = tween(ModuleEnterDurationMillis, easing = LinearOutSlowInEasing),
-    ) + fadeIn(animationSpec = tween(ModuleEnterDurationMillis))
+        initialScale = 0.98f,
+        animationSpec = tween(ModuleEnterDurationMillis, easing = FastOutSlowInEasing),
+    ) + fadeIn(
+        animationSpec = tween(ModuleEnterDurationMillis, easing = FastOutSlowInEasing),
+    )
 }
 
 internal fun moduleExitTransition(
@@ -371,16 +374,20 @@ internal fun moduleExitTransition(
 ): ExitTransition = when (style) {
     ModuleTransitionStyle.NONE -> ExitTransition.None
     ModuleTransitionStyle.FADE -> fadeOut(
-        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutLinearInEasing),
+        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutSlowInEasing),
     )
     ModuleTransitionStyle.SLIDE -> slideOutHorizontally(
-        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutLinearInEasing),
-        targetOffsetX = { width -> if (forward) -width / 4 else width / 4 },
-    ) + fadeOut(animationSpec = tween(ModuleExitDurationMillis))
+        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutSlowInEasing),
+        targetOffsetX = { width -> if (forward) -width / 8 else width / 8 },
+    ) + fadeOut(
+        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutSlowInEasing),
+    )
     ModuleTransitionStyle.SCALE -> scaleOut(
-        targetScale = 0.98f,
-        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutLinearInEasing),
-    ) + fadeOut(animationSpec = tween(ModuleExitDurationMillis))
+        targetScale = 0.99f,
+        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutSlowInEasing),
+    ) + fadeOut(
+        animationSpec = tween(ModuleExitDurationMillis, easing = FastOutSlowInEasing),
+    )
 }
 
 internal fun shouldShowModuleBar(route: String?): Boolean = route in topLevelRoutes

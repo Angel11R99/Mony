@@ -1,6 +1,7 @@
 package com.angel.mony.presentation.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -8,14 +9,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.delay
 
@@ -47,7 +47,6 @@ fun StaggeredReveal(
 ) {
     val scope = StaggeredRevealScope().apply(content)
 
-    val hasAnimated = remember(screenKey) { mutableStateOf(false) }
     val reducedMotion = rememberReducedMotion()
 
     Column(
@@ -56,8 +55,8 @@ fun StaggeredReveal(
     ) {
         scope.items.forEachIndexed { index, item ->
             StaggeredRevealItem(
+                screenKey = screenKey,
                 index = index,
-                hasAnimated = hasAnimated,
                 reducedMotion = reducedMotion,
                 staggerMillis = staggerMillis,
                 durationMillis = durationMillis,
@@ -83,57 +82,40 @@ class StaggeredRevealScope {
  */
 @Composable
 private fun StaggeredRevealItem(
+    screenKey: String,
     index: Int,
-    hasAnimated: androidx.compose.runtime.MutableState<Boolean>,
     reducedMotion: Boolean,
     staggerMillis: Int,
     durationMillis: Int,
     slideOffsetDp: Dp,
     content: @Composable () -> Unit,
 ) {
-    val (visible, setVisible) = remember { mutableStateOf(false) }
+    var visible by remember(screenKey, index) { mutableStateOf(reducedMotion) }
     val slideOffset = with(LocalDensity.current) { slideOffsetDp.roundToPx() }
-    val slideOffsetProvider = { height: Int -> slideOffset }
+    val itemAlpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis, easing = FastOutSlowInEasing),
+        label = "staggeredRevealAlpha",
+    )
+    val itemTranslationY by animateFloatAsState(
+        targetValue = if (visible) 0f else slideOffset.toFloat(),
+        animationSpec = tween(durationMillis, easing = FastOutSlowInEasing),
+        label = "staggeredRevealTranslation",
+    )
 
-    LaunchedEffect(hasAnimated.value) {
-        if (!hasAnimated.value && !reducedMotion) {
-            val delay = index * staggerMillis
-            if (delay > 0) {
-                delay(delay.toLong())
-            }
-            setVisible(true)
-        } else if (hasAnimated.value || reducedMotion) {
-            setVisible(true)
+    LaunchedEffect(screenKey, index, reducedMotion) {
+        if (!reducedMotion) {
+            delay((index * staggerMillis).toLong())
         }
+        visible = true
     }
 
-    // Mark as animated after the first item starts (or immediately if reduced motion)
-    LaunchedEffect(Unit) {
-        if (!hasAnimated.value && !reducedMotion) {
-            delay((staggerMillis * (index + 1)).toLong())
-            hasAnimated.value = true
-        } else if (!hasAnimated.value && reducedMotion) {
-            hasAnimated.value = true
-        }
-    }
-
-    if (visible || reducedMotion || hasAnimated.value) {
-        androidx.compose.animation.AnimatedVisibility(
-            visible = true,
-            enter = androidx.compose.animation.fadeIn(
-                animationSpec = tween(durationMillis, easing = FastOutSlowInEasing),
-            ) + androidx.compose.animation.slideInVertically(
-                initialOffsetY = slideOffsetProvider,
-                animationSpec = tween(durationMillis, easing = FastOutSlowInEasing),
-            ),
-            exit = androidx.compose.animation.fadeOut(
-                animationSpec = tween(durationMillis, easing = FastOutSlowInEasing),
-            ),
-        ) {
-            content()
-        }
-    } else {
-        // Should not reach here, but render content without animation as fallback
+    Box(
+        modifier = Modifier.graphicsLayer {
+            alpha = itemAlpha
+            translationY = itemTranslationY
+        },
+    ) {
         content()
     }
 }

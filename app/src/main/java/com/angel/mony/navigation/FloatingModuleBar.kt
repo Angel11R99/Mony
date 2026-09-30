@@ -160,4 +160,4 @@ private fun ModuleItem(
     }
 }
 
-private const val ModuleSelectionDurationMillis = 120
+private const val ModuleSelectionDurationMillis = 240
