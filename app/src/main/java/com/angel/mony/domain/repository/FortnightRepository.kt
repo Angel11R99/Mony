@@ -1,5 +1,6 @@
 package com.angel.mony.domain.repository
 
+import com.angel.mony.domain.model.ExpenseCreationResult
 import com.angel.mony.domain.model.FortnightPlan
 import com.angel.mony.domain.model.FortnightPlanDetails
 import com.angel.mony.domain.model.FortnightPlanItem
@@ -32,6 +33,21 @@ sealed interface FortnightPaymentResult {
     data object NotFound : FortnightPaymentResult
     data object ClosedPlan : FortnightPaymentResult
     data object InvalidCategory : FortnightPaymentResult
+
+    data class RequiresFundingSource(
+        val overflowInCents: Long,
+        val availableBeforeExpenseInCents: Long,
+        val expenseAmountInCents: Long,
+        val transaction: com.angel.mony.domain.model.FinanceTransaction,
+        val itemId: Long,
+        val amountInCents: Long,
+        val date: LocalDate,
+        val allowOverpayment: Boolean,
+    ) : FortnightPaymentResult
+
+    data class Error(
+        val message: String,
+    ) : FortnightPaymentResult
 }
 
 interface FortnightRepository {
@@ -53,6 +69,13 @@ interface FortnightRepository {
         amountInCents: Long,
         date: LocalDate,
         allowOverpayment: Boolean = false,
+    ): FortnightPaymentResult
+    suspend fun registerPaymentWithFunding(
+        itemId: Long,
+        amountInCents: Long,
+        date: LocalDate,
+        allowOverpayment: Boolean,
+        fundingSourceDescription: String,
     ): FortnightPaymentResult
     suspend fun deletePayment(paymentId: Long): FortnightMutationResult
     suspend fun closePlan(planId: Long): FortnightMutationResult
