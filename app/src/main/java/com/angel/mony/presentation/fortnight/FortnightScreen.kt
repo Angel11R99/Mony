@@ -158,7 +158,10 @@ fun FortnightScreen(
                 skeleton = { FortnightSkeleton() },
             ) {
                 Column(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     StaggeredReveal(

@@ -2,6 +2,8 @@ package com.angel.mony.presentation.home
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -135,7 +137,8 @@ fun HomeScreen(
                     screenKey = "home",
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 18.dp),
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 18.dp, end = 18.dp, bottom = 24.dp),
                     staggerMillis = 40,
                     durationMillis = 180,
                     slideOffsetDp = 8.dp,
@@ -222,11 +225,11 @@ fun HomeScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 EditorialHeading("GASTOS POR CATEGORÍA")
-                                LazyColumn(
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    items(state.spending.take(5), key = { "spending-category-${it.category.id}" }) { spending ->
+                                    state.spending.take(5).forEach { spending ->
                                         Row(
                                             Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -267,11 +270,11 @@ fun HomeScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             } else {
-                                LazyColumn(
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    items(state.recent, key = { "recent-transaction-${it.id}" }) { transaction ->
+                                    state.recent.forEach { transaction ->
                                         TransactionRow(
                                             transaction = transaction,
                                             category = state.categories[transaction.categoryId],

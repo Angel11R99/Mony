@@ -188,7 +188,10 @@ fun StatisticsScreen(
             ) {
                 StaggeredReveal(
                     screenKey = "statistics",
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 18.dp, end = 18.dp, bottom = 24.dp),
                     staggerMillis = 40,
                     durationMillis = 180,
                     slideOffsetDp = 8.dp,
@@ -265,11 +268,11 @@ fun StatisticsScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             } else {
-                                LazyColumn(
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(7.dp),
                                 ) {
-                                    items(visibleStatistics, key = { it.category.id }) { statistic ->
+                                    visibleStatistics.forEach { statistic ->
                                         CategoryBar(
                                             statistic = statistic,
                                             comparisonAmount = comparisonAmount,

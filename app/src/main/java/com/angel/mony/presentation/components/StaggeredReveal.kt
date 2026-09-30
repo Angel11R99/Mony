@@ -45,15 +45,14 @@ fun StaggeredReveal(
     slideOffsetDp: Dp = 8.dp,
     content: StaggeredRevealScope.() -> Unit,
 ) {
-    val scope = remember { StaggeredRevealScope() }
-    content(scope)
+    val scope = StaggeredRevealScope().apply(content)
 
     val hasAnimated = remember(screenKey) { mutableStateOf(false) }
     val reducedMotion = rememberReducedMotion()
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(0.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         scope.items.forEachIndexed { index, item ->
             StaggeredRevealItem(
@@ -70,11 +69,11 @@ fun StaggeredReveal(
 }
 
 class StaggeredRevealScope {
-    private val _items = mutableStateOf(emptyList<@Composable () -> Unit>())
-    val items: List<@Composable () -> Unit> get() = _items.value
+    private val _items = mutableListOf<@Composable () -> Unit>()
+    val items: List<@Composable () -> Unit> get() = _items
 
     fun add(item: @Composable () -> Unit) {
-        _items.value = _items.value + item
+        _items += item
     }
 }
 
