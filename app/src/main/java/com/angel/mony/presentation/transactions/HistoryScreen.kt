@@ -308,7 +308,6 @@ fun HistoryScreen(
                 categoryId?.let {
                     add("Categoría: ${state.categories[it]?.name ?: "Sin categoría"}")
                 }
-                cycleLabel?.let { add("Ciclo: $it") }
                 if (query.isNotBlank()) add("Búsqueda: \"${query.trim()}\"")
                 if (isEmpty()) add("Sin filtros adicionales")
             }
