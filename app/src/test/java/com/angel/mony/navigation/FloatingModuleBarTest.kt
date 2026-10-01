@@ -55,11 +55,26 @@ class FloatingModuleBarTest {
         assertFalse(isAnimatedNavigationTransition("settings/finance", "edit/EXPENSE/1"))
     }
 
+    @Test fun `transaction forms use animated navigation in both directions`() {
+        assertTrue(isAnimatedNavigationTransition("home", "add/{type}"))
+        assertTrue(isAnimatedNavigationTransition("home", "add/EXPENSE"))
+        assertTrue(isAnimatedNavigationTransition("history", "edit/INCOME/12"))
+        assertTrue(isAnimatedNavigationTransition("edit/{type}/{transactionId}", "history"))
+        assertFalse(isAnimatedNavigationTransition("settings", "add/EXPENSE"))
+    }
+
     @Test fun `settings navigation direction follows its hierarchy`() {
         assertTrue(isForwardNavigationTransition("home", "settings"))
         assertTrue(isForwardNavigationTransition("settings", "settings/categories"))
         assertFalse(isForwardNavigationTransition("settings/navigation", "settings"))
         assertFalse(isForwardNavigationTransition("settings", "home"))
+    }
+
+    @Test fun `transaction form opens forward and closes backward`() {
+        assertTrue(isForwardNavigationTransition("home", "add/{type}"))
+        assertTrue(isForwardNavigationTransition("history", "edit/EXPENSE/7"))
+        assertFalse(isForwardNavigationTransition("add/{type}", "home"))
+        assertFalse(isForwardNavigationTransition("edit/INCOME/7", "history"))
     }
 
     @Test fun `fade remains the default transition and none is available`() {

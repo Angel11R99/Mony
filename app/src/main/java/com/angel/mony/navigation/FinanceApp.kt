@@ -340,20 +340,32 @@ internal fun isAnimatedNavigationTransition(initialRoute: String?, targetRoute: 
     val initial = initialRoute?.substringBefore('?')
     val target = targetRoute?.substringBefore('?')
     val isModuleTransition = initial in topLevelRoutes && target in topLevelRoutes
+    val isTransactionEditorTransition =
+        (initial in topLevelRoutes && isTransactionEditorRoute(target)) ||
+            (isTransactionEditorRoute(initial) && target in topLevelRoutes)
     val opensOrClosesSettings =
         (initial in topLevelRoutes && target == SettingsRoutes.ROOT) ||
             (initial == SettingsRoutes.ROOT && target in topLevelRoutes)
     val isSettingsTransition = isSettingsRoute(initial) && isSettingsRoute(target)
-    return isModuleTransition || opensOrClosesSettings || isSettingsTransition
+    return isModuleTransition || isTransactionEditorTransition ||
+        opensOrClosesSettings || isSettingsTransition
 }
 
 private fun isSettingsRoute(route: String?): Boolean =
     route == SettingsRoutes.ROOT || route in SettingsRoutes.destinations
 
+private fun isTransactionEditorRoute(route: String?): Boolean {
+    val normalized = route?.substringBefore('?') ?: return false
+    return normalized == "add/{type}" || normalized.startsWith("add/") ||
+        normalized == "edit/{type}/{transactionId}" || normalized.startsWith("edit/")
+}
+
 internal fun isForwardNavigationTransition(initialRoute: String?, targetRoute: String?): Boolean {
     val initial = initialRoute?.substringBefore('?')
     val target = targetRoute?.substringBefore('?')
     return when {
+        initial in topLevelRoutes && isTransactionEditorRoute(target) -> true
+        isTransactionEditorRoute(initial) && target in topLevelRoutes -> false
         initial in topLevelRoutes && target == SettingsRoutes.ROOT -> true
         initial == SettingsRoutes.ROOT && target in topLevelRoutes -> false
         initial == SettingsRoutes.ROOT && target in SettingsRoutes.destinations -> true
