@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream
 import java.time.Instant
 import java.time.LocalDate
 import java.util.zip.ZipInputStream
+import javax.xml.parsers.DocumentBuilderFactory
 
 class HistorySpreadsheetWriterTest {
     @Test
@@ -34,9 +35,12 @@ class HistorySpreadsheetWriterTest {
                 generatedAt = LocalDate.of(2026, 9, 29),
             ),
         )
-
         val entries = unzip(output.toByteArray())
         assertTrue(entries.keys.containsAll(listOf("xl/workbook.xml", "xl/styles.xml", "xl/worksheets/sheet1.xml", "xl/worksheets/sheet2.xml")))
+        entries.filterKeys { it.endsWith(".xml") || it.endsWith(".rels") }.forEach { (path, xml) ->
+            assertTrue("$path debe comenzar con la declaración XML", xml.startsWith("<?xml"))
+            DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(xml.byteInputStream())
+        }
         assertTrue(entries.getValue("xl/workbook.xml").contains("name=\"Resumen\""))
         assertTrue(entries.getValue("xl/workbook.xml").contains("name=\"Movimientos\""))
         assertTrue(entries.getValue("xl/worksheets/sheet1.xml").contains("SUMIF(&apos;Movimientos&apos;!B:B,&quot;Ingreso&quot;"))
@@ -44,7 +48,7 @@ class HistorySpreadsheetWriterTest {
         assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("<autoFilter ref=\"A4:E6\"/>"))
         assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("Café &amp; pan"))
         assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("<v>25000.0</v>"))
-        assertTrue(entries.getValue("xl/styles.xml").contains("[\$RD\$-es-DO]"))
+        assertTrue(entries.getValue("xl/styles.xml").contains("&quot;RD\$&quot; #,##0.00"))
     }
 
     private fun unzip(bytes: ByteArray): Map<String, String> {
