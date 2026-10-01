@@ -29,6 +29,7 @@ import com.angel.mony.navigation.FloatingModuleBarConfig
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.ModuleTitle
+import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.ui.iconography.MonyIcon
 import com.angel.mony.ui.theme.AppAppearance
 
@@ -76,67 +77,77 @@ fun SettingsScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
+        StaggeredReveal(
+            screenKey = "settings",
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            staggerMillis = 40,
+            durationMillis = 180,
+            slideOffsetDp = 8.dp,
         ) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        "¿Qué quieres configurar?",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        "Elige una sección para encontrar sus opciones.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            item {
-                FinanceCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.fillMaxWidth()) {
-                        SettingsGroupRow(
-                            icon = MonyIcon.Appearance,
-                            title = "Personalización",
-                            description = "Tema, colores, iconos y estilo",
-                            summary = appearance.themeMode.label,
-                            onClick = { onNavigate(SettingsRoutes.PERSONALIZATION) },
-                        )
-                        HorizontalDivider()
-                        SettingsGroupRow(
-                            icon = MonyIcon.Navigation,
-                            title = "Navegación",
-                            description = "Barra, módulos y animaciones",
-                            summary = "${moduleBarConfig.visibleRoutes.size} módulos",
-                            onClick = { onNavigate(SettingsRoutes.NAVIGATION) },
-                        )
-                        HorizontalDivider()
-                        val periodLabel = when (budget?.period) {
-                            BudgetPeriod.MONTHLY -> "Mensual"
-                            BudgetPeriod.FORTNIGHTLY -> "Quincenal"
-                            null -> null
+            add {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(
+                                "¿Qué quieres configurar?",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                "Elige una sección para encontrar sus opciones.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
-                        val financeSummary = buildList {
-                            periodLabel?.let(::add)
-                            budget?.amountInCents?.let { add(MoneyFormatter.format(it)) }
-                        }.joinToString(" · ").ifEmpty { null }
-                        SettingsGroupRow(
-                            icon = MonyIcon.Finance,
-                            title = "Finanzas",
-                            description = "Presupuesto, ciclos y alertas",
-                            summary = financeSummary,
-                            onClick = { onNavigate(SettingsRoutes.FINANCE) },
-                        )
-                        HorizontalDivider()
-                        SettingsGroupRow(
-                            icon = MonyIcon.Category,
-                            title = "Categorías",
-                            description = "Organiza ingresos y gastos",
-                            onClick = { onNavigate(SettingsRoutes.CATEGORIES) },
-                        )
+                    }
+                    item {
+                        FinanceCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.fillMaxWidth()) {
+                                SettingsGroupRow(
+                                    icon = MonyIcon.Appearance,
+                                    title = "Personalización",
+                                    description = "Tema, colores, iconos y estilo",
+                                    summary = appearance.themeMode.label,
+                                    onClick = { onNavigate(SettingsRoutes.PERSONALIZATION) },
+                                )
+                                HorizontalDivider()
+                                SettingsGroupRow(
+                                    icon = MonyIcon.Navigation,
+                                    title = "Navegación",
+                                    description = "Barra, módulos y animaciones",
+                                    summary = "${moduleBarConfig.visibleRoutes.size} módulos",
+                                    onClick = { onNavigate(SettingsRoutes.NAVIGATION) },
+                                )
+                                HorizontalDivider()
+                                val periodLabel = when (budget?.period) {
+                                    BudgetPeriod.MONTHLY -> "Mensual"
+                                    BudgetPeriod.FORTNIGHTLY -> "Quincenal"
+                                    null -> null
+                                }
+                                val financeSummary = buildList {
+                                    periodLabel?.let(::add)
+                                    budget?.amountInCents?.let { add(MoneyFormatter.format(it)) }
+                                }.joinToString(" · ").ifEmpty { null }
+                                SettingsGroupRow(
+                                    icon = MonyIcon.Finance,
+                                    title = "Finanzas",
+                                    description = "Presupuesto, ciclos y alertas",
+                                    summary = financeSummary,
+                                    onClick = { onNavigate(SettingsRoutes.FINANCE) },
+                                )
+                                HorizontalDivider()
+                                SettingsGroupRow(
+                                    icon = MonyIcon.Category,
+                                    title = "Categorías",
+                                    description = "Organiza ingresos y gastos",
+                                    onClick = { onNavigate(SettingsRoutes.CATEGORIES) },
+                                )
+                            }
+                        }
                     }
                 }
             }

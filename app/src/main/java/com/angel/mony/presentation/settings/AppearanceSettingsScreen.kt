@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
+import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.ui.theme.AppAppearance
 import com.angel.mony.ui.theme.AppFontFamily
 import com.angel.mony.ui.theme.AppShapeStyle
@@ -163,11 +164,19 @@ fun AppearanceSettingsScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         SettingsModuleHeader(title = "Personalización", onBack = onBack)
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        StaggeredReveal(
+            screenKey = "settings-personalization",
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            staggerMillis = 40,
+            durationMillis = 180,
+            slideOffsetDp = 8.dp,
         ) {
+            add {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
 
         // ── TEMA ──
         item {
@@ -459,7 +468,9 @@ fun AppearanceSettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-    }
+                }
+            }
+        }
     }
 
     // ── Color Picker Dialog ──

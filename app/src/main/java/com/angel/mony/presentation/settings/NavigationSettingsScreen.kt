@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.angel.mony.presentation.components.FinanceCard
+import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.navigation.FloatingModuleBarConfig
 import com.angel.mony.navigation.FloatingModuleBarPreferences
 import com.angel.mony.navigation.ModuleTransitionStyle
@@ -55,11 +56,19 @@ fun NavigationSettingsScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         SettingsModuleHeader(title = "Navegación", onBack = onBack)
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        StaggeredReveal(
+            screenKey = "settings-navigation",
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            staggerMillis = 40,
+            durationMillis = 180,
+            slideOffsetDp = 8.dp,
         ) {
+            add {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
         item {
             SectionTitle("MÓDULOS VISIBLES", "Selecciona qué módulos aparecen en la barra de navegación.")
         }
@@ -235,6 +244,8 @@ fun NavigationSettingsScreen(
                             }
                         }
                     }
+                }
+            }
                 }
             }
         }
