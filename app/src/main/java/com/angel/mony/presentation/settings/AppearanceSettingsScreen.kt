@@ -161,6 +161,8 @@ fun AppearanceSettingsScreen(
     editingColor: ColorRole?,
     onEditingColorChange: (ColorRole?) -> Unit,
 ) {
+    var selectedSection by rememberSaveable { mutableStateOf(AppearanceSection.COLORS) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         SettingsModuleHeader(title = "Personalización", onBack = onBack)
 
@@ -177,297 +179,224 @@ fun AppearanceSettingsScreen(
                     contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-
-        // ── TEMA ──
-        item {
-            SectionTitle("TEMA", "Elige cuándo usar la versión clara u oscura.")
-        }
-        item {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                AppThemeMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = appearance.themeMode == mode,
-                        onClick = { onThemeChange(mode) },
-                        label = { Text(mode.label) },
-                        leadingIcon = if (appearance.themeMode == mode) {
-                            { MonyIcon(MonyIcon.Check, null, Modifier.size(17.dp), role = MonyIconRole.STATE) }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                        shape = MaterialTheme.shapes.small,
-                    )
-                }
-            }
-        }
-
-        // ── COLORES ──
-        item {
-            SectionTitle("COLORES", "Cada selección genera automáticamente sus tonos cercanos.")
-        }
-        item {
-            ColorRoleCard(
-                title = "Color principal",
-                description = "Botones, selección, ingresos y elementos destacados.",
-                color = Color(appearance.primaryArgb),
-                family = listOf(
-                    MaterialTheme.colorScheme.primaryContainer,
-                    MaterialTheme.colorScheme.secondaryContainer,
-                    MaterialTheme.colorScheme.secondary,
-                    MaterialTheme.colorScheme.primary,
-                ),
-                onClick = onEditPrimary,
-            )
-        }
-        item {
-            ColorRoleCard(
-                title = "Color secundario",
-                description = "Gastos, alertas y acciones que requieren atención.",
-                color = Color(appearance.accentArgb),
-                family = listOf(
-                    MaterialTheme.colorScheme.errorContainer,
-                    MaterialTheme.colorScheme.error,
-                ),
-                onClick = onEditAccent,
-            )
-        }
-        item {
-            FinanceCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("VISTA PREVIA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                    Text("RD$25,000.00", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Ingreso", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                        Text("−RD$2,000.00", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        // ── ICONOS ──
-        item {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        }
-        item {
-            SectionTitle("ICONOS", "Elige un estilo global y cómo se colorean los iconos normales.")
-        }
-        item {
-            Text("Estilo", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            IconPackSelector(
-                selected = appearance.iconPack,
-                monyColorStyle = appearance.monyColorStyle,
-                onSelect = onIconPackChange,
-            )
-        }
-        if (appearance.iconPack == IconPack.MONY_COLOR) {
-            item {
-                Text("Diseño de Mony Color", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                MonyColorStyleSelector(
-                    selected = appearance.monyColorStyle,
-                    onSelect = onMonyColorStyleChange,
-                )
-            }
-        }
-        item {
-            Text("Color de iconos", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            if (appearance.iconPack == IconPack.MONY_COLOR) {
-                FinanceCard(Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        MonyIcon(
-                            icon = MonyIcon.Appearance,
-                            contentDescription = null,
-                            size = MonyIconSize.Large,
+                    item {
+                        SectionTitle(
+                            "PERSONALIZA A TU MANERA",
+                            "Elige una sección para ver solo los ajustes relacionados.",
                         )
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("Colores originales", style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                "Mony Color conserva la paleta del diseño elegido y los estados de alerta mantienen su color semántico; el color global no se aplica.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                    }
+                    item {
+                        AppearanceSectionSelector(
+                            selected = selectedSection,
+                            onSelect = { selectedSection = it },
+                        )
+                    }
 
+                    when (selectedSection) {
+                        AppearanceSection.COLORS -> {
+                            item { SectionTitle("TEMA", "Elige cuándo usar la versión clara u oscura.") }
+                            item {
+                                FinanceCard(Modifier.fillMaxWidth()) {
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        AppThemeMode.entries.forEach { mode ->
+                                            SelectionChip(
+                                                selected = appearance.themeMode == mode,
+                                                label = mode.label,
+                                                onClick = { onThemeChange(mode) },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            item {
+                                SectionTitle(
+                                    "COLORES",
+                                    "Cambia los dos colores base; Mony crea el resto de tonos.",
+                                )
+                            }
+                            item {
+                                ColorRoleCard(
+                                    title = "Color principal",
+                                    description = "Botones, selección, ingresos y elementos destacados.",
+                                    color = Color(appearance.primaryArgb),
+                                    family = listOf(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        MaterialTheme.colorScheme.secondaryContainer,
+                                        MaterialTheme.colorScheme.secondary,
+                                        MaterialTheme.colorScheme.primary,
+                                    ),
+                                    onClick = onEditPrimary,
+                                )
+                            }
+                            item {
+                                ColorRoleCard(
+                                    title = "Color secundario",
+                                    description = "Gastos, alertas y acciones que requieren atención.",
+                                    color = Color(appearance.accentArgb),
+                                    family = listOf(
+                                        MaterialTheme.colorScheme.errorContainer,
+                                        MaterialTheme.colorScheme.error,
+                                    ),
+                                    onClick = onEditAccent,
+                                )
+                            }
+                            item { ColorLivePreview() }
+                        }
+
+                        AppearanceSection.STYLE -> {
+                            item { SectionTitle("FORMAS", "Define la geometría de botones, tarjetas y chips.") }
+                            item {
+                                ShapeStyleSelector(
+                                    selected = appearance.shapeStyle,
+                                    onSelect = onShapeStyleChange,
+                                )
+                                val rec = appearance.shapeStyle.recommendedFont()
+                                if (rec != appearance.fontFamily) {
+                                    Text(
+                                        "Sugerencia para esta forma: ${rec.displayName}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 6.dp),
+                                    )
+                                }
+                            }
+                            item { LiveShapePreviewCard() }
+                            item { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
+                            item { SectionTitle("TIPOGRAFÍA", "Elige la fuente que se usará en toda la aplicación.") }
+                            item {
+                                FontFamilySelector(
+                                    selected = appearance.fontFamily,
+                                    onSelect = onFontFamilyChange,
+                                )
+                            }
+                            item { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
+                            item {
+                                SectionTitle(
+                                    "FONDO DECORATIVO",
+                                    "Añade un detalle sutil detrás del contenido.",
+                                )
+                            }
+                            item {
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    BackgroundDecoration.entries.forEach { decoration ->
+                                        SelectionChip(
+                                            selected = appearance.backgroundDecoration == decoration,
+                                            label = decoration.label,
+                                            onClick = { onBackgroundDecorationChange(decoration) },
+                                        )
+                                    }
+                                }
+                            }
+                            if (appearance.backgroundDecoration != BackgroundDecoration.NONE) {
+                                item {
+                                    FinanceCard(Modifier.fillMaxWidth()) {
+                                        Column(
+                                            Modifier.fillMaxWidth().padding(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Text("Intensidad del fondo", style = MaterialTheme.typography.titleMedium)
+                                                Text(
+                                                    "${(appearance.backgroundIntensity * 100).toInt()}%",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                            Slider(
+                                                value = appearance.backgroundIntensity,
+                                                onValueChange = onBackgroundIntensityChange,
+                                                valueRange = 0f..1f,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        AppearanceSection.ICONS -> {
+                            item {
+                                SectionTitle(
+                                    "ESTILO DE ICONOS",
+                                    "Selecciona un paquete; todas las opciones están visibles abajo.",
+                                )
+                            }
+                            item {
+                                IconPackSelector(
+                                    selected = appearance.iconPack,
+                                    monyColorStyle = appearance.monyColorStyle,
+                                    onSelect = onIconPackChange,
+                                )
+                            }
+                            if (appearance.iconPack == IconPack.MONY_COLOR) {
+                                item {
+                                    Text("Diseño de Mony Color", style = MaterialTheme.typography.titleMedium)
+                                    Spacer(Modifier.height(8.dp))
+                                    MonyColorStyleSelector(
+                                        selected = appearance.monyColorStyle,
+                                        onSelect = onMonyColorStyleChange,
+                                    )
+                                }
+                            }
+                            item { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
+                            item {
+                                Text("Color de iconos", style = MaterialTheme.typography.titleMedium)
+                                Spacer(Modifier.height(8.dp))
+                                if (appearance.iconPack == IconPack.MONY_COLOR) {
+                                    MonyColorInformationCard()
+                                } else {
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        IconColorMode.entries.forEach { mode ->
+                                            SelectionChip(
+                                                selected = appearance.iconColorMode == mode,
+                                                label = mode.displayName,
+                                                onClick = { onIconColorModeChange(mode) },
+                                            )
+                                        }
+                                    }
+                                }
+                                if (appearance.iconPack != IconPack.MONY_COLOR && appearance.iconColorMode == IconColorMode.CUSTOM) {
+                                    CustomIconColorControls(
+                                        appearance = appearance,
+                                        onCustomIconColorChange = onCustomIconColorChange,
+                                        onMoreColors = { onEditingColorChange(ColorRole.ICON) },
+                                    )
+                                }
+                            }
+                            item { IconLivePreview() }
                         }
                     }
-                }
-            } else {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    IconColorMode.entries.forEach { mode ->
-                        FilterChip(
-                            selected = appearance.iconColorMode == mode,
-                            onClick = { onIconColorModeChange(mode) },
-                            label = { Text(mode.displayName) },
-                            leadingIcon = if (appearance.iconColorMode == mode) {
-                                { MonyIcon(MonyIcon.Check, null, size = 17.dp, role = MonyIconRole.STATE) }
-                            } else null,
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
-                            shape = MaterialTheme.shapes.small,
+
+                    item { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
+                    item {
+                        Text(
+                            "¿Quieres volver al diseño inicial? Esto restablece tema, colores, iconos, formas y fondo.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                }
-            }
-            if (appearance.iconPack != IconPack.MONY_COLOR && appearance.iconColorMode == IconColorMode.CUSTOM) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Color personalizado",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(6.dp))
-                IconColorPaletteSelector(
-                    selectedArgb = appearance.customIconColorArgb,
-                    onSelect = onCustomIconColorChange,
-                )
-                val compatible = hasIconContrast(
-                    Color(appearance.customIconColorArgb),
-                    MaterialTheme.colorScheme.background,
-                )
-                TextButton(onClick = { onEditingColorChange(ColorRole.ICON) }) {
-                    Surface(
-                        modifier = Modifier.size(20.dp),
-                        color = Color(appearance.customIconColorArgb),
-                        shape = CircleShape,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    ) {}
-                    Spacer(Modifier.width(8.dp))
-                    Text("Más colores")
-                }
-                if (!compatible) {
-                    Text(
-                        "El color no tiene contraste suficiente con este tema; se usa el color automático.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-        }
-        item {
-            IconLivePreview()
-        }
-
-        // ── FORMAS ──
-        item {
-            SectionTitle("FORMAS", "Elige la familia geométrica de botones, tarjetas y chips.")
-        }
-        item {
-            ShapeStyleSelector(
-                selected = appearance.shapeStyle,
-                onSelect = onShapeStyleChange,
-            )
-            val rec = appearance.shapeStyle.recommendedFont()
-            if (rec != appearance.fontFamily) {
-                Text(
-                    "Combina bien con: ${rec.displayName}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-            }
-        }
-        item {
-            LiveShapePreviewCard()
-        }
-
-        // ── TIPOGRAFÍA ──
-        item {
-            SectionTitle("TIPOGRAFÍA", "Elige la fuente global de la aplicación.")
-        }
-        item {
-            FontFamilySelector(
-                selected = appearance.fontFamily,
-                onSelect = onFontFamilyChange,
-            )
-        }
-
-        // ── FONDO DECORATIVO ──
-        item {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        }
-        item {
-            SectionTitle("FONDO DECORATIVO", "Agrega una decoración sutil detrás del contenido.")
-        }
-        item {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                BackgroundDecoration.entries.forEach { decoration ->
-                    FilterChip(
-                        selected = appearance.backgroundDecoration == decoration,
-                        onClick = { onBackgroundDecorationChange(decoration) },
-                        label = { Text(decoration.label) },
-                        leadingIcon = if (appearance.backgroundDecoration == decoration) {
-                            { MonyIcon(MonyIcon.Check, null, Modifier.size(17.dp), role = MonyIconRole.STATE) }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                        shape = MaterialTheme.shapes.small,
-                    )
-                }
-            }
-        }
-        if (appearance.backgroundDecoration != BackgroundDecoration.NONE) {
-            item {
-                FinanceCard(Modifier.fillMaxWidth()) {
-                    Column(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Row(
+                    item {
+                        SecondaryButton(
+                            text = "Restaurar apariencia original",
+                            onClick = onReset,
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("Intensidad del fondo", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "${(appearance.backgroundIntensity * 100).toInt()}%",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Slider(
-                            value = appearance.backgroundIntensity,
-                            onValueChange = onBackgroundIntensityChange,
-                            valueRange = 0f..1f,
                         )
                     }
-                }
-            }
-        }
-
-        // ── RESTAURAR ──
-        item { Spacer(Modifier.height(6.dp)) }
-        item {
-            SecondaryButton(
-                text = "Restaurar apariencia original",
-                onClick = onReset,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
                 }
             }
         }
@@ -497,6 +426,189 @@ fun AppearanceSettingsScreen(
                 }
                 onEditingColorChange(null)
             },
+        )
+    }
+}
+
+private enum class AppearanceSection(val label: String) {
+    COLORS("Tema y color"),
+    STYLE("Estilo"),
+    ICONS("Iconos"),
+}
+
+@Composable
+private fun AppearanceSectionSelector(
+    selected: AppearanceSection,
+    onSelect: (AppearanceSection) -> Unit,
+) {
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            AppearanceSection.entries.forEach { section ->
+                val isSelected = section == selected
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.small)
+                        .selectable(
+                            selected = isSelected,
+                            onClick = { onSelect(section) },
+                            role = Role.RadioButton,
+                        )
+                        .semantics {
+                            stateDescription = if (isSelected) "Seleccionado" else "No seleccionado"
+                        },
+                    shape = MaterialTheme.shapes.small,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        Color.Transparent
+                    },
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            text = section.label,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (isSelected) {
+                            MonyIcon(
+                                icon = MonyIcon.Check,
+                                contentDescription = "Seleccionado",
+                                tint = MaterialTheme.colorScheme.primary,
+                                role = MonyIconRole.STATE,
+                                size = MonyIconSize.Small,
+                            )
+                        } else {
+                            MonyIcon(
+                                icon = MonyIcon.Next,
+                                contentDescription = null,
+                                size = MonyIconSize.Small,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectionChip(
+    selected: Boolean,
+    label: String,
+    onClick: () -> Unit,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        leadingIcon = if (selected) {
+            { MonyIcon(MonyIcon.Check, null, size = 17.dp, role = MonyIconRole.STATE) }
+        } else null,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        shape = MaterialTheme.shapes.small,
+    )
+}
+
+@Composable
+private fun ColorLivePreview() {
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                "VISTA PREVIA",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            Text(
+                "RD$25,000.00",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Ingreso", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text("−RD$2,000.00", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonyColorInformationCard() {
+    FinanceCard(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MonyIcon(
+                icon = MonyIcon.Appearance,
+                contentDescription = null,
+                size = MonyIconSize.Large,
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Colores originales", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "Mony Color conserva la paleta del diseño elegido. Las alertas mantienen su color semántico.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomIconColorControls(
+    appearance: AppAppearance,
+    onCustomIconColorChange: (Int) -> Unit,
+    onMoreColors: () -> Unit,
+) {
+    Spacer(Modifier.height(12.dp))
+    Text(
+        "Color personalizado",
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(6.dp))
+    IconColorPaletteSelector(
+        selectedArgb = appearance.customIconColorArgb,
+        onSelect = onCustomIconColorChange,
+    )
+    val compatible = hasIconContrast(
+        Color(appearance.customIconColorArgb),
+        MaterialTheme.colorScheme.background,
+    )
+    TextButton(onClick = onMoreColors) {
+        Surface(
+            modifier = Modifier.size(20.dp),
+            color = Color(appearance.customIconColorArgb),
+            shape = CircleShape,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        ) {}
+        Spacer(Modifier.width(8.dp))
+        Text("Más colores")
+    }
+    if (!compatible) {
+        Text(
+            "El color no tiene contraste suficiente con este tema; se usa el color automático.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
         )
     }
 }
@@ -663,17 +775,16 @@ private fun IconPackSelector(
     onSelect: (IconPack) -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(end = 4.dp),
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(IconPack.entries.size) { index ->
-            val pack = IconPack.entries[index]
+        IconPack.entries.forEach { pack ->
             val isSelected = pack == selected
             Surface(
                 modifier = Modifier
-                    .width(152.dp)
-                    .height(92.dp)
+                    .fillMaxWidth()
+                    .height(76.dp)
                     .clip(MaterialTheme.shapes.small)
                     .selectable(
                         selected = isSelected,
@@ -692,7 +803,7 @@ private fun IconPackSelector(
             ) {
                 Column(
                     Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(9.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),

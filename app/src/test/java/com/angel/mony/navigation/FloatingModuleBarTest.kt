@@ -48,6 +48,20 @@ class FloatingModuleBarTest {
         assertTrue(isForwardModuleTransition("list?query=arroz", "statistics"))
     }
 
+    @Test fun `settings index and destinations use animated navigation`() {
+        assertTrue(isAnimatedNavigationTransition("home", "settings"))
+        assertTrue(isAnimatedNavigationTransition("settings", "settings/personalization"))
+        assertTrue(isAnimatedNavigationTransition("settings/finance", "settings"))
+        assertFalse(isAnimatedNavigationTransition("settings/finance", "edit/EXPENSE/1"))
+    }
+
+    @Test fun `settings navigation direction follows its hierarchy`() {
+        assertTrue(isForwardNavigationTransition("home", "settings"))
+        assertTrue(isForwardNavigationTransition("settings", "settings/categories"))
+        assertFalse(isForwardNavigationTransition("settings/navigation", "settings"))
+        assertFalse(isForwardNavigationTransition("settings", "home"))
+    }
+
     @Test fun `fade remains the default transition and none is available`() {
         assertEquals(ModuleTransitionStyle.FADE, FloatingModuleBarConfig().transitionStyle)
         assertTrue(ModuleTransitionStyle.entries.contains(ModuleTransitionStyle.NONE))

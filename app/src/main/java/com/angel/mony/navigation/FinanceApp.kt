@@ -129,10 +129,10 @@ fun FinanceApp(
             enterTransition = {
                 val initialRoute = initialState.destination.route
                 val targetRoute = targetState.destination.route
-                if (isModuleTransition(initialRoute, targetRoute)) {
+                if (isAnimatedNavigationTransition(initialRoute, targetRoute)) {
                     moduleEnterTransition(
                         style = moduleBarConfig.transitionStyle,
-                        forward = isForwardModuleTransition(initialRoute, targetRoute),
+                        forward = isForwardNavigationTransition(initialRoute, targetRoute),
                     )
                 } else {
                     EnterTransition.None
@@ -141,10 +141,10 @@ fun FinanceApp(
             exitTransition = {
                 val initialRoute = initialState.destination.route
                 val targetRoute = targetState.destination.route
-                if (isModuleTransition(initialRoute, targetRoute)) {
+                if (isAnimatedNavigationTransition(initialRoute, targetRoute)) {
                     moduleExitTransition(
                         style = moduleBarConfig.transitionStyle,
-                        forward = isForwardModuleTransition(initialRoute, targetRoute),
+                        forward = isForwardNavigationTransition(initialRoute, targetRoute),
                     )
                 } else {
                     ExitTransition.None
@@ -153,10 +153,10 @@ fun FinanceApp(
             popEnterTransition = {
                 val initialRoute = initialState.destination.route
                 val targetRoute = targetState.destination.route
-                if (isModuleTransition(initialRoute, targetRoute)) {
+                if (isAnimatedNavigationTransition(initialRoute, targetRoute)) {
                     moduleEnterTransition(
                         style = moduleBarConfig.transitionStyle,
-                        forward = isForwardModuleTransition(initialRoute, targetRoute),
+                        forward = isForwardNavigationTransition(initialRoute, targetRoute),
                     )
                 } else {
                     EnterTransition.None
@@ -165,10 +165,10 @@ fun FinanceApp(
             popExitTransition = {
                 val initialRoute = initialState.destination.route
                 val targetRoute = targetState.destination.route
-                if (isModuleTransition(initialRoute, targetRoute)) {
+                if (isAnimatedNavigationTransition(initialRoute, targetRoute)) {
                     moduleExitTransition(
                         style = moduleBarConfig.transitionStyle,
-                        forward = isForwardModuleTransition(initialRoute, targetRoute),
+                        forward = isForwardNavigationTransition(initialRoute, targetRoute),
                     )
                 } else {
                     ExitTransition.None
@@ -336,9 +336,31 @@ fun FinanceApp(
 private const val ModuleEnterDurationMillis = 300
 private const val ModuleExitDurationMillis = 240
 
-private fun isModuleTransition(initialRoute: String?, targetRoute: String?): Boolean =
-    initialRoute?.substringBefore('?') in topLevelRoutes &&
-        targetRoute?.substringBefore('?') in topLevelRoutes
+internal fun isAnimatedNavigationTransition(initialRoute: String?, targetRoute: String?): Boolean {
+    val initial = initialRoute?.substringBefore('?')
+    val target = targetRoute?.substringBefore('?')
+    val isModuleTransition = initial in topLevelRoutes && target in topLevelRoutes
+    val opensOrClosesSettings =
+        (initial in topLevelRoutes && target == SettingsRoutes.ROOT) ||
+            (initial == SettingsRoutes.ROOT && target in topLevelRoutes)
+    val isSettingsTransition = isSettingsRoute(initial) && isSettingsRoute(target)
+    return isModuleTransition || opensOrClosesSettings || isSettingsTransition
+}
+
+private fun isSettingsRoute(route: String?): Boolean =
+    route == SettingsRoutes.ROOT || route in SettingsRoutes.destinations
+
+internal fun isForwardNavigationTransition(initialRoute: String?, targetRoute: String?): Boolean {
+    val initial = initialRoute?.substringBefore('?')
+    val target = targetRoute?.substringBefore('?')
+    return when {
+        initial in topLevelRoutes && target == SettingsRoutes.ROOT -> true
+        initial == SettingsRoutes.ROOT && target in topLevelRoutes -> false
+        initial == SettingsRoutes.ROOT && target in SettingsRoutes.destinations -> true
+        initial in SettingsRoutes.destinations && target == SettingsRoutes.ROOT -> false
+        else -> isForwardModuleTransition(initial, target)
+    }
+}
 
 internal fun isForwardModuleTransition(initialRoute: String?, targetRoute: String?): Boolean {
     val initialIndex = moduleDestinations.indexOfFirst { it.route == initialRoute?.substringBefore('?') }
