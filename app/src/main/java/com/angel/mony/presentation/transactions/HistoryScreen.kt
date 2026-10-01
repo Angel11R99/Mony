@@ -87,6 +87,7 @@ import com.angel.mony.presentation.components.SkeletonLine
 import com.angel.mony.presentation.components.SkeletonTextField
 import com.angel.mony.presentation.components.SkeletonTransactionRow
 import com.angel.mony.presentation.components.SkeletonHost
+import com.angel.mony.presentation.components.StaggeredReveal
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
@@ -361,11 +362,19 @@ fun HistoryScreen(
                 minVisibleMillis = 0,
                 skeleton = { HistorySkeleton() },
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
-                    contentPadding = PaddingValues(top = 14.dp, bottom = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                StaggeredReveal(
+                    screenKey = "history",
+                    modifier = Modifier.fillMaxSize(),
+                    staggerMillis = 40,
+                    durationMillis = 180,
+                    slideOffsetDp = 8.dp,
                 ) {
+                    add {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                            contentPadding = PaddingValues(top = 14.dp, bottom = 20.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
             item {
                 HistoryFilterButton(
                     typeFilter = typeFilter,
@@ -460,6 +469,8 @@ fun HistoryScreen(
                     }
                 }
             }
+                        }
+                    }
                 }
             }
         }
