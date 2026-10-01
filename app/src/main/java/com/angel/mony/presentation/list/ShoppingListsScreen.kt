@@ -79,6 +79,7 @@ import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.GlobalSettingsButton
 import com.angel.mony.presentation.components.ModuleTitle
 import com.angel.mony.presentation.components.PrimaryButton
+import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.presentation.components.sanitizeAmountInput
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -145,20 +146,29 @@ fun ShoppingListsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) { CircularProgressIndicator(); Text("Cargando listas…", Modifier.padding(top = 12.dp)) }
-            state.hasError -> EmptyListsCard(
-                "No se pudieron cargar las listas.",
-                Modifier.padding(padding).padding(18.dp),
-            )
-            state.lists.isEmpty() && query.isBlank() -> EmptyListsCard(
-                "Todavía no tienes listas de compra.",
-                Modifier.padding(padding).padding(18.dp),
-                onCreate = { showCreate = true },
-            )
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-                contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            else -> StaggeredReveal(
+                screenKey = "shopping-lists",
+                modifier = Modifier.fillMaxSize().padding(padding),
+                staggerMillis = 40,
+                durationMillis = 180,
+                slideOffsetDp = 8.dp,
             ) {
+                add {
+                    when {
+                        state.hasError -> EmptyListsCard(
+                            "No se pudieron cargar las listas.",
+                            Modifier.padding(18.dp),
+                        )
+                        state.lists.isEmpty() && query.isBlank() -> EmptyListsCard(
+                            "Todavía no tienes listas de compra.",
+                            Modifier.padding(18.dp),
+                            onCreate = { showCreate = true },
+                        )
+                        else -> LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                            contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         ListFilterButton(
@@ -201,6 +211,9 @@ fun ShoppingListsScreen(
                             onReopen = { viewModel.requestReopen(list) },
                             enabled = !isSaving,
                         )
+                    }
+                }
+                        }
                     }
                 }
             }

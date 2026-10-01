@@ -95,6 +95,7 @@ import com.angel.mony.presentation.components.SkeletonHost
 import com.angel.mony.presentation.components.SkeletonLine
 import com.angel.mony.presentation.components.SkeletonTone
 import com.angel.mony.presentation.components.SkeletonTextField
+import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.presentation.components.sanitizeAmountInput
 import java.time.ZoneId
 import java.time.LocalDate
@@ -168,11 +169,19 @@ fun FixedEntriesScreen(
                 modifier = Modifier.padding(padding),
                 skeleton = { FixedEntriesSkeleton() },
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                StaggeredReveal(
+                    screenKey = "fixed",
+                    modifier = Modifier.fillMaxSize(),
+                    staggerMillis = 40,
+                    durationMillis = 180,
+                    slideOffsetDp = 8.dp,
                 ) {
+                    add {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                            contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
             item {
                 FixedFilterButton(
                     selectedType = selectedType,
@@ -263,6 +272,8 @@ fun FixedEntriesScreen(
                     onDelete = { pendingDelete = entry },
                 )
             }
+                        }
+                    }
                 }
             }
         }

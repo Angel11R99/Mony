@@ -72,6 +72,7 @@ import com.angel.mony.presentation.components.SkeletonChip
 import com.angel.mony.presentation.components.SkeletonGoalCard
 import com.angel.mony.presentation.components.SkeletonHost
 import com.angel.mony.presentation.components.SkeletonTextField
+import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.presentation.components.sanitizeAmountInput
@@ -151,11 +152,19 @@ fun SavingsScreen(
                 modifier = Modifier.padding(padding),
                 skeleton = { SavingsSkeleton() },
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
-                    contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                StaggeredReveal(
+                    screenKey = "savings",
+                    modifier = Modifier.fillMaxSize(),
+                    staggerMillis = 40,
+                    durationMillis = 180,
+                    slideOffsetDp = 8.dp,
                 ) {
+                    add {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                            contentPadding = PaddingValues(top = 14.dp, bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
             item {
                 SavingsFilterButton(
                     showCompleted = showCompleted,
@@ -247,6 +256,8 @@ fun SavingsScreen(
                      onDelete = { viewModel.requestDelete(goal) },
                  )
              }
+                        }
+                    }
                 }
             }
         }

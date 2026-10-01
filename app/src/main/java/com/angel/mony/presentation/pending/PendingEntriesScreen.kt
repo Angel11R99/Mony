@@ -122,6 +122,7 @@ import com.angel.mony.presentation.components.SkeletonEntryCard
 import com.angel.mony.presentation.components.SkeletonHost
 import com.angel.mony.presentation.components.SkeletonLine
 import com.angel.mony.presentation.components.SkeletonTextField
+import com.angel.mony.presentation.components.StaggeredReveal
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.presentation.components.sanitizeAmountInput
@@ -234,11 +235,19 @@ fun PendingEntriesScreen(
                 modifier = Modifier.padding(padding),
                 skeleton = { PendingEntriesSkeleton() },
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                StaggeredReveal(
+                    screenKey = "pending",
+                    modifier = Modifier.fillMaxSize(),
+                    staggerMillis = 40,
+                    durationMillis = 180,
+                    slideOffsetDp = 8.dp,
                 ) {
+                    add {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                            contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
             item {
                 PendingFilterButton(
                     type = selectedType,
@@ -337,6 +346,8 @@ fun PendingEntriesScreen(
                      onSelect = { selectedEntry = entry },
                   )
              }
+                        }
+                    }
                 }
             }
         }
