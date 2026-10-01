@@ -8,6 +8,7 @@ import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.CsvExporter
 import com.angel.mony.core.HistoryPdfMeta
 import com.angel.mony.core.HistoryPdfWriter
+import com.angel.mony.core.HistorySpreadsheetWriter
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetCycle
 import com.angel.mony.domain.model.Category
@@ -43,10 +44,20 @@ data class RestorePreview(
     val rawContent: String? = null,
 )
 
-data class HistoryPdfRequest(
+data class HistoryExportRequest(
     val transactions: List<FinanceTransaction>,
     val meta: HistoryPdfMeta,
 )
+
+enum class HistoryExportFormat(
+    val label: String,
+    val mimeType: String,
+    val extension: String,
+) {
+    PDF("PDF", "application/pdf", "pdf"),
+    EXCEL("Excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx"),
+    CSV("CSV", "text/csv", "csv"),
+}
 
 private fun initialHistoryState(dataCache: FinanceDataCache): HistoryUiState {
     val pendingById = dataCache.pendingEntries.value.associateBy { it.id }
@@ -156,25 +167,6 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
-    /** Exporta solo CSV legacy (para compatibilidad si se necesita) */
-    fun exportCsvTo(uri: Uri) {
-        if (isExporting) return
-        viewModelScope.launch {
-            isExporting = true
-            runCatching {
-                val snapshot = state.value
-                if (snapshot.transactions.isEmpty()) error("No hay movimientos para exportar")
-                val csv = CsvExporter.buildCsv(snapshot.transactions, snapshot.categories)
-                writeCsvTo(uri, csv)
-            }.onSuccess {
-                message.value = "Historial exportado en CSV correctamente."
-            }.onFailure {
-                message.value = it.message ?: "No se pudo exportar el historial"
-            }
-            isExporting = false
-        }
-    }
-
     /** Lee el archivo seleccionado, valida su contenido y prepara la restauración sin tocar la base de datos. */
     fun prepareImportFrom(uri: Uri) {
         if (isRestoring.value) return
@@ -262,58 +254,71 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
-    fun exportPdfTo(uri: Uri, request: HistoryPdfRequest) {
+    fun exportHistoryTo(uri: Uri, request: HistoryExportRequest, format: HistoryExportFormat) {
         if (isExporting) return
         viewModelScope.launch {
             isExporting = true
             runCatching {
                 if (request.transactions.isEmpty()) error("No hay movimientos para exportar")
-                writePdf(request, context.contentResolver.openOutputStream(uri)
-                    ?: error("No se pudo abrir el archivo seleccionado"))
+                val stream = context.contentResolver.openOutputStream(uri)
+                    ?: error("No se pudo abrir el archivo seleccionado")
+                writeHistory(request, format, stream)
             }.onSuccess {
-                message.value = "PDF generado correctamente."
+                message.value = "Archivo ${format.label} guardado correctamente."
             }.onFailure {
-                message.value = it.message ?: "No se pudo generar el PDF"
+                message.value = it.message ?: "No se pudo exportar el historial"
             }
             isExporting = false
         }
     }
 
-    /** Genera el PDF en la caché y entrega el URI compartible para abrirlo con otras aplicaciones. */
-    fun sharePdf(request: HistoryPdfRequest, onReady: (android.net.Uri) -> Unit) {
+    /** Genera el archivo en caché y entrega un URI temporal seguro para compartir. */
+    fun shareHistory(
+        request: HistoryExportRequest,
+        format: HistoryExportFormat,
+        onReady: (android.net.Uri) -> Unit,
+    ) {
         if (isExporting) return
         viewModelScope.launch {
             isExporting = true
             runCatching {
                 if (request.transactions.isEmpty()) error("No hay movimientos para exportar")
                 val sharedDir = java.io.File(context.cacheDir, "shared").apply { mkdirs() }
-                val file = java.io.File(sharedDir, "historial-${java.time.LocalDate.now()}.pdf")
-                file.outputStream().use { writePdf(request, it) }
+                val file = java.io.File(
+                    sharedDir,
+                    "historial-${java.time.LocalDate.now()}.${format.extension}",
+                )
+                file.outputStream().use { writeHistory(request, format, it) }
                 androidx.core.content.FileProvider.getUriForFile(
                     context,
                     "${context.packageName}.fileprovider",
                     file,
                 )
             }.onSuccess { uri ->
+                message.value = "Archivo listo para compartir."
                 onReady(uri)
             }.onFailure {
-                message.value = it.message ?: "No se pudo generar el PDF"
+                message.value = it.message ?: "No se pudo preparar el archivo"
             }
             isExporting = false
         }
     }
 
-    private fun writePdf(request: HistoryPdfRequest, stream: java.io.OutputStream) {
+    private fun writeHistory(
+        request: HistoryExportRequest,
+        format: HistoryExportFormat,
+        stream: java.io.OutputStream,
+    ) {
         stream.use {
-            HistoryPdfWriter.writeTo(it, request.transactions, state.value.categories, request.meta)
+            when (format) {
+                HistoryExportFormat.PDF ->
+                    HistoryPdfWriter.writeTo(it, request.transactions, state.value.categories, request.meta)
+                HistoryExportFormat.EXCEL ->
+                    HistorySpreadsheetWriter.writeTo(it, request.transactions, state.value.categories, request.meta)
+                HistoryExportFormat.CSV ->
+                    it.write(CsvExporter.buildCsv(request.transactions, state.value.categories).toByteArray(Charsets.UTF_8))
+            }
         }
-    }
-
-    private fun writeCsvTo(uri: Uri, csv: String) {
-        val stream = context.contentResolver.openOutputStream(uri)
-            ?: error("No se pudo abrir el archivo seleccionado")
-        // Escritura explícita en UTF-8 con BOM para máxima compatibilidad.
-        stream.use { it.write(csv.toByteArray(Charsets.UTF_8)) }
     }
 
     private fun writeBackupTo(uri: Uri, json: String) {

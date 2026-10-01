@@ -17,7 +17,7 @@ Descarga **Mony v1.0.5** desde su [release en GitHub](https://github.com/Angel11
 
 - Registro, edición, duplicado y eliminación de ingresos y gastos.
 - Presupuestos mensuales o por ciclos con ciclos y cierre manual o automático.
-- Historial con filtros, búsqueda y exportación local a CSV y PDF.
+- Historial con filtros, búsqueda y exportación local a PDF, Excel y CSV.
 - Estadísticas por período y categoría, comparaciones y límites de gasto.
 - Entradas fijas recurrentes y pagos o cobros pendientes con recordatorios.
 - Metas de ahorro y seguimiento de su progreso.

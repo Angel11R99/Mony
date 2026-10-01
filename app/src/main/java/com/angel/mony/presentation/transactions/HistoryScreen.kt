@@ -1,5 +1,6 @@
 package com.angel.mony.presentation.transactions
 
+import android.content.ClipData
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -169,9 +170,10 @@ fun HistoryScreen(
     var pendingDelete by remember { mutableStateOf<FinanceTransaction?>(null) }
     var pendingDuplicate by remember { mutableStateOf<FinanceTransaction?>(null) }
     var selectedTransaction by remember { mutableStateOf<FinanceTransaction?>(null) }
-    var showPdfScopeDialog by remember { mutableStateOf(false) }
-    var pdfScopeAllHistory by remember { mutableStateOf(false) }
-    var pendingPdfRequest by remember { mutableStateOf<HistoryPdfRequest?>(null) }
+    var showExportDialog by remember { mutableStateOf(false) }
+    var exportAllHistory by remember { mutableStateOf(false) }
+    var exportFormat by rememberSaveable { mutableStateOf(HistoryExportFormat.PDF) }
+    var pendingExportRequest by remember { mutableStateOf<HistoryExportRequest?>(null) }
     val message by viewModel.message.collectAsStateWithLifecycle()
     val restorePreview by viewModel.restorePreview.collectAsStateWithLifecycle()
     val isRestoring by viewModel.isRestoring.collectAsStateWithLifecycle()
@@ -185,9 +187,23 @@ fun HistoryScreen(
     val pdfLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
     ) { uri ->
-        val request = pendingPdfRequest
-        if (uri != null && request != null) viewModel.exportPdfTo(uri, request)
-        pendingPdfRequest = null
+        val request = pendingExportRequest
+        if (uri != null && request != null) viewModel.exportHistoryTo(uri, request, HistoryExportFormat.PDF)
+        pendingExportRequest = null
+    }
+    val excelLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    ) { uri ->
+        val request = pendingExportRequest
+        if (uri != null && request != null) viewModel.exportHistoryTo(uri, request, HistoryExportFormat.EXCEL)
+        pendingExportRequest = null
+    }
+    val csvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        val request = pendingExportRequest
+        if (uri != null && request != null) viewModel.exportHistoryTo(uri, request, HistoryExportFormat.CSV)
+        pendingExportRequest = null
     }
 
     LaunchedEffect(message) {
@@ -272,16 +288,16 @@ fun HistoryScreen(
     val incomeTotal = listResult?.incomeTotal ?: 0L
     val expenseTotal = listResult?.expenseTotal ?: 0L
 
-    val pdfDateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
-    fun buildPdfRequest(allHistory: Boolean): HistoryPdfRequest {
+    val exportDateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    fun buildExportRequest(allHistory: Boolean): HistoryExportRequest {
         val cycleLabel = cycleFilter.takeIf { it != HistoryCycleFilter.All }?.label
         val periodLabel = when {
             allHistory -> "Todo el historial"
             cycleLabel != null -> "Ciclo: $cycleLabel"
             startDate != null && endDate != null ->
-                "Período: ${startDate!!.format(pdfDateFormatter)} – ${endDate!!.format(pdfDateFormatter)}"
-            startDate != null -> "Desde: ${startDate!!.format(pdfDateFormatter)}"
-            endDate != null -> "Hasta: ${endDate!!.format(pdfDateFormatter)}"
+                "Período: ${startDate!!.format(exportDateFormatter)} – ${endDate!!.format(exportDateFormatter)}"
+            startDate != null -> "Desde: ${startDate!!.format(exportDateFormatter)}"
+            endDate != null -> "Hasta: ${endDate!!.format(exportDateFormatter)}"
             else -> "Todo el historial"
         }
         val filterLines = if (allHistory) {
@@ -302,7 +318,7 @@ fun HistoryScreen(
         } else {
             sorted
         }
-        return HistoryPdfRequest(items, HistoryPdfMeta(periodLabel, filterLines, sort.label))
+        return HistoryExportRequest(items, HistoryPdfMeta(periodLabel, filterLines, sort.label))
     }
 
     Scaffold(
@@ -331,8 +347,8 @@ fun HistoryScreen(
                         semanticIcon = com.angel.mony.ui.iconography.MonyIcon.Share,
                         contentDescription = "Compartir historial",
                         onClick = {
-                            pdfScopeAllHistory = false
-                            showPdfScopeDialog = true
+                            exportAllHistory = false
+                            showExportDialog = true
                         },
                         size = 48.dp,
                     )
@@ -665,9 +681,10 @@ fun HistoryScreen(
         )
     }
 
-    if (showPdfScopeDialog) {
+    if (showExportDialog) {
+        val selectedCount = if (exportAllHistory) state.transactions.size else filtered.size
         AlertDialog(
-            onDismissRequest = { showPdfScopeDialog = false },
+            onDismissRequest = { showExportDialog = false },
             icon = {
                 com.angel.mony.ui.iconography.MonyIcon(
                     com.angel.mony.ui.iconography.MonyIcon.Share,
@@ -675,17 +692,43 @@ fun HistoryScreen(
                     tint = MaterialTheme.colorScheme.primary,
                 )
             },
-            title = { Text("Generar PDF del historial") },
+            title = { Text("Exportar historial") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "Elige qué movimientos incluir en el documento.",
+                        "Elige el formato y los movimientos que deseas incluir.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Text("Formato", style = MaterialTheme.typography.labelLarge)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HistoryExportFormat.entries.forEach { format ->
+                            FilterChip(
+                                selected = exportFormat == format,
+                                onClick = { exportFormat = format },
+                                label = { Text(format.label, maxLines = 1) },
+                                modifier = Modifier.weight(1f),
+                                shape = MaterialTheme.shapes.small,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
+                            )
+                        }
+                    }
+                    Text(
+                        when (exportFormat) {
+                            HistoryExportFormat.PDF -> "Documento listo para leer, imprimir o enviar."
+                            HistoryExportFormat.EXCEL -> "Libro editable con resumen, filtros y montos numéricos."
+                            HistoryExportFormat.CSV -> "Archivo simple compatible con hojas de cálculo."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text("Contenido", style = MaterialTheme.typography.labelLarge)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
-                            selected = !pdfScopeAllHistory,
-                            onClick = { pdfScopeAllHistory = false },
+                            selected = !exportAllHistory,
+                            onClick = { exportAllHistory = false },
                             label = { Text("Filtros actuales (${filtered.size})", maxLines = 1) },
                             modifier = Modifier.weight(1f),
                             shape = MaterialTheme.shapes.small,
@@ -695,8 +738,8 @@ fun HistoryScreen(
                             ),
                         )
                         FilterChip(
-                            selected = pdfScopeAllHistory,
-                            onClick = { pdfScopeAllHistory = true },
+                            selected = exportAllHistory,
+                            onClick = { exportAllHistory = true },
                             label = { Text("Todo (${state.transactions.size})", maxLines = 1) },
                             modifier = Modifier.weight(1f),
                             shape = MaterialTheme.shapes.small,
@@ -709,34 +752,52 @@ fun HistoryScreen(
                     PrimaryButton(
                         text = "Compartir",
                         onClick = {
-                            showPdfScopeDialog = false
-                            viewModel.sharePdf(buildPdfRequest(pdfScopeAllHistory)) { uri ->
+                            val selectedFormat = exportFormat
+                            showExportDialog = false
+                            viewModel.shareHistory(buildExportRequest(exportAllHistory), selectedFormat) { uri ->
                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "application/pdf"
+                                    type = selectedFormat.mimeType
                                     putExtra(Intent.EXTRA_STREAM, uri)
+                                    putExtra(Intent.EXTRA_SUBJECT, "Historial financiero - Mony")
+                                    putExtra(Intent.EXTRA_TEXT, "Historial financiero exportado desde Mony.")
+                                    clipData = ClipData.newRawUri("Historial financiero", uri)
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
                                 context.startActivity(
-                                    Intent.createChooser(shareIntent, "Compartir historial")
+                                    Intent.createChooser(shareIntent, "Compartir historial como ${selectedFormat.label}")
                                 )
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = selectedCount > 0,
                     )
                     SecondaryButton(
                         text = "Guardar como archivo",
                         onClick = {
-                            showPdfScopeDialog = false
-                            pendingPdfRequest = buildPdfRequest(pdfScopeAllHistory)
-                            pdfLauncher.launch("historial-${LocalDate.now()}.pdf")
+                            showExportDialog = false
+                            pendingExportRequest = buildExportRequest(exportAllHistory)
+                            val fileName = "historial-${LocalDate.now()}.${exportFormat.extension}"
+                            when (exportFormat) {
+                                HistoryExportFormat.PDF -> pdfLauncher.launch(fileName)
+                                HistoryExportFormat.EXCEL -> excelLauncher.launch(fileName)
+                                HistoryExportFormat.CSV -> csvLauncher.launch(fileName)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = selectedCount > 0,
                     )
+                    if (selectedCount == 0) {
+                        Text(
+                            "No hay movimientos en la selección actual.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showPdfScopeDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = { showExportDialog = false }) { Text("Cancelar") }
             },
             shape = MaterialTheme.shapes.medium,
             containerColor = MaterialTheme.colorScheme.surfaceVariant,

@@ -99,7 +99,7 @@ Efectos cross-table preservados (no simplificar sin entender):
 | `home` | `HomeScreen` |
 | `add/{type}` | `AddTransactionScreen` (INCOME/EXPENSE) |
 | `edit/{type}/{transactionId}` | `AddTransactionScreen` modo edición |
-| `history` | `HistoryScreen` (filtros, búsqueda, exportar CSV/PDF) |
+| `history` | `HistoryScreen` (filtros, búsqueda, exportar PDF/Excel/CSV) |
 | `statistics` | `StatisticsScreen` |
 | `fixed` | `FixedEntriesScreen` |
 | `pending` | `PendingEntriesScreen` |
@@ -116,7 +116,7 @@ Efectos cross-table preservados (no simplificar sin entender):
 
 - **Home**: chips registro rápido, card presupuesto con selector de período, métricas INGRESOS/GASTOS/RESTANTE, gastos por categoría, últimos movimientos. Auto-cierre con `LaunchedEffect`.
 - **Add/Edit Transacción**: validación, guardado transaccional, feedback Snackbar, `isSaving` anti-duplicado, refresh widgets.
-- **History**: filtros por fecha/tipo/categoría/búsqueda, acciones editar/eliminar/duplicar, exportación CSV/PDF.
+- **History**: filtros por fecha/tipo/categoría/búsqueda, acciones editar/eliminar/duplicar, exportación PDF/Excel/CSV.
 - **Statistics**: reportes por rango (presupuesto actual, semanal, mensual, anual, personalizado). Filtros por ciclo y categoría. Donut Ingresos vs Gastos, barras por categoría con límite.
 - **Fixed**: CRUD de `FixedEntry`, toggle activo, ejecución manual. `FixedEntryWorker` (WorkManager) cada 15 min.
 - **Pending**: obligaciones por pagar/cobrar, fecha y recordatorio. `complete` genera transacción, `reopen` la revierte.
@@ -183,7 +183,7 @@ explícito para conservar la semántica del Design System.
 ## 13. Seguridad & offline
 
 - **100% offline** — Room es fuente de verdad. `OpenFoodFactsProductCatalogRepository` es la única feature online y es opcional.
-- Sin auth, sin sync, sin backend. Backup vía CSV/PDF local + restore con deduplicación.
+- Sin auth, sin sync, sin backend. Exportación local a PDF/Excel/CSV y respaldo restaurable con deduplicación.
 - Permiso único: `POST_NOTIFICATIONS`.
 
 ---
