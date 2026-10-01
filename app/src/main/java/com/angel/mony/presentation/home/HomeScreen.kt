@@ -19,9 +19,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -148,8 +149,16 @@ fun HomeScreen(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            RegisterActionChip("Registrar gasto", { onAdd(TransactionType.EXPENSE) }, Modifier.weight(1f))
-                            RegisterActionChip("Registrar ingreso", { onAdd(TransactionType.INCOME) }, Modifier.weight(1f))
+                            RegisterActionButton(
+                                type = TransactionType.EXPENSE,
+                                onClick = { onAdd(TransactionType.EXPENSE) },
+                                modifier = Modifier.weight(1f),
+                            )
+                            RegisterActionButton(
+                                type = TransactionType.INCOME,
+                                onClick = { onAdd(TransactionType.INCOME) },
+                                modifier = Modifier.weight(1f),
+                            )
                         }
                     }
 
@@ -575,28 +584,57 @@ private fun CloseCycleButton(
 }
 
 @Composable
-private fun RegisterActionChip(
-    label: String,
+private fun RegisterActionButton(
+    type: TransactionType,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    FilterChip(
-        selected = false,
+    val isExpense = type == TransactionType.EXPENSE
+    val containerColor = if (isExpense) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val contentColor = if (isExpense) {
+        MaterialTheme.colorScheme.onError
+    } else {
+        MaterialTheme.colorScheme.onPrimary
+    }
+
+    Button(
         onClick = onClick,
-        label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        modifier = modifier,
-        shape = MaterialTheme.shapes.small,
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primary,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        modifier = modifier.heightIn(min = 60.dp),
+        shape = MaterialTheme.shapes.medium,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 0.dp,
         ),
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = false,
-            borderColor = MaterialTheme.colorScheme.outline,
-            selectedBorderColor = MaterialTheme.colorScheme.primary,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
         ),
-    )
+    ) {
+        com.angel.mony.ui.iconography.MonyIcon(
+            icon = if (isExpense) {
+                com.angel.mony.ui.iconography.MonyIcon.Expense
+            } else {
+                com.angel.mony.ui.iconography.MonyIcon.Income
+            },
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = contentColor,
+            role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = if (isExpense) "Registrar gasto" else "Registrar ingreso",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @Composable
