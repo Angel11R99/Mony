@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +61,14 @@ fun CategoriesTab(
     val context = LocalContext.current
     var showEditor by remember { mutableStateOf(false) }
     var editingCategory by remember { mutableStateOf<Category?>(null) }
+    var selectedType by rememberSaveable { mutableStateOf(TransactionType.EXPENSE) }
+
+    val incomeCategories = state.categories.filter { it.type == TransactionType.INCOME }
+    val expenseCategories = state.categories.filter { it.type == TransactionType.EXPENSE }
+    val visibleCategories = when (selectedType) {
+        TransactionType.INCOME -> incomeCategories
+        TransactionType.EXPENSE -> expenseCategories
+    }
 
     LaunchedEffect(message) {
         message?.let {
@@ -81,15 +90,40 @@ fun CategoriesTab(
                     color = MaterialTheme.colorScheme.secondary,
                 )
                 Text(
-                    "Organiza las categorías que usas al registrar movimientos. Las inactivas dejan de aparecer en los selectores, pero conservan su historial.",
+                    "Elige un tipo para administrar sus categorías. Las inactivas conservan todo su historial.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
         item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CategoryTypeFilter(
+                    type = TransactionType.EXPENSE,
+                    selectedType = selectedType,
+                    count = expenseCategories.size,
+                    onSelect = { selectedType = it },
+                    modifier = Modifier.weight(1f),
+                )
+                CategoryTypeFilter(
+                    type = TransactionType.INCOME,
+                    selectedType = selectedType,
+                    count = incomeCategories.size,
+                    onSelect = { selectedType = it },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        item {
             SecondaryButton(
-                text = "Nueva categoría",
+                text = if (selectedType == TransactionType.EXPENSE) {
+                    "Nueva categoría de gasto"
+                } else {
+                    "Nueva categoría de ingreso"
+                },
                 onClick = {
                     editingCategory = null
                     showEditor = true
@@ -97,23 +131,15 @@ fun CategoriesTab(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        item { GroupHeader("INGRESOS") }
         item {
-            CategoryGroupCard(
-                categories = state.categories.filter { it.type == TransactionType.INCOME },
-                usedIds = state.usedCategoryIds,
-                onToggle = viewModel::toggleActive,
-                onEdit = { category ->
-                    editingCategory = category
-                    showEditor = true
-                },
-                onDelete = viewModel::requestDelete,
+            GroupHeader(
+                if (selectedType == TransactionType.EXPENSE) "CATEGORÍAS DE GASTOS"
+                else "CATEGORÍAS DE INGRESOS"
             )
         }
-        item { GroupHeader("GASTOS") }
         item {
             CategoryGroupCard(
-                categories = state.categories.filter { it.type == TransactionType.EXPENSE },
+                categories = visibleCategories,
                 usedIds = state.usedCategoryIds,
                 onToggle = viewModel::toggleActive,
                 onEdit = { category ->
@@ -128,7 +154,7 @@ fun CategoriesTab(
     if (showEditor) {
         CategoryEditorDialog(
             category = editingCategory,
-            initialType = TransactionType.EXPENSE,
+            initialType = selectedType,
             isSaving = isSaving,
             onDismiss = { showEditor = false },
             onSave = { type, name, limit ->
@@ -169,6 +195,34 @@ private fun GroupHeader(title: String) {
 }
 
 @Composable
+private fun CategoryTypeFilter(
+    type: TransactionType,
+    selectedType: TransactionType,
+    count: Int,
+    onSelect: (TransactionType) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val label = if (type == TransactionType.EXPENSE) "Gastos" else "Ingresos"
+    FilterChip(
+        selected = selectedType == type,
+        onClick = { onSelect(type) },
+        label = { Text("$label ($count)") },
+        modifier = modifier,
+        shape = MaterialTheme.shapes.small,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selectedType == type,
+            borderColor = MaterialTheme.colorScheme.outline,
+            selectedBorderColor = MaterialTheme.colorScheme.primary,
+        ),
+    )
+}
+
+@Composable
 private fun CategoryGroupCard(
     categories: List<Category>,
     usedIds: Set<Long>,
@@ -181,16 +235,25 @@ private fun CategoryGroupCard(
     }
     FinanceCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-            sorted.forEachIndexed { index, category ->
-                CategoryRow(
-                    category = category,
-                    isInUse = category.id in usedIds,
-                    onToggle = { onToggle(category) },
-                    onEdit = { onEdit(category) },
-                    onDelete = { onDelete(category) },
+            if (sorted.isEmpty()) {
+                Text(
+                    "Todavía no hay categorías de este tipo.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
                 )
-                if (index < sorted.lastIndex) {
-                    HorizontalDivider()
+            } else {
+                sorted.forEachIndexed { index, category ->
+                    CategoryRow(
+                        category = category,
+                        isInUse = category.id in usedIds,
+                        onToggle = { onToggle(category) },
+                        onEdit = { onEdit(category) },
+                        onDelete = { onDelete(category) },
+                    )
+                    if (index < sorted.lastIndex) {
+                        HorizontalDivider()
+                    }
                 }
             }
         }

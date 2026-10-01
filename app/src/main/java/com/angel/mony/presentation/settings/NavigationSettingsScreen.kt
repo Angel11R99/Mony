@@ -70,7 +70,10 @@ fun NavigationSettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
         item {
-            SectionTitle("MÓDULOS VISIBLES", "Selecciona qué módulos aparecen en la barra de navegación.")
+            SectionTitle(
+                "MÓDULOS VISIBLES",
+                "Selecciona qué módulos aparecen en la barra. Debe quedar al menos uno.",
+            )
         }
         item {
             FinanceCard(Modifier.fillMaxWidth()) {
@@ -78,8 +81,9 @@ fun NavigationSettingsScreen(
                     Modifier.fillMaxWidth().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    moduleDestinations.forEach { dest ->
+                    moduleDestinations.forEachIndexed { index, dest ->
                         val isVisible = dest.route in moduleBarConfig.visibleRoutes
+                        val isLastVisible = isVisible && moduleBarConfig.visibleRoutes.size == 1
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -93,6 +97,7 @@ fun NavigationSettingsScreen(
                             Text(dest.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                             Switch(
                                 checked = isVisible,
+                                enabled = !isLastVisible,
                                 onCheckedChange = { enabled ->
                                     val newRoutes = if (enabled) {
                                         moduleBarConfig.visibleRoutes + dest.route
@@ -103,13 +108,19 @@ fun NavigationSettingsScreen(
                                 },
                             )
                         }
+                        if (index < moduleDestinations.lastIndex) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        }
                     }
                 }
             }
         }
 
         item {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SectionTitle(
+                "NOMBRES DE LOS MÓDULOS",
+                "Controla si la barra muestra texto y qué tamaño utiliza.",
+            )
         }
 
         item {
@@ -166,10 +177,6 @@ fun NavigationSettingsScreen(
                     }
                 }
             }
-        }
-
-        item {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
 
         item {
