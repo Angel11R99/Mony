@@ -1,3 +1,10 @@
 {
-    "java.configuration.updateBuildConfiguration": "automatic"
+    // Java and Kotlin by IntelliJ IDEA importa el proyecto Gradle con el motor de
+    // IntelliJ, que es el único que resuelve AndroidX, Room, Hilt, KSP y Compose.
+    // Antes estas opciones pertenecían a redhat.java (JDT), que no soporta el
+    // plugin com.android.application y por eso marcaba los imports en rojo.
+    "intellij.buildTool": "gradle",
+    "intellij.additionalJvmArgs": [
+        "-Xmx3g"
+    ]
 }

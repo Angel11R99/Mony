@@ -1,0 +1,15 @@
+{
+    "recommendations": [
+        "JetBrains.intellij-server"
+    ],
+    "unwantedRecommendations": [
+        "fwcd.kotlin",
+        "mathiasfrohlich.kotlin",
+        "jetbrains.kotlin-server",
+        "redhat.java",
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-java-dependency",
+        "vscjava.vscode-java-debug",
+        "vscjava.vscode-gradle"
+    ]
+}
