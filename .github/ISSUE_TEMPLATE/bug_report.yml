@@ -1,11 +1,13 @@
 name: Reportar un error
 description: Informa un problema reproducible en Mony.
 title: "[Error]: "
+labels:
+  - bug
 body:
   - type: markdown
     attributes:
       value: |
-        Antes de reportar, revisa los issues abiertos y cerrados. No necesitas escribir demasido: marca opciones y agrega texto solo si quieres.
+        Antes de reportar, revisa los issues abiertos y cerrados. No necesitas escribir demasiado: marca opciones y agrega texto solo si quieres.
 
   - type: checkboxes
     id: duplicate_check

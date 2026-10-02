@@ -1,6 +1,8 @@
 name: Hacer una pregunta
 description: Duda sobre cómo funciona Mony, qué significa algo o qué hacer en una situación.
 title: "[Pregunta]: "
+labels:
+  - question
 body:
   - type: markdown
     attributes:

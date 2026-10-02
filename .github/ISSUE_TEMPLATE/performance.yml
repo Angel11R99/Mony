@@ -1,6 +1,9 @@
 name: Reportar un problema de rendimiento
 description: La app o los widgets tardan, se traban o consumen demasiado.
 title: "[Rendimiento]: "
+labels:
+  - bug
+  - performance
 body:
   - type: markdown
     attributes:

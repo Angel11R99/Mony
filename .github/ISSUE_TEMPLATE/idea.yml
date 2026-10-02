@@ -1,6 +1,8 @@
 name: Compartir una idea
 description: Propón una idea para Mony, como hacer la interfaz más intuitiva, en un par de clics.
 title: "[Idea]: "
+labels:
+  - idea
 body:
   - type: markdown
     attributes:

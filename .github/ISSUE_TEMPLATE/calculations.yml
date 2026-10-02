@@ -1,6 +1,9 @@
 name: Reportar un error en cálculos o cifras
 description: Totales, presupuesto, estadísticas o límites que no cuadran con lo esperado.
 title: "[Cálculos]: "
+labels:
+  - bug
+  - calculations
 body:
   - type: markdown
     attributes:

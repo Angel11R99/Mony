@@ -1,6 +1,8 @@
 name: Reportar un problema o idea de widgets
 description: Fallos, dudas o ideas sobre los widgets de Mony.
 title: "[Widget]: "
+labels:
+  - widget
 body:
   - type: markdown
     attributes:

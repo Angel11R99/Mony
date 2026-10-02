@@ -1,6 +1,9 @@
 name: Reportar pérdida o problemas con los datos
 description: Movimientos que desaparecen, se duplican o se corrompen, o problemas tras actualizar la app.
 title: "[Datos]: "
+labels:
+  - bug
+  - data-loss
 body:
   - type: markdown
     attributes:

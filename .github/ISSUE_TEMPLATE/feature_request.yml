@@ -1,6 +1,8 @@
 name: Proponer una mejora
 description: Sugiere una mejora o función para Mony antes de implementarla.
 title: "[Mejora]: "
+labels:
+  - enhancement
 body:
   - type: markdown
     attributes:
