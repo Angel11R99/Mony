@@ -6,5 +6,6 @@
     "intellij.buildTool": "gradle",
     "intellij.additionalJvmArgs": [
         "-Xmx3g"
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }
