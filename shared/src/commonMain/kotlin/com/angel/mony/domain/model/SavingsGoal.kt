@@ -1,6 +1,6 @@
 package com.angel.mony.domain.model
 
-import java.time.Instant
+import kotlinx.datetime.Instant
 
 data class SavingsGoal(
     val id: Long = 0,

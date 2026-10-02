@@ -1,6 +1,6 @@
 # Checklist de Migración KMP (Mony)
 
-> **Estado actual:** `:shared` creado, diacríticos y aritmética exacta comunes, 12 archivos de modelo y 3 contratos de repositorio movidos a `commonMain`. Suite Android: **35 clases / 263 tests, 0 fallos**.
+> **Estado actual:** `:shared` creado, diacríticos y aritmética exacta comunes, 13 archivos de modelo y 4 contratos de repositorio movidos a `commonMain`. Suite Android: **35 clases / 263 tests, 0 fallos**.
 
 ## 1. Infraestructura KMP
 
@@ -26,18 +26,18 @@
 
 ## 3. domain/model
 
-**Comunes (12 archivos):** BackupMovement, BudgetAlertEvaluator, BudgetConfig, BudgetCycle, BudgetCycleSchedule/defaultCycleSchedules, BudgetPeriod, Category, CategoryValidator, EntryCardSize, ListProductMatcher, ListReceiptParser y TransactionType — ✅
+**Comunes (13 archivos):** BackupMovement, BudgetAlertEvaluator, BudgetConfig, BudgetCycle, BudgetCycleSchedule/defaultCycleSchedules, BudgetPeriod, Category, CategoryValidator, EntryCardSize, ListProductMatcher, ListReceiptParser, SavingsGoal y TransactionType — ✅
 
-**Pendientes con `java.time` (11):** DateRange ⬜, **BudgetCycleCalculator** ⬜ (crítico), FinanceTransaction ⬜, FixedEntry ⬜, PendingEntry ⬜, ExpenseFunding ⬜, SavingsGoal ⬜, FixedEntrySchedule ⬜, FortnightPeriod ⬜, Fortnight ⬜, ShoppingList ⬜
+**Pendientes con `java.time` (10):** DateRange ⬜, **BudgetCycleCalculator** ⬜ (crítico), FinanceTransaction ⬜, FixedEntry ⬜, PendingEntry ⬜, ExpenseFunding ⬜, FixedEntrySchedule ⬜, FortnightPeriod ⬜, Fortnight ⬜, ShoppingList ⬜
 
-**Pendientes en `:app`: 11 archivos.** `BackupMovement`, `BudgetConfig` y `BudgetCycle` ya validan la transición con conversiones explícitas en los límites CSV, Room y UI. `DateRange` tiene más de 100 referencias y no debe migrarse de forma aislada.
+**Pendientes en `:app`: 10 archivos.** `BackupMovement`, `BudgetConfig`, `BudgetCycle` y `SavingsGoal` ya validan la transición con conversiones explícitas en los límites CSV, Room y UI. `DateRange` tiene más de 100 referencias y debe migrarse junto con repositorios, filtros, estadísticas, widgets y `BudgetCycleCalculator`.
 
 ## 4. domain/repository (11)
 
-✅: BudgetRepository, CategoryRepository, ProductCatalogRepository (3)
-⬜: BackupRepository, ExpenseFundingRepository, FixedEntryRepository, FortnightRepository, PendingEntryRepository, SavingsRepository, ShoppingListRepository, TransactionRepository (8)
+✅: BudgetRepository, CategoryRepository, ProductCatalogRepository, SavingsRepository (4)
+⬜: BackupRepository, ExpenseFundingRepository, FixedEntryRepository, FortnightRepository, PendingEntryRepository, ShoppingListRepository, TransactionRepository (7)
 
-Progreso: **3/11 (27%)**. Cada contrato pasa a `shared` solo cuando todos sus tipos de firma existan en `commonMain`; `shared` nunca depende de modelos de `:app`.
+Progreso: **4/11 (36%)**. Cada contrato pasa a `shared` solo cuando todos sus tipos de firma existan en `commonMain`; `shared` nunca depende de modelos de `:app`.
 
 ## 5. domain/usecase (4)
 
@@ -69,7 +69,7 @@ Progreso: **3/11 (27%)**. Cada contrato pasa a `shared` solo cuando todos sus ti
 1. ~~Añadir `kotlinx-datetime` (versión + dependencia `commonMain`).~~ ✅
 2. ~~Definir conversiones Android entre `java.time` y `kotlinx.datetime` en los límites de Room/UI.~~ ✅
 3. ~~Migrar `BudgetConfig` y `BudgetCycle`.~~ ✅
-4. Migrar `DateRange` y sus consumidores directos para evitar firmas incompatibles.
+4. Migrar `DateRange` junto con sus consumidores de repositorios, filtros, estadísticas y widgets; el intento aislado fue descartado porque el compilador confirmó un radio de 98 llamadores.
 5. Mantener `BudgetCycleCalculator` sin cambios de comportamiento y moverlo cuando `DateRange` sea común.
 6. Ejecutar tests de fechas/ciclo y después `assembleDebug` + `testDebugUnitTest`.
 

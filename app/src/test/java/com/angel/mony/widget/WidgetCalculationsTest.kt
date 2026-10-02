@@ -7,7 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.Instant
+import kotlinx.datetime.Instant
 
 class WidgetCalculationsTest {
 
@@ -109,7 +109,7 @@ class WidgetCalculationsTest {
                 id = 0,
                 name = "g",
                 targetAmountInCents = target,
-                createdAt = Instant.EPOCH,
+                createdAt = Instant.fromEpochMilliseconds(0),
             ),
             savedInCents = saved,
         )

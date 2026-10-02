@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.core.time.toJavaInstant
 import com.angel.mony.core.showToast
 import com.angel.mony.domain.model.EntryCardSize
 import com.angel.mony.domain.model.FinanceTransaction
@@ -720,10 +721,10 @@ private fun SavingsDetailedCardContent(
         }
         GoalProgressBar(fraction.coerceAtMost(1f), excessFraction)
         progress.goal.createdAt?.let { createdAt ->
-            SavingsDetailRow("Creada", createdAt.atZone(zone).format(timingFormatter))
+            SavingsDetailRow("Creada", createdAt.toJavaInstant().atZone(zone).format(timingFormatter))
         }
         progress.goal.completedAt?.let { completedAt ->
-            SavingsDetailRow("Completada", completedAt.atZone(zone).format(timingFormatter))
+            SavingsDetailRow("Completada", completedAt.toJavaInstant().atZone(zone).format(timingFormatter))
         }
         val remaining = (progress.goal.targetAmountInCents - progress.savedInCents).coerceAtLeast(0)
         SavingsDetailRow("Restante", MoneyFormatter.format(remaining))

@@ -7,7 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.Instant
+import kotlinx.datetime.Instant
 import java.time.LocalDate
 
 class WidgetFormattingTest {
@@ -108,7 +108,7 @@ class WidgetFormattingTest {
             id = id,
             name = "Meta $id",
             targetAmountInCents = target,
-            createdAt = Instant.EPOCH,
+            createdAt = Instant.fromEpochMilliseconds(0),
         ),
         savedInCents = saved,
     )
