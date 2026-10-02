@@ -1,5 +1,7 @@
 package com.angel.mony.domain.model
 
+import com.angel.mony.core.math.addExactOrNull
+import com.angel.mony.core.math.multiplyExactOrNull
 import kotlin.math.abs
 
 data class OcrMoneyCandidate(
@@ -65,7 +67,9 @@ object ListOcrMoneyParser {
         val whole = numeric.substring(0, separatorIndex).replace(".", "").replace(",", "")
         val decimals = numeric.substring(separatorIndex + 1)
         if (whole.isEmpty() || !whole.all(Char::isDigit) || !decimals.all(Char::isDigit)) return null
-        return runCatching { Math.addExact(Math.multiplyExact(whole.toLong(), 100L), decimals.toLong()) }.getOrNull()
+        return runCatching {
+            whole.toLong().multiplyExactOrNull(100L)?.addExactOrNull(decimals.toLong())
+        }.getOrNull()
     }
 }
 
@@ -218,7 +222,7 @@ object ListTicketParser {
             if (possibleSubtotal.kind != TicketAmountKind.PRODUCTO) return@filterNot false
             candidates.any { unit ->
                 if (unit === possibleSubtotal || unit.kind != TicketAmountKind.PRODUCTO || unit.quantity <= 1) return@any false
-                val expected = runCatching { Math.multiplyExact(unit.amountInCents, unit.quantity.toLong()) }.getOrNull()
+                val expected = unit.amountInCents.multiplyExactOrNull(unit.quantity.toLong())
                 if (expected != possibleSubtotal.amountInCents || normalizeProductName(unit.productName.orEmpty()) != normalizeProductName(possibleSubtotal.productName.orEmpty())) return@any false
                 val unitLine = lineByOccurrence[unit.occurrenceId] ?: return@any false
                 val subtotalLine = lineByOccurrence[possibleSubtotal.occurrenceId] ?: return@any false
@@ -244,7 +248,7 @@ object ListTicketParser {
     private fun selectProductAmounts(amounts: List<OcrMoneyCandidate>, quantity: Int): List<OcrMoneyCandidate> {
         if (quantity <= 1 || amounts.size < 2) return amounts
         return amounts.firstOrNull { unit ->
-            runCatching { Math.multiplyExact(unit.amountInCents, quantity.toLong()) }.getOrNull()
+            unit.amountInCents.multiplyExactOrNull(quantity.toLong())
                 ?.let { subtotal -> amounts.any { it !== unit && it.amountInCents == subtotal } } == true
         }?.let(::listOf) ?: amounts
     }
