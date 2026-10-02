@@ -1,7 +1,6 @@
 package com.angel.mony.domain.model
 
-import java.text.Normalizer
-import java.util.Locale
+import com.angel.mony.core.text.stripDiacritics
 
 data class ProductMatchCandidate(
     val id: Long,
@@ -63,9 +62,8 @@ object ListProductMatcher {
 }
 
 fun normalizeProductName(value: String): String {
-    val basic = Normalizer.normalize(value, Normalizer.Form.NFD)
-        .replace(Regex("\\p{M}+"), "")
-        .lowercase(Locale.ROOT)
+    val basic = value.stripDiacritics()
+        .lowercase()
         .replace(Regex("[^a-z0-9]+"), " ")
         .trim()
         .replace(Regex("\\s+"), " ")

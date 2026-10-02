@@ -150,6 +150,7 @@ ksp {
 }
 
 dependencies {
+    implementation(project(":shared"))
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

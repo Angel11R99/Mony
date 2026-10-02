@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Mony"
 include(":app")
+include(":shared")

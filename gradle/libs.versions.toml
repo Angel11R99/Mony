@@ -21,6 +21,9 @@ googleCodeScanner = "16.1.0"
 mlkitTextRecognition = "16.0.1"
 googleDocumentScanner = "16.0.0"
 serialization = "1.8.1"
+# Kotlin Multiplatform. Debe coincidir con el Kotlin embebido de AGP 9 (2.2.10) para que
+# `:app` pueda consumir el metadata del módulo `shared`. Ver docs/KMP_MIGRATION_AUDIT.md.
+kotlinMultiplatform = "2.2.10"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -62,3 +65,7 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlinMultiplatform" }
+# AGP 9 ya no permite combinar el plugin KMP con com.android.library / com.android.application.
+# Este es el plugin oficial de biblioteca Android para proyectos KMP.
+android-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }

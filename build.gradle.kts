@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.hilt) apply false
+    alias(libs.plugins.kotlin.multiplatform) apply false
+    alias(libs.plugins.android.multiplatform.library) apply false
 }
 
 val versionFile = layout.projectDirectory.file("version.properties").asFile
