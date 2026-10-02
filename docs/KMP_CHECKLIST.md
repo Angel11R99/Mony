@@ -1,6 +1,6 @@
 # Checklist de Migración KMP (Mony)
 
-> **Estado actual:** `:shared` creado, diacríticos + aritmética exacta comunes, 6 modelos + 8 repositorios + `ListProductMatcher` movidos a `commonMain`. Suite Android: **34 clases / 261 tests, 0 fallos**.
+> **Estado actual:** `:shared` creado, diacríticos y aritmética exacta comunes, 12 archivos de modelo y 3 contratos de repositorio movidos a `commonMain`. Suite Android: **35 clases / 263 tests, 0 fallos**.
 
 ## 1. Infraestructura KMP
 
@@ -8,9 +8,10 @@
 |---|---|---|
 | Módulo `:shared` + configuración | ✅ | AGP 9, `androidLibrary`, JvmTarget 11, iosArm64/iosSimulatorArm64 |
 | `include(":shared")` | ✅ | settings.gradle.kts |
-| `kotlinx.serialization` commonMain | ✅ | 1.8.1 |
+| `kotlinx.serialization` commonMain | ⬜ Pendiente | La versión 1.8.1 ya existe en el catálogo; se añadirá cuando migre el modelo de backup |
 | `kotlinx.coroutines` commonMain | ✅ | 1.9.0 |
-| `kotlinx-datetime` catálogo + commonMain | ⬜ Pendiente | Necesario para `java.time` |
+| `kotlinx-datetime` catálogo + commonMain | ✅ | Versión 0.6.2, expuesta como API de `shared` |
+| Interoperabilidad Android `java.time` ↔ `kotlinx-datetime` | ✅ | `JavaTimeInterop.kt`, preserva fechas y nanosegundos de `Instant` |
 | `expect/actual` base | ⬜ Pendiente | Platform services |
 
 ## 2. Core común
@@ -23,20 +24,20 @@
 | `MoneyFormatter` | ⬜ Pendiente | JVM-only hoy |
 | Otros `java.*` | ⬜ Revisar | Fuera de modelos |
 
-## 3. domain/model (21 total)
+## 3. domain/model
 
-**Comunes (7):** BudgetAlertEvaluator, Category, CategoryValidator, EntryCardSize, ListProductMatcher, ListReceiptParser, TransactionType — ✅
+**Comunes (12 archivos):** BackupMovement, BudgetAlertEvaluator, BudgetConfig, BudgetCycle, BudgetCycleSchedule/defaultCycleSchedules, BudgetPeriod, Category, CategoryValidator, EntryCardSize, ListProductMatcher, ListReceiptParser y TransactionType — ✅
 
-**Pendientes con `java.time` (14):** DateRange ⬜, BudgetConfig ⬜, BudgetCycle ⬜, **BudgetCycleCalculator** ⬜ (crítico), FinanceTransaction ⬜, FixedEntry ⬜, PendingEntry ⬜, ExpenseFunding ⬜, SavingsGoal ⬜, FixedEntrySchedule ⬜, FortnightPeriod ⬜, Fortnight ⬜, ShoppingList ⬜, BackupMovement ⬜
+**Pendientes con `java.time` (11):** DateRange ⬜, **BudgetCycleCalculator** ⬜ (crítico), FinanceTransaction ⬜, FixedEntry ⬜, PendingEntry ⬜, ExpenseFunding ⬜, SavingsGoal ⬜, FixedEntrySchedule ⬜, FortnightPeriod ⬜, Fortnight ⬜, ShoppingList ⬜
 
-Progreso: **7/21 (33%)**
+**Pendientes en `:app`: 11 archivos.** `BackupMovement`, `BudgetConfig` y `BudgetCycle` ya validan la transición con conversiones explícitas en los límites CSV, Room y UI. `DateRange` tiene más de 100 referencias y no debe migrarse de forma aislada.
 
 ## 4. domain/repository (11)
 
-✅: BudgetRepository, CategoryRepository, ExpenseFundingRepository, FixedEntryRepository, PendingEntryRepository, ProductCatalogRepository, SavingsRepository, TransactionRepository (8)
-⬜: BackupRepository, FortnightRepository, ShoppingListRepository (3)
+✅: BudgetRepository, CategoryRepository, ProductCatalogRepository (3)
+⬜: BackupRepository, ExpenseFundingRepository, FixedEntryRepository, FortnightRepository, PendingEntryRepository, SavingsRepository, ShoppingListRepository, TransactionRepository (8)
 
-Progreso: **8/11 (73%)**
+Progreso: **3/11 (27%)**. Cada contrato pasa a `shared` solo cuando todos sus tipos de firma existan en `commonMain`; `shared` nunca depende de modelos de `:app`.
 
 ## 5. domain/usecase (4)
 
@@ -56,19 +57,20 @@ Progreso: **8/11 (73%)**
 
 ## 9. Tests
 
-⬜ Tests puros → commonTest • ✅ Android: 34 clases / 261 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
+⬜ Tests puros → commonTest • ✅ Android: 35 clases / 263 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
 
 ## 10. Verificación
 
-✅ assembleDebug • ✅ testDebugUnitTest (261/261) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
+✅ assembleDebug • ✅ testDebugUnitTest (263/263) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
 
 ## Siguiente paso
 
-**#1 — `DateRange.kt`** (menor riesgo)
-1. Añadir `kotlinx-datetime` (versión + dependencia `commonMain`)
-2. Migrar `java.time` → `kotlinx.datetime.*` (sin cambiar lógica)
-3. Mover a `shared/commonMain/kotlin/com/angel/mony/domain/model/DateRange.kt`
-4. Compilar + tests (`DateRangeTest`)
-5. `assembleDebug` + `testDebugUnitTest` verdes
+**#1 — Completar el bloque base de fechas (`DateRange` + `BudgetCycleCalculator`)**
+1. ~~Añadir `kotlinx-datetime` (versión + dependencia `commonMain`).~~ ✅
+2. ~~Definir conversiones Android entre `java.time` y `kotlinx.datetime` en los límites de Room/UI.~~ ✅
+3. ~~Migrar `BudgetConfig` y `BudgetCycle`.~~ ✅
+4. Migrar `DateRange` y sus consumidores directos para evitar firmas incompatibles.
+5. Mantener `BudgetCycleCalculator` sin cambios de comportamiento y moverlo cuando `DateRange` sea común.
+6. Ejecutar tests de fechas/ciclo y después `assembleDebug` + `testDebugUnitTest`.
 
-Orden tras #1: `BudgetConfig` → `BudgetCycle` → **`BudgetCycleCalculator`** (máxima precaución) → `FinanceTransaction/FixedEntry/PendingEntry` → `FortnightPeriod/Fortnight` → resto.
+Orden tras #1: **`BudgetCycleCalculator`** (máxima precaución) → `FinanceTransaction/FixedEntry/PendingEntry` → `FortnightPeriod/Fortnight` → resto.

@@ -1,5 +1,6 @@
 package com.angel.mony.domain.model
 
+import com.angel.mony.core.time.toJavaLocalDate
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -131,7 +132,7 @@ fun canManuallyCloseBudgetCycle(
     budget: BudgetConfig?,
     today: LocalDate = LocalDate.now(),
 ): Boolean {
-    if (budget == null || budget.cycleStart?.let { !it.isBefore(today) } == true) return false
+    if (budget == null || budget.cycleStart?.toJavaLocalDate()?.let { !it.isBefore(today) } == true) return false
     return !budgetPeriodToClose(budget, today).endInclusive.isAfter(today)
 }
 
@@ -140,7 +141,7 @@ fun shouldAutomaticallyCloseBudgetCycle(
     now: LocalDateTime = LocalDateTime.now(),
     closeTime: LocalTime = DEFAULT_AUTOMATIC_CLOSE_TIME,
 ): Boolean {
-    if (budget == null || budget.cycleStart?.let { !it.isBefore(now.toLocalDate()) } == true) return false
+    if (budget == null || budget.cycleStart?.toJavaLocalDate()?.let { !it.isBefore(now.toLocalDate()) } == true) return false
     val today = now.toLocalDate()
     val periodToClose = budgetPeriodToClose(budget, today)
     return periodToClose.endInclusive.isBefore(today) ||
@@ -150,4 +151,4 @@ fun shouldAutomaticallyCloseBudgetCycle(
 fun budgetPeriodToClose(
     budget: BudgetConfig,
     today: LocalDate = LocalDate.now(),
-): DateRange = activeBudgetPeriod(budget, budget.cycleStart ?: today)
+): DateRange = activeBudgetPeriod(budget, budget.cycleStart?.toJavaLocalDate() ?: today)

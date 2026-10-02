@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.domain.model.BudgetPeriod
 import com.angel.mony.domain.model.BudgetPeriodView
 import com.angel.mony.domain.model.BudgetCycle
@@ -694,7 +695,7 @@ private fun BudgetHistoryDialog(cycles: List<BudgetCycle>, onDismiss: () -> Unit
                                     color = MaterialTheme.colorScheme.secondary,
                                 )
                                 Text(
-                                    "${cycle.startDate.format(dateFormatter)} — ${cycle.endDate.format(dateFormatter)}",
+                                    "${cycle.startDate.toJavaLocalDate().format(dateFormatter)} — ${cycle.endDate.toJavaLocalDate().format(dateFormatter)}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

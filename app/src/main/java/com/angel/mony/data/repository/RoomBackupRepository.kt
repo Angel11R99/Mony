@@ -2,6 +2,7 @@ package com.angel.mony.data.repository
 
 import androidx.room.withTransaction
 import com.angel.mony.core.FullBackupExporter
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.core.FullBackupSnapshot
 import com.angel.mony.core.ParsedBackup
 import com.angel.mony.data.local.dao.BudgetConfigDao
@@ -91,8 +92,8 @@ class RoomBackupRepository @Inject constructor(
                     savingsGoalsCount = 0,
                     shoppingListsCount = 0,
                     budgetCyclesCount = 0,
-                    firstDate = movements.minOfOrNull { it.date },
-                    lastDate = movements.maxOfOrNull { it.date },
+                    firstDate = movements.minOfOrNull { it.date }?.toJavaLocalDate(),
+                    lastDate = movements.maxOfOrNull { it.date }?.toJavaLocalDate(),
                 )
             }
             is ParsedBackup.Full -> {
@@ -519,7 +520,7 @@ class RoomBackupRepository @Inject constructor(
                 type = movement.type.name,
                 categoryId = categoryId,
                 description = movement.description,
-                dateEpochDay = movement.date.toEpochDay(),
+                dateEpochDay = movement.date.toEpochDays().toLong(),
                 createdAtEpochMillis = System.currentTimeMillis(),
                 updatedAtEpochMillis = System.currentTimeMillis(),
                 fixedEntryId = null,

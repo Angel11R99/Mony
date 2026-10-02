@@ -1,6 +1,6 @@
 package com.angel.mony.domain.model
 
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 data class BackupMovement(
     val date: LocalDate,

@@ -67,6 +67,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.HistoryPdfMeta
 import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.core.showToast
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
@@ -1243,7 +1244,10 @@ private fun buildHistoryCycleOptions(
         ),
     )
     history.forEach { cycle ->
-        val range = com.angel.mony.domain.model.DateRange(cycle.startDate, cycle.endDate)
+        val range = com.angel.mony.domain.model.DateRange(
+            cycle.startDate.toJavaLocalDate(),
+            cycle.endDate.toJavaLocalDate(),
+        )
         val label = "Hist: ${range.start.format(formatter)} – ${range.endInclusive.format(formatter)}"
         if (options.none { it.range == range }) {
             options.add(HistoryCycleFilter.Custom(range, label))

@@ -25,6 +25,8 @@ import com.angel.mony.data.local.entity.ProductRecognitionAliasEntity
 import com.angel.mony.data.local.database.FinanceDatabase
 import com.angel.mony.data.mapper.toDomain
 import com.angel.mony.data.mapper.toEntity
+import com.angel.mony.core.time.toKotlinInstant
+import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.BackupMovement
 import com.angel.mony.domain.model.BudgetConfig
@@ -312,7 +314,7 @@ class RoomTransactionRepository @Inject constructor(
                 type = movement.type.name,
                 categoryId = categoryId,
                 description = movement.description,
-                dateEpochDay = movement.date.toEpochDay(),
+                dateEpochDay = movement.date.toEpochDays().toLong(),
                 createdAtEpochMillis = System.currentTimeMillis(),
                 updatedAtEpochMillis = System.currentTimeMillis(),
                 fixedEntryId = null,
@@ -1399,8 +1401,8 @@ class RoomBudgetRepository @Inject constructor(
             BudgetConfig(
                 amountInCents = it.amountInCents,
                 period = BudgetPeriod.valueOf(it.period),
-                cycleStart = it.cycleStartEpochDay?.let(LocalDate::ofEpochDay),
-                cycleStartedAt = it.cycleStartedAtEpochMillis?.let(Instant::ofEpochMilli),
+                cycleStart = it.cycleStartEpochDay?.let(LocalDate::ofEpochDay)?.toKotlinLocalDate(),
+                cycleStartedAt = it.cycleStartedAtEpochMillis?.let(Instant::ofEpochMilli)?.toKotlinInstant(),
                 incomeTransactionId = it.incomeTransactionId,
                 cycleSchedules = parseCycleSchedules(it.closingDays, BudgetPeriod.valueOf(it.period)),
             )
@@ -1415,9 +1417,9 @@ class RoomBudgetRepository @Inject constructor(
                 budgetAmountInCents = entity.budgetAmountInCents,
                 incomeInCents = entity.incomeInCents,
                 expenseInCents = entity.expenseInCents,
-                startDate = LocalDate.ofEpochDay(entity.startDateEpochDay),
-                endDate = LocalDate.ofEpochDay(entity.endDateEpochDay),
-                closedAt = Instant.ofEpochMilli(entity.closedAtEpochMillis),
+                startDate = LocalDate.ofEpochDay(entity.startDateEpochDay).toKotlinLocalDate(),
+                endDate = LocalDate.ofEpochDay(entity.endDateEpochDay).toKotlinLocalDate(),
+                closedAt = Instant.ofEpochMilli(entity.closedAtEpochMillis).toKotlinInstant(),
             )
         }
     }
@@ -1437,8 +1439,8 @@ class RoomBudgetRepository @Inject constructor(
 private fun BudgetConfig.toEntity() = BudgetConfigEntity(
     amountInCents = amountInCents,
     period = period.name,
-    cycleStartEpochDay = cycleStart?.toEpochDay(),
-    cycleStartedAtEpochMillis = cycleStartedAt?.toEpochMilli(),
+    cycleStartEpochDay = cycleStart?.toEpochDays()?.toLong(),
+    cycleStartedAtEpochMillis = cycleStartedAt?.toEpochMilliseconds(),
     incomeTransactionId = incomeTransactionId,
     closingDays = cycleSchedules.toSerializedCycleSchedules(),
 )
@@ -1477,9 +1479,9 @@ private fun BudgetCycle.toEntity() = BudgetCycleEntity(
     budgetAmountInCents = budgetAmountInCents,
     incomeInCents = incomeInCents,
     expenseInCents = expenseInCents,
-    startDateEpochDay = startDate.toEpochDay(),
-    endDateEpochDay = endDate.toEpochDay(),
-    closedAtEpochMillis = closedAt.toEpochMilli(),
+    startDateEpochDay = startDate.toEpochDays().toLong(),
+    endDateEpochDay = endDate.toEpochDays().toLong(),
+    closedAtEpochMillis = closedAt.toEpochMilliseconds(),
 )
 
 class RoomExpenseFundingRepository @Inject constructor(

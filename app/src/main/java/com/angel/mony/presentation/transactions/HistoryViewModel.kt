@@ -6,6 +6,7 @@ import android.content.Context
 import android.net.Uri
 import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.CsvExporter
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.core.HistoryPdfMeta
 import com.angel.mony.core.HistoryPdfWriter
 import com.angel.mony.core.HistorySpreadsheetWriter
@@ -181,8 +182,8 @@ class HistoryViewModel @Inject constructor(
                     if (movements.isEmpty()) error("El archivo no contiene movimientos para restaurar")
                     RestorePreview(
                         movementsCount = movements.size,
-                        firstDate = movements.minOfOrNull { it.date },
-                        lastDate = movements.maxOfOrNull { it.date },
+                        firstDate = movements.minOfOrNull { it.date }?.toJavaLocalDate(),
+                        lastDate = movements.maxOfOrNull { it.date }?.toJavaLocalDate(),
                         movements = movements,
                         backupPreview = preview,
                         rawContent = content,

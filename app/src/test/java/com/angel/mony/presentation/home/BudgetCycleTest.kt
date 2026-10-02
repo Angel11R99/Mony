@@ -1,5 +1,7 @@
 package com.angel.mony.presentation.home
 
+import com.angel.mony.core.time.toKotlinInstant
+import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.BudgetPeriod
@@ -155,8 +157,8 @@ class BudgetCycleTest {
         val config = BudgetConfig(
             amountInCents = 100_000,
             period = BudgetPeriod.FORTNIGHTLY,
-            cycleStart = LocalDate.of(2026, 8, 1),
-            cycleStartedAt = boundary,
+            cycleStart = LocalDate.of(2026, 8, 1).toKotlinLocalDate(),
+            cycleStartedAt = boundary.toKotlinInstant(),
         )
         val period = activeBudgetPeriod(config, LocalDate.of(2026, 8, 1))
 
@@ -176,8 +178,8 @@ class BudgetCycleTest {
         val config = BudgetConfig(
             amountInCents = 100_000,
             period = BudgetPeriod.FORTNIGHTLY,
-            cycleStart = LocalDate.of(2026, 8, 1),
-            cycleStartedAt = boundary,
+            cycleStart = LocalDate.of(2026, 8, 1).toKotlinLocalDate(),
+            cycleStartedAt = boundary.toKotlinInstant(),
             incomeTransactionId = incomeId,
         )
         val period = activeBudgetPeriod(config, LocalDate.of(2026, 8, 1))
@@ -197,8 +199,8 @@ class BudgetCycleTest {
         val config = BudgetConfig(
             amountInCents = 100_000,
             period = BudgetPeriod.FORTNIGHTLY,
-            cycleStart = LocalDate.of(2026, 8, 1),
-            cycleStartedAt = boundary,
+            cycleStart = LocalDate.of(2026, 8, 1).toKotlinLocalDate(),
+            cycleStartedAt = boundary.toKotlinInstant(),
         )
         val period = activeBudgetPeriod(config, LocalDate.of(2026, 8, 1))
         val manualIncome = transaction(
@@ -218,8 +220,8 @@ class BudgetCycleTest {
         val config = BudgetConfig(
             amountInCents = 100_000,
             period = BudgetPeriod.FORTNIGHTLY,
-            cycleStart = LocalDate.of(2026, 8, 1),
-            cycleStartedAt = boundary,
+            cycleStart = LocalDate.of(2026, 8, 1).toKotlinLocalDate(),
+            cycleStartedAt = boundary.toKotlinInstant(),
             incomeTransactionId = incomeId,
         )
         val current = activeBudgetPeriod(config, LocalDate.of(2026, 8, 1))
@@ -246,7 +248,7 @@ class BudgetCycleTest {
     }
 
     @Test fun `cycle cannot close twice after next opening was created`() {
-        val config = customScheduleConfig().copy(cycleStart = LocalDate.of(2026, 8, 30))
+        val config = customScheduleConfig().copy(cycleStart = LocalDate.of(2026, 8, 30).toKotlinLocalDate())
 
         assertFalse(canManuallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 29)))
         assertFalse(shouldAutomaticallyCloseBudgetCycle(
@@ -276,7 +278,7 @@ class BudgetCycleTest {
     }
 
     @Test fun `overdue cycle remains eligible for automatic close`() {
-        val config = customScheduleConfig().copy(cycleStart = LocalDate.of(2026, 8, 15))
+        val config = customScheduleConfig().copy(cycleStart = LocalDate.of(2026, 8, 15).toKotlinLocalDate())
 
         assertTrue(shouldAutomaticallyCloseBudgetCycle(
             config,
@@ -290,7 +292,7 @@ class BudgetCycleTest {
     }
 
     @Test fun `overdue cycle remains eligible for manual close`() {
-        val config = customScheduleConfig().copy(cycleStart = LocalDate.of(2026, 8, 15))
+        val config = customScheduleConfig().copy(cycleStart = LocalDate.of(2026, 8, 15).toKotlinLocalDate())
 
         assertTrue(canManuallyCloseBudgetCycle(config, LocalDate.of(2026, 8, 30)))
     }

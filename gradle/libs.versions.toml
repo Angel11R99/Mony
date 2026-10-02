@@ -22,6 +22,7 @@ mlkitTextRecognition = "16.0.1"
 googleDocumentScanner = "16.0.0"
 serialization = "1.8.1"
 coroutines = "1.9.0"
+datetime = "0.6.2"
 # Kotlin Multiplatform. Debe coincidir con el Kotlin embebido de AGP 9 (2.2.10) para que
 # `:app` pueda consumir el metadata del módulo `shared`. Ver docs/KMP_MIGRATION_AUDIT.md.
 kotlinMultiplatform = "2.2.10"
@@ -60,8 +61,8 @@ google-code-scanner = { group = "com.google.android.gms", name = "play-services-
 mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
 google-document-scanner = { group = "com.google.android.gms", name = "play-services-mlkit-document-scanner", version.ref = "googleDocumentScanner" }
 kotlinx-serialization-bom = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-bom", version.ref = "serialization" }
-kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "serialization" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "datetime" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

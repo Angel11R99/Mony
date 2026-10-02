@@ -43,6 +43,8 @@ import com.angel.mony.domain.model.ShoppingListStatus
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetCycle
 import com.angel.mony.domain.model.BudgetCycleSchedule
+import com.angel.mony.core.time.toKotlinInstant
+import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.domain.model.BudgetPeriod
 import java.time.Instant
 import java.time.LocalDate
@@ -370,8 +372,8 @@ fun com.angel.mony.domain.model.ExpenseFunding.toEntity(dateEpochDay: Long) = Ex
 fun BudgetConfigEntity.toDomain() = BudgetConfig(
     amountInCents = amountInCents,
     period = BudgetPeriod.valueOf(period),
-    cycleStart = cycleStartEpochDay?.let(LocalDate::ofEpochDay),
-    cycleStartedAt = cycleStartedAtEpochMillis?.let(Instant::ofEpochMilli),
+    cycleStart = cycleStartEpochDay?.let(LocalDate::ofEpochDay)?.toKotlinLocalDate(),
+    cycleStartedAt = cycleStartedAtEpochMillis?.let(Instant::ofEpochMilli)?.toKotlinInstant(),
     incomeTransactionId = incomeTransactionId,
     cycleSchedules = parseCycleSchedules(closingDays, BudgetPeriod.valueOf(period)),
 )

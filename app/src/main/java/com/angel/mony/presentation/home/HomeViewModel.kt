@@ -23,6 +23,9 @@ import com.angel.mony.domain.usecase.SaveBudget
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.CyclePreferences
 import com.angel.mony.core.FinanceDataCache
+import com.angel.mony.core.time.toKotlinInstant
+import com.angel.mony.core.time.toKotlinLocalDate
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.core.showToast
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -176,13 +179,13 @@ class HomeViewModel @Inject constructor(
                         period = budget.period,
                         categoryId = categoryId,
                         existingId = null,
-                        date = budget.cycleStart ?: initialPeriod.start,
+                        date = budget.cycleStart?.toJavaLocalDate() ?: initialPeriod.start,
                         now = startedAt,
                     )
                     budgetRepository.save(
                         budget.copy(
-                            cycleStart = budget.cycleStart ?: initialPeriod.start,
-                            cycleStartedAt = budget.cycleStartedAt ?: startedAt,
+                            cycleStart = budget.cycleStart ?: initialPeriod.start.toKotlinLocalDate(),
+                            cycleStartedAt = budget.cycleStartedAt ?: startedAt.toKotlinInstant(),
                             incomeTransactionId = transactionId,
                         )
                     )
@@ -191,8 +194,8 @@ class HomeViewModel @Inject constructor(
                     val incomePeriod = activeBudgetPeriod(budget, linkedIncome.date)
                     budgetRepository.save(
                         budget.copy(
-                            cycleStart = incomePeriod.start,
-                            cycleStartedAt = budget.cycleStartedAt ?: linkedIncome.createdAt,
+                            cycleStart = incomePeriod.start.toKotlinLocalDate(),
+                            cycleStartedAt = budget.cycleStartedAt ?: linkedIncome.createdAt.toKotlinInstant(),
                         )
                     )
                 }
@@ -249,9 +252,9 @@ class HomeViewModel @Inject constructor(
                 expenseInCents = cycleTransactions
                     .filter { it.type == TransactionType.EXPENSE }
                     .sumOf(FinanceTransaction::amountInCents),
-                startDate = periodToClose.start,
-                endDate = periodToClose.endInclusive,
-                closedAt = now,
+                startDate = periodToClose.start.toKotlinLocalDate(),
+                endDate = periodToClose.endInclusive.toKotlinLocalDate(),
+                closedAt = now.toKotlinInstant(),
             )
             runCatching {
                 budgetIncomeMutex.withLock {
@@ -265,8 +268,8 @@ class HomeViewModel @Inject constructor(
                         now = now,
                     )
                     val nextConfig = budget.copy(
-                        cycleStart = nextStart,
-                        cycleStartedAt = now,
+                        cycleStart = nextStart.toKotlinLocalDate(),
+                        cycleStartedAt = now.toKotlinInstant(),
                         incomeTransactionId = nextIncomeId,
                     )
                     budgetRepository.closeCycle(closedCycle, nextConfig)

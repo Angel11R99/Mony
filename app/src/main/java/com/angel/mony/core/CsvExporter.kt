@@ -4,6 +4,8 @@ import com.angel.mony.domain.model.BackupMovement
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
+import com.angel.mony.core.time.toKotlinLocalDate
+import kotlinx.datetime.LocalDate as KotlinLocalDate
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -68,11 +70,11 @@ object CsvExporter {
         return BackupMovement(date, type, categoryName, amountInCents, description)
     }
 
-    private fun parseDate(raw: String): LocalDate? = try {
-        LocalDate.parse(raw, dateFormatter)
+    private fun parseDate(raw: String): KotlinLocalDate? = try {
+        LocalDate.parse(raw, dateFormatter).toKotlinLocalDate()
     } catch (_: DateTimeParseException) {
         try {
-            LocalDate.parse(raw, fallbackDateFormatter)
+            LocalDate.parse(raw, fallbackDateFormatter).toKotlinLocalDate()
         } catch (_: DateTimeParseException) {
             null
         }

@@ -1,7 +1,7 @@
 package com.angel.mony.domain.model
 
-import java.time.Instant
-import java.time.LocalDate
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 
 data class BudgetCycle(
     val id: Long = 0,

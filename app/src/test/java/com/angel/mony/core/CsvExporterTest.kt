@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import kotlinx.datetime.LocalDate as KotlinLocalDate
 
 class CsvExporterTest {
     private fun transaction(
@@ -83,7 +84,7 @@ class CsvExporterTest {
         )
         val movements = CsvExporter.parseBackup(csv.removePrefix(CsvExporter.UTF8_BOM))
         assertEquals(2, movements.size)
-        assertEquals(LocalDate.of(2026, 8, 24), movements[0].date)
+        assertEquals(KotlinLocalDate(2026, 8, 24), movements[0].date)
         assertEquals(TransactionType.EXPENSE, movements[0].type)
         assertEquals("Comidas", movements[0].categoryName)
         assertEquals(125_050L, movements[0].amountInCents)
