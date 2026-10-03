@@ -1,5 +1,7 @@
 package com.angel.mony.presentation.components
 
+import com.angel.mony.core.time.toJavaLocalDate
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -64,7 +66,7 @@ fun TransactionDetailsDialog(
                 )
                 FinanceDetailRow(
                     label = "Fecha",
-                    value = transaction.date.format(dateFormatter),
+                    value = transaction.date.toJavaLocalDate().format(dateFormatter),
                 )
                 transaction.description?.takeIf { it.isNotBlank() }?.let { note ->
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

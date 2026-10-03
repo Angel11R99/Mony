@@ -1,5 +1,9 @@
 package com.angel.mony.presentation.pending
 
+import com.angel.mony.core.time.toKotlinInstant
+import com.angel.mony.core.time.toKotlinLocalDate
+import com.angel.mony.core.time.toKotlinLocalTime
+
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -111,10 +115,10 @@ class PendingEntriesViewModel @Inject constructor(
                         description = description.trim(),
                         amountInCents = cents,
                         categoryId = categoryId,
-                        date = date,
-                        reminderTime = reminderTime,
-                        createdAt = now,
-                        updatedAt = now,
+                        date = date.toKotlinLocalDate(),
+                        reminderTime = reminderTime?.toKotlinLocalTime(),
+                        createdAt = now.toKotlinInstant(),
+                        updatedAt = now.toKotlinInstant(),
                     )
                     val savedEntry = base.copy(
                         id = existing?.id ?: 0,
@@ -122,10 +126,10 @@ class PendingEntriesViewModel @Inject constructor(
                         description = description.trim(),
                         amountInCents = cents,
                         categoryId = categoryId,
-                        date = date,
-                        reminderTime = reminderTime,
+                        date = date.toKotlinLocalDate(),
+                        reminderTime = reminderTime?.toKotlinLocalTime(),
                         comment = comment.trim().ifBlank { null },
-                        updatedAt = now,
+                        updatedAt = now.toKotlinInstant(),
                     )
                     val savedId = pendingEntries.save(savedEntry)
                     val persistedEntry = savedEntry.copy(id = existing?.id ?: savedId)
@@ -211,8 +215,8 @@ class PendingEntriesViewModel @Inject constructor(
 
         viewModelScope.launch {
             val finalResult = pendingEntries.complete(entry, transaction.copy(
-                createdAt = Instant.now(),
-                updatedAt = Instant.now(),
+                createdAt = Instant.now().toKotlinInstant(),
+                updatedAt = Instant.now().toKotlinInstant(),
             ), fundingSourceDescription = sourceDescription)
             when (finalResult) {
                 is ExpenseCreationResult.Saved -> {
@@ -264,6 +268,6 @@ internal fun PendingEntry.toTransaction(now: Instant): FinanceTransaction = Fina
     description = listOfNotNull(description, comment?.takeIf { it.isNotBlank() })
         .joinToString(" · "),
     date = date,
-    createdAt = now,
-    updatedAt = now,
+    createdAt = now.toKotlinInstant(),
+    updatedAt = now.toKotlinInstant(),
 )

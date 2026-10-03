@@ -7,6 +7,7 @@ import android.graphics.pdf.PdfDocument
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
+import com.angel.mony.core.time.toJavaLocalDate
 import java.io.OutputStream
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -161,7 +162,7 @@ object HistoryPdfWriter {
 
             val canvas = page.canvas
             val startY = y
-            canvas.drawText(dateFormatter.format(transaction.date), MARGIN + 10f, y + 14f, datePaint)
+            canvas.drawText(dateFormatter.format(transaction.date.toJavaLocalDate()), MARGIN + 10f, y + 14f, datePaint)
 
             val isExpense = transaction.type == TransactionType.EXPENSE
             val amount = "${if (isExpense) "-" else "+"}${MoneyFormatter.format(transaction.amountInCents)}"

@@ -3,6 +3,7 @@ package com.angel.mony.core
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
+import com.angel.mony.core.time.toJavaLocalDate
 import java.io.OutputStream
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -117,7 +118,7 @@ object HistorySpreadsheetWriter {
                 append(
                     row(
                         number,
-                        numberCell("A$number", transaction.date.toExcelSerial(), 5),
+                        numberCell("A$number", transaction.date.toJavaLocalDate().toExcelSerial(), 5),
                         textCell("B$number", type),
                         textCell("C$number", categories[transaction.categoryId]?.name ?: "Sin categoría"),
                         textCell("D$number", transaction.description.orEmpty()),

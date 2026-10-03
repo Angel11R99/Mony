@@ -1,14 +1,15 @@
 package com.angel.mony.domain.model
 
-import java.time.Instant
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 data class ExpenseFunding(
     val id: Long = 0,
     val transactionId: Long,
     val amountInCents: Long,
     val sourceDescription: String,
-    val createdAt: Instant = Instant.now(),
-    val updatedAt: Instant = Instant.now(),
+    val createdAt: Instant = Clock.System.now(),
+    val updatedAt: Instant = Clock.System.now(),
 )
 
 sealed interface ExpenseCreationResult {

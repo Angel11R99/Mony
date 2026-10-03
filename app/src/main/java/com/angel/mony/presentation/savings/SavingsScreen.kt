@@ -57,6 +57,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.time.toJavaInstant
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.core.showToast
 import com.angel.mony.domain.model.EntryCardSize
 import com.angel.mony.domain.model.FinanceTransaction
@@ -1018,7 +1019,7 @@ private fun ContributionRow(contribution: FinanceTransaction) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                contribution.date.format(contributionDateFormatter),
+                contribution.date.toJavaLocalDate().format(contributionDateFormatter),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

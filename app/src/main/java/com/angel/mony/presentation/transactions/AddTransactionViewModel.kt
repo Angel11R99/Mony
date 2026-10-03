@@ -1,5 +1,9 @@
 package com.angel.mony.presentation.transactions
 
+import com.angel.mony.core.time.toJavaLocalDate
+import com.angel.mony.core.time.toKotlinInstant
+import com.angel.mony.core.time.toKotlinLocalDate
+
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -121,9 +125,9 @@ class AddTransactionViewModel @Inject constructor(
             type = type,
             categoryId = categoryId!!,
             description = note,
-            date = parsedDate!!,
-            createdAt = editingTransaction.value?.createdAt ?: Instant.now(),
-            updatedAt = Instant.now(),
+            date = parsedDate!!.toKotlinLocalDate(),
+            createdAt = editingTransaction.value?.createdAt ?: Instant.now().toKotlinInstant(),
+            updatedAt = Instant.now().toKotlinInstant(),
             fixedEntryId = editingTransaction.value?.fixedEntryId,
             savingsGoalId = editingTransaction.value?.savingsGoalId,
         )
@@ -243,4 +247,4 @@ internal fun lastCategoryForType(
 internal fun lastDateForType(
     transactions: List<FinanceTransaction>,
     type: TransactionType,
-): LocalDate? = transactions.firstOrNull { it.type == type }?.date
+): LocalDate? = transactions.firstOrNull { it.type == type }?.date?.toJavaLocalDate()

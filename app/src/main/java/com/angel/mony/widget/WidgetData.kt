@@ -6,6 +6,7 @@ import androidx.glance.appwidget.updateAll
 import com.angel.mony.MainActivity
 import com.angel.mony.core.CyclePreferences
 import com.angel.mony.core.time.toKotlinLocalDate
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
@@ -225,7 +226,7 @@ private fun FinanceTransaction.toMovementLine(categoriesById: Map<Long, Category
     description = description?.takeIf { it.isNotBlank() },
     amountInCents = amountInCents,
     isIncome = type == TransactionType.INCOME,
-    date = date,
+    date = date.toJavaLocalDate(),
 )
 
 internal suspend fun loadPendingSnapshot(context: Context): PendingWidgetSnapshot {
@@ -238,7 +239,7 @@ internal suspend fun loadPendingSnapshot(context: Context): PendingWidgetSnapsho
                 type = entry.type,
                 description = entry.description,
                 amountInCents = entry.amountInCents,
-                date = entry.date,
+                date = entry.date.toJavaLocalDate(),
             )
         },
         toPayInCents = entries
@@ -265,7 +266,10 @@ internal suspend fun loadFixedSnapshot(context: Context): FixedWidgetSnapshot {
         incomeTotalInCents = active
             .filter { it.type == TransactionType.INCOME }
             .sumOf(FixedEntry::amountInCents),
-        nextRunAt = active.mapNotNull(FixedEntry::nextRunAt).filter { it.isAfter(now) }.minOrNull(),
+        nextRunAt = active.mapNotNull(FixedEntry::nextRunAt)
+            .filter { it.toEpochMilliseconds() > now.toEpochMilli() }
+            .minOrNull()
+            ?.let { Instant.ofEpochMilli(it.toEpochMilliseconds()) },
         topEntries = active
             .sortedByDescending(FixedEntry::amountInCents)
             .take(FIXED_TOP_LIMIT)

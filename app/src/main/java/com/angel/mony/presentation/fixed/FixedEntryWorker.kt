@@ -9,6 +9,10 @@ import androidx.work.WorkerParameters
 import com.angel.mony.domain.model.FixedScheduleMode
 import com.angel.mony.domain.model.calculateNextRun
 import com.angel.mony.domain.repository.FixedEntryRepository
+import com.angel.mony.core.time.toJavaInstant
+import com.angel.mony.core.time.toJavaLocalDate
+import com.angel.mony.core.time.toKotlinInstant
+import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -31,24 +35,24 @@ class FixedEntryWorker(
         val now = Instant.now()
         val dueEntries = repository.observeAll().first().filter { entry ->
             entry.isActive && entry.scheduleMode != FixedScheduleMode.MANUAL &&
-                entry.nextRunAt?.let { it <= now } == true
+                entry.nextRunAt?.let { it <= now.toKotlinInstant() } == true
         }
         dueEntries.forEach { entry ->
             val scheduledAt = entry.nextRunAt ?: return@forEach
-            val postingDate = scheduledAt.atZone(ZoneId.systemDefault()).toLocalDate()
+            val postingDate = scheduledAt.toJavaInstant().atZone(ZoneId.systemDefault()).toLocalDate()
             val oneTime = entry.scheduleMode == FixedScheduleMode.SPECIFIC_DATE_TIME
             val nextRun = if (oneTime) null else calculateNextRun(
                 mode = entry.scheduleMode,
                 hour = entry.scheduleHour,
                 specificDate = entry.scheduleSpecificDate,
-                after = now.plusSeconds(1),
+                after = now.plusSeconds(1).toKotlinInstant(),
             )
             repository.post(
                 entry = entry.copy(
                     isActive = if (oneTime) false else entry.isActive,
                     nextRunAt = nextRun,
-                    lastAddedAt = now,
-                    lastAddedDate = postingDate,
+                    lastAddedAt = now.toKotlinInstant(),
+                    lastAddedDate = postingDate.toKotlinLocalDate(),
                 ),
                 transaction = entry.toTransaction(postingDate, now),
             )

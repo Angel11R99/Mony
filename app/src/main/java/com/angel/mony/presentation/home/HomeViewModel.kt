@@ -195,7 +195,7 @@ class HomeViewModel @Inject constructor(
                     budgetRepository.save(
                         budget.copy(
                             cycleStart = incomePeriod.start,
-                            cycleStartedAt = budget.cycleStartedAt ?: linkedIncome.createdAt.toKotlinInstant(),
+                            cycleStartedAt = budget.cycleStartedAt ?: linkedIncome.createdAt,
                         )
                     )
                 }
@@ -308,9 +308,9 @@ class HomeViewModel @Inject constructor(
             type = TransactionType.INCOME,
             categoryId = existing?.categoryId ?: categoryId,
             description = budgetIncomeDescription(period),
-            date = existing?.date ?: date,
-            createdAt = existing?.createdAt ?: now,
-            updatedAt = now,
+            date = existing?.date ?: date.toKotlinLocalDate(),
+            createdAt = existing?.createdAt ?: now.toKotlinInstant(),
+            updatedAt = now.toKotlinInstant(),
         )
         return if (existing == null) transactions.create(transaction) else {
             transactions.update(transaction)

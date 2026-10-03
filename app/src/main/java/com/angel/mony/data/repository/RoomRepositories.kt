@@ -27,6 +27,7 @@ import com.angel.mony.data.mapper.toDomain
 import com.angel.mony.data.mapper.toEntity
 import com.angel.mony.core.time.toKotlinInstant
 import com.angel.mony.core.time.toKotlinLocalDate
+import com.angel.mony.core.time.toJavaInstant
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.BackupMovement
 import com.angel.mony.domain.model.BudgetConfig
@@ -205,10 +206,10 @@ class RoomTransactionRepository @Inject constructor(
             transactionId = id,
             amountInCents = overflowInCents,
             sourceDescription = fundingSourceDescription.trim(),
-            createdAt = Instant.now(),
-            updatedAt = Instant.now(),
+            createdAt = Instant.now().toKotlinInstant(),
+            updatedAt = Instant.now().toKotlinInstant(),
         )
-        expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDay()))
+        expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDays().toLong()))
         ExpenseCreationResult.Saved(id, funding)
     }
 
@@ -276,13 +277,13 @@ class RoomTransactionRepository @Inject constructor(
             transactionId = existingTransactionId,
             amountInCents = overflowInCents,
             sourceDescription = fundingSourceDescription.trim(),
-            createdAt = existingFunding?.createdAt ?: Instant.now(),
-            updatedAt = Instant.now(),
+            createdAt = existingFunding?.createdAt ?: Instant.now().toKotlinInstant(),
+            updatedAt = Instant.now().toKotlinInstant(),
         )
         if (existingFunding != null) {
-            expenseFundingDao.update(funding.toEntity(normalized.date.toEpochDay()))
+            expenseFundingDao.update(funding.toEntity(normalized.date.toEpochDays().toLong()))
         } else {
-            expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDay()))
+            expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDays().toLong()))
         }
         ExpenseCreationResult.Saved(existingTransactionId, funding)
     }
@@ -442,10 +443,10 @@ class RoomFixedEntryRepository @Inject constructor(
             transactionId = id,
             amountInCents = overflowInCents,
             sourceDescription = fundingSourceDescription.trim(),
-            createdAt = Instant.now(),
-            updatedAt = Instant.now(),
+            createdAt = Instant.now().toKotlinInstant(),
+            updatedAt = Instant.now().toKotlinInstant(),
         )
-        expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDay()))
+        expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDays().toLong()))
         ExpenseCreationResult.Saved(id, funding)
     }
     override suspend fun delete(id: Long) = dao.delete(id)
@@ -474,7 +475,11 @@ class RoomPendingEntryRepository @Inject constructor(
         if (normalized.type != TransactionType.EXPENSE) {
             val transactionId = transactionDao.insert(normalized.toEntity())
             dao.upsert(
-                entry.copy(isDone = true, doneAt = transaction.createdAt, transactionId = transactionId).toEntity()
+                entry.copy(
+                    isDone = true,
+                    doneAt = transaction.createdAt,
+                    transactionId = transactionId,
+                ).toEntity()
             )
             return@withTransaction ExpenseCreationResult.Saved(transactionId, null)
         }
@@ -493,7 +498,11 @@ class RoomPendingEntryRepository @Inject constructor(
         if (remainingAfterExpense >= 0) {
             val transactionId = transactionDao.insert(normalized.toEntity())
             dao.upsert(
-                entry.copy(isDone = true, doneAt = transaction.createdAt, transactionId = transactionId).toEntity()
+                entry.copy(
+                    isDone = true,
+                    doneAt = transaction.createdAt,
+                    transactionId = transactionId,
+                ).toEntity()
             )
             return@withTransaction ExpenseCreationResult.Saved(transactionId, null)
         }
@@ -511,16 +520,20 @@ class RoomPendingEntryRepository @Inject constructor(
 
         val transactionId = transactionDao.insert(normalized.toEntity())
         dao.upsert(
-            entry.copy(isDone = true, doneAt = transaction.createdAt, transactionId = transactionId).toEntity()
+            entry.copy(
+                isDone = true,
+                doneAt = transaction.createdAt,
+                transactionId = transactionId,
+            ).toEntity()
         )
         val funding = ExpenseFunding(
             transactionId = transactionId,
             amountInCents = overflowInCents,
             sourceDescription = fundingSourceDescription.trim(),
-            createdAt = Instant.now(),
-            updatedAt = Instant.now(),
+            createdAt = Instant.now().toKotlinInstant(),
+            updatedAt = Instant.now().toKotlinInstant(),
         )
-        expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDay()))
+        expenseFundingDao.insert(funding.toEntity(normalized.date.toEpochDays().toLong()))
         ExpenseCreationResult.Saved(transactionId, funding)
     }
     override suspend fun reopen(entry: PendingEntry) {
@@ -1336,8 +1349,8 @@ class RoomFortnightRepository @Inject constructor(
                 transactionId = transactionId,
                 amountInCents = overflowInCents,
                 sourceDescription = fundingSourceDescription.trim(),
-                createdAt = now,
-                updatedAt = now,
+                createdAt = now.toKotlinInstant(),
+                updatedAt = now.toKotlinInstant(),
             )
             expenseFundingDao.insert(funding.toEntity(date.toEpochDay()))
         }

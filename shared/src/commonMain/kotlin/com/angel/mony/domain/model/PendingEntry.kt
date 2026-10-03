@@ -1,9 +1,12 @@
 package com.angel.mony.domain.model
 
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneId
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 
 enum class PendingType {
     PAYMENT,
@@ -46,17 +49,17 @@ data class PendingEntry(
 fun pendingReminderInstant(
     date: LocalDate,
     time: LocalTime,
-    zoneId: ZoneId = ZoneId.systemDefault(),
-): Instant = date.atTime(time).atZone(zoneId).toInstant()
+    timeZone: TimeZone = TimeZone.currentSystemDefault(),
+): Instant = LocalDateTime(date, time).toInstant(timeZone)
 
 fun isPendingReminderInFuture(
     date: LocalDate,
     time: LocalTime,
-    now: Instant = Instant.now(),
-    zoneId: ZoneId = ZoneId.systemDefault(),
-): Boolean = pendingReminderInstant(date, time, zoneId).isAfter(now)
+    now: Instant = Clock.System.now(),
+    timeZone: TimeZone = TimeZone.currentSystemDefault(),
+): Boolean = pendingReminderInstant(date, time, timeZone) > now
 
 fun isPendingDateValid(
     date: LocalDate,
-    today: LocalDate = LocalDate.now(),
-): Boolean = !date.isBefore(today)
+    today: LocalDate = currentLocalDate(),
+): Boolean = date >= today

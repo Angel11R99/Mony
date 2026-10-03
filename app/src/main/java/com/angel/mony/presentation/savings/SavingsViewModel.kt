@@ -1,5 +1,8 @@
 package com.angel.mony.presentation.savings
 
+import com.angel.mony.core.time.toKotlinInstant
+import com.angel.mony.core.time.toKotlinLocalDate
+
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -208,9 +211,9 @@ class SavingsViewModel @Inject constructor(
                     categoryId = state.value.savingsCategoryId!!,
                     description = if (note.isEmpty()) "$CONTRIBUTION_PREFIX${goal.goal.name}"
                     else "$CONTRIBUTION_PREFIX${goal.goal.name} · $note",
-                    date = now.atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
-                    createdAt = now,
-                    updatedAt = now,
+                    date = now.atZone(java.time.ZoneId.systemDefault()).toLocalDate().toKotlinLocalDate(),
+                    createdAt = now.toKotlinInstant(),
+                    updatedAt = now.toKotlinInstant(),
                     savingsGoalId = goal.goal.id,
                 )
                 viewModelScope.launch {

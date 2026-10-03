@@ -1,5 +1,7 @@
 package com.angel.mony.domain.model
 
+import com.angel.mony.core.time.toKotlinInstant
+import com.angel.mony.core.time.toKotlinLocalDate
 import java.time.Instant
 import java.time.LocalDate
 
@@ -277,9 +279,9 @@ fun FortnightPlanItem.toPaymentTransaction(
     type = TransactionType.EXPENSE,
     categoryId = categoryId,
     description = description,
-    date = date,
-    createdAt = now,
-    updatedAt = now,
+    date = date.toKotlinLocalDate(),
+    createdAt = now.toKotlinInstant(),
+    updatedAt = now.toKotlinInstant(),
     fixedEntryId = null,
     savingsGoalId = if (type == FortnightItemType.SAVINGS) savingsGoalId else null,
 )

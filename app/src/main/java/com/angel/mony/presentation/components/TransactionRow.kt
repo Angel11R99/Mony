@@ -1,5 +1,7 @@
 package com.angel.mony.presentation.components
 
+import com.angel.mony.core.time.toJavaLocalDate
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,7 +34,7 @@ fun TransactionRow(
     onClick: (() -> Unit)? = null,
 ) {
     val secondaryText = remember(transaction.description, transaction.date) {
-        transaction.description ?: transaction.date.format(transactionRowDateFormatter)
+        transaction.description ?: transaction.date.toJavaLocalDate().format(transactionRowDateFormatter)
     }
     val formattedAmount = remember(transaction.amountInCents, transaction.type) {
         val sign = if (transaction.type == TransactionType.INCOME) "+" else "−"

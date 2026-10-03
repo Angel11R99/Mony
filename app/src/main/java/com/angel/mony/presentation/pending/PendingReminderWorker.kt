@@ -28,8 +28,6 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import java.time.Duration
-import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 class PendingReminderWorker(
@@ -47,7 +45,7 @@ class PendingReminderWorker(
         ).pendingEntries()
         val entry = repository.get(entryId) ?: return@runCatching
         val reminderTime = entry.reminderTime ?: return@runCatching
-        if (entry.isDone || pendingReminderInstant(entry.date, reminderTime).toEpochMilli() != expectedAt) {
+        if (entry.isDone || pendingReminderInstant(entry.date, reminderTime).toEpochMilliseconds() != expectedAt) {
             return@runCatching
         }
         showNotification(entry)
@@ -103,7 +101,7 @@ object PendingReminderScheduler {
             return
         }
         val reminderAt = pendingReminderInstant(entry.date, reminderTime)
-        val delayMillis = Duration.between(Instant.now(), reminderAt).toMillis()
+        val delayMillis = reminderAt.toEpochMilliseconds() - System.currentTimeMillis()
         if (delayMillis <= 0) {
             cancel(context, entry.id)
             return
@@ -112,7 +110,7 @@ object PendingReminderScheduler {
             .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
             .setInputData(Data.Builder()
                 .putLong(PendingReminderWorker.KEY_ENTRY_ID, entry.id)
-                .putLong(PendingReminderWorker.KEY_EXPECTED_AT, reminderAt.toEpochMilli())
+                .putLong(PendingReminderWorker.KEY_EXPECTED_AT, reminderAt.toEpochMilliseconds())
                 .build())
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(

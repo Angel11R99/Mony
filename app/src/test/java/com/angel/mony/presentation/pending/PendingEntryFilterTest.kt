@@ -7,8 +7,8 @@ import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.DateRange
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.Instant
-import java.time.LocalDate
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 
 class PendingEntryFilterTest {
     private val categories = mapOf(
@@ -16,10 +16,10 @@ class PendingEntryFilterTest {
         20L to Category(20, "Ventas", TransactionType.INCOME, "payments", true),
     )
     private val entries = listOf(
-        entry(1, PendingType.PAYMENT, "Pago de luz", 150_000, 10, LocalDate.of(2026, 8, 5), isDone = true),
-        entry(2, PendingType.PAYMENT, "Internet", 200_000, 10, LocalDate.of(2026, 8, 12), comment = "Router nuevo"),
-        entry(3, PendingType.PAYMENT, "Seguro vehículo", 350_000, 30, LocalDate.of(2026, 8, 20)),
-        entry(4, PendingType.COLLECTION, "Venta celular", 500_000, 20, LocalDate.of(2026, 9, 2)),
+        entry(1, PendingType.PAYMENT, "Pago de luz", 150_000, 10, LocalDate(2026, 8, 5), isDone = true),
+        entry(2, PendingType.PAYMENT, "Internet", 200_000, 10, LocalDate(2026, 8, 12), comment = "Router nuevo"),
+        entry(3, PendingType.PAYMENT, "Seguro vehículo", 350_000, 30, LocalDate(2026, 8, 20)),
+        entry(4, PendingType.COLLECTION, "Venta celular", 500_000, 20, LocalDate(2026, 9, 2)),
     )
 
     @Test fun `filters by type and keeps pending first sorted by date`() {
@@ -29,7 +29,7 @@ class PendingEntryFilterTest {
     }
 
     @Test fun `period range includes first and last day`() {
-        val range = DateRange(LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 31))
+        val range = DateRange(LocalDate(2026, 8, 10), LocalDate(2026, 8, 31))
 
         val result = filterPendingEntries(entries, PendingType.PAYMENT, range, "", categories)
 
@@ -89,7 +89,7 @@ class PendingEntryFilterTest {
         date = date,
         comment = comment,
         isDone = isDone,
-        createdAt = Instant.EPOCH,
-        updatedAt = Instant.EPOCH,
+        createdAt = Instant.fromEpochMilliseconds(0),
+        updatedAt = Instant.fromEpochMilliseconds(0),
     )
 }

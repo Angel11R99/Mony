@@ -70,6 +70,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.showToast
+import com.angel.mony.core.time.atZone
+import com.angel.mony.core.time.format
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.EntryCardSize
 import com.angel.mony.domain.model.FixedDateMode
@@ -596,10 +599,12 @@ private fun FixedEntryActionsRow(
 
 private fun compactTimingText(entry: FixedEntry): String {
     val zone = ZoneId.systemDefault()
+    val nextRunAt = entry.nextRunAt
+    val lastAddedAt = entry.lastAddedAt
     return when {
         !entry.isActive -> "INACTIVA"
-        entry.nextRunAt != null -> "PRÓXIMO · ${entry.nextRunAt.atZone(zone).format(timingDateTimeFormatter)}"
-        entry.lastAddedAt != null -> "ÚLTIMO AGREGADO · ${entry.lastAddedAt.atZone(zone).format(timingDateTimeFormatter)}"
+        nextRunAt != null -> "PRÓXIMO · ${nextRunAt.atZone(zone).format(timingDateTimeFormatter)}"
+        lastAddedAt != null -> "ÚLTIMO AGREGADO · ${lastAddedAt.atZone(zone).format(timingDateTimeFormatter)}"
         else -> "SIN PROGRAMACIÓN"
     }
 }
@@ -732,7 +737,7 @@ private fun FixedEntryConfigurationDialog(
     onSave: (FixedScheduleMode, Int, LocalDate?) -> Unit,
 ) {
     var scheduleMode by remember(entry) { mutableStateOf(entry.scheduleMode) }
-    var scheduleDate by remember(entry) { mutableStateOf(entry.scheduleSpecificDate) }
+    var scheduleDate by remember(entry) { mutableStateOf(entry.scheduleSpecificDate?.toJavaLocalDate()) }
     var scheduleHour by remember(entry) { mutableStateOf(entry.scheduleHour) }
 
     AlertDialog(

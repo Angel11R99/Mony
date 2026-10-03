@@ -47,6 +47,8 @@ import com.angel.mony.core.time.toKotlinInstant
 import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.domain.model.BudgetPeriod
 import kotlinx.datetime.LocalDate as KotlinLocalDate
+import kotlinx.datetime.Instant as KotlinInstant
+import kotlinx.datetime.LocalTime as KotlinLocalTime
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -71,9 +73,9 @@ fun TransactionEntity.toDomain() = FinanceTransaction(
     type = TransactionType.valueOf(type),
     categoryId = categoryId,
     description = description,
-    date = LocalDate.ofEpochDay(dateEpochDay),
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
-    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+    date = KotlinLocalDate.fromEpochDays(dateEpochDay.toInt()),
+    createdAt = KotlinInstant.fromEpochMilliseconds(createdAtEpochMillis),
+    updatedAt = KotlinInstant.fromEpochMilliseconds(updatedAtEpochMillis),
     fixedEntryId = fixedEntryId,
     savingsGoalId = savingsGoalId,
 )
@@ -84,9 +86,9 @@ fun FinanceTransaction.toEntity() = TransactionEntity(
     type = type.name,
     categoryId = categoryId,
     description = description,
-    dateEpochDay = date.toEpochDay(),
-    createdAtEpochMillis = createdAt.toEpochMilli(),
-    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+    dateEpochDay = date.toEpochDays().toLong(),
+    createdAtEpochMillis = createdAt.toEpochMilliseconds(),
+    updatedAtEpochMillis = updatedAt.toEpochMilliseconds(),
     fixedEntryId = fixedEntryId,
     savingsGoalId = savingsGoalId,
 )
@@ -100,13 +102,13 @@ fun FixedEntryEntity.toDomain() = FixedEntry(
     comment = comment,
     isActive = isActive,
     manualDateMode = FixedDateMode.valueOf(manualDateMode),
-    manualSpecificDate = manualSpecificDateEpochDay?.let(LocalDate::ofEpochDay),
+    manualSpecificDate = manualSpecificDateEpochDay?.let { KotlinLocalDate.fromEpochDays(it.toInt()) },
     scheduleMode = FixedScheduleMode.valueOf(scheduleMode),
     scheduleHour = scheduleHour,
-    scheduleSpecificDate = scheduleSpecificDateEpochDay?.let(LocalDate::ofEpochDay),
-    nextRunAt = nextRunAtEpochMillis?.let(Instant::ofEpochMilli),
-    lastAddedAt = lastAddedAtEpochMillis?.let(Instant::ofEpochMilli),
-    lastAddedDate = lastAddedDateEpochDay?.let(LocalDate::ofEpochDay),
+    scheduleSpecificDate = scheduleSpecificDateEpochDay?.let { KotlinLocalDate.fromEpochDays(it.toInt()) },
+    nextRunAt = nextRunAtEpochMillis?.let(KotlinInstant::fromEpochMilliseconds),
+    lastAddedAt = lastAddedAtEpochMillis?.let(KotlinInstant::fromEpochMilliseconds),
+    lastAddedDate = lastAddedDateEpochDay?.let { KotlinLocalDate.fromEpochDays(it.toInt()) },
 )
 
 fun FixedEntry.toEntity() = FixedEntryEntity(
@@ -118,13 +120,13 @@ fun FixedEntry.toEntity() = FixedEntryEntity(
     comment = comment,
     isActive = isActive,
     manualDateMode = manualDateMode.name,
-    manualSpecificDateEpochDay = manualSpecificDate?.toEpochDay(),
+    manualSpecificDateEpochDay = manualSpecificDate?.toEpochDays()?.toLong(),
     scheduleMode = scheduleMode.name,
     scheduleHour = scheduleHour,
-    scheduleSpecificDateEpochDay = scheduleSpecificDate?.toEpochDay(),
-    nextRunAtEpochMillis = nextRunAt?.toEpochMilli(),
-    lastAddedAtEpochMillis = lastAddedAt?.toEpochMilli(),
-    lastAddedDateEpochDay = lastAddedDate?.toEpochDay(),
+    scheduleSpecificDateEpochDay = scheduleSpecificDate?.toEpochDays()?.toLong(),
+    nextRunAtEpochMillis = nextRunAt?.toEpochMilliseconds(),
+    lastAddedAtEpochMillis = lastAddedAt?.toEpochMilliseconds(),
+    lastAddedDateEpochDay = lastAddedDate?.toEpochDays()?.toLong(),
 )
 
 fun PendingEntryEntity.toDomain() = PendingEntry(
@@ -133,14 +135,14 @@ fun PendingEntryEntity.toDomain() = PendingEntry(
     description = description,
     amountInCents = amountInCents,
     categoryId = categoryId,
-    date = LocalDate.ofEpochDay(dateEpochDay),
-    reminderTime = reminderMinutesOfDay?.let { LocalTime.of(it / 60, it % 60) },
+    date = KotlinLocalDate.fromEpochDays(dateEpochDay.toInt()),
+    reminderTime = reminderMinutesOfDay?.let { KotlinLocalTime(it / 60, it % 60) },
     comment = comment,
     isDone = isDone,
-    doneAt = doneAtEpochMillis?.let(Instant::ofEpochMilli),
+    doneAt = doneAtEpochMillis?.let(KotlinInstant::fromEpochMilliseconds),
     transactionId = transactionId,
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
-    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+    createdAt = KotlinInstant.fromEpochMilliseconds(createdAtEpochMillis),
+    updatedAt = KotlinInstant.fromEpochMilliseconds(updatedAtEpochMillis),
     sourceShoppingListId = sourceShoppingListId,
 )
 
@@ -150,14 +152,14 @@ fun PendingEntry.toEntity() = PendingEntryEntity(
     description = description,
     amountInCents = amountInCents,
     categoryId = categoryId,
-    dateEpochDay = date.toEpochDay(),
+    dateEpochDay = date.toEpochDays().toLong(),
     reminderMinutesOfDay = reminderTime?.let { it.hour * 60 + it.minute },
     comment = comment,
     isDone = isDone,
-    doneAtEpochMillis = doneAt?.toEpochMilli(),
+    doneAtEpochMillis = doneAt?.toEpochMilliseconds(),
     transactionId = transactionId,
-    createdAtEpochMillis = createdAt.toEpochMilli(),
-    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+    createdAtEpochMillis = createdAt.toEpochMilliseconds(),
+    updatedAtEpochMillis = updatedAt.toEpochMilliseconds(),
     sourceShoppingListId = sourceShoppingListId,
 )
 
@@ -356,8 +358,8 @@ fun ExpenseFundingEntity.toDomain() = com.angel.mony.domain.model.ExpenseFunding
     transactionId = transactionId,
     amountInCents = amountInCents,
     sourceDescription = sourceDescription,
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
-    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+    createdAt = KotlinInstant.fromEpochMilliseconds(createdAtEpochMillis),
+    updatedAt = KotlinInstant.fromEpochMilliseconds(updatedAtEpochMillis),
 )
 
 fun com.angel.mony.domain.model.ExpenseFunding.toEntity(dateEpochDay: Long) = ExpenseFundingEntity(
@@ -366,8 +368,8 @@ fun com.angel.mony.domain.model.ExpenseFunding.toEntity(dateEpochDay: Long) = Ex
     amountInCents = amountInCents,
     sourceDescription = sourceDescription,
     dateEpochDay = dateEpochDay,
-    createdAtEpochMillis = createdAt.toEpochMilli(),
-    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+    createdAtEpochMillis = createdAt.toEpochMilliseconds(),
+    updatedAtEpochMillis = updatedAt.toEpochMilliseconds(),
 )
 
 fun BudgetConfigEntity.toDomain() = BudgetConfig(

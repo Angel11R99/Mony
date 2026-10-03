@@ -5,6 +5,7 @@ import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.core.time.toKotlinLocalDate
+import com.angel.mony.core.time.toJavaLocalDate
 import kotlinx.datetime.LocalDate as KotlinLocalDate
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -23,7 +24,7 @@ object CsvExporter {
     ): String {
         val rows = transactions.map { transaction ->
             listOf(
-                dateFormatter.format(transaction.date),
+                dateFormatter.format(transaction.date.toJavaLocalDate()),
                 transaction.type.csvLabel,
                 categories[transaction.categoryId]?.name ?: "Sin categoría",
                 BigDecimal.valueOf(transaction.amountInCents, 2).toPlainString(),

@@ -1,7 +1,11 @@
 package com.angel.mony.presentation.pending
 
 import com.angel.mony.core.time.toJavaLocalDate
+import com.angel.mony.core.time.toJavaLocalTime
 import com.angel.mony.core.time.toKotlinLocalDate
+import com.angel.mony.core.time.toKotlinLocalTime
+import com.angel.mony.core.time.atZone
+import com.angel.mony.core.time.format
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -1142,8 +1146,12 @@ private fun PendingEntryDialog(
     }
     var categoryId by remember(entry) { mutableStateOf(entry?.categoryId ?: initialCategoryId) }
     var comment by remember(entry) { mutableStateOf(entry?.comment.orEmpty()) }
-    var date by remember(entry) { mutableStateOf(entry?.date ?: initialDate ?: LocalDate.now()) }
-    var reminderTime by remember(entry) { mutableStateOf(entry?.reminderTime ?: initialReminderTime) }
+    var date by remember(entry) {
+        mutableStateOf(entry?.date?.toJavaLocalDate() ?: initialDate ?: LocalDate.now())
+    }
+    var reminderTime by remember(entry) {
+        mutableStateOf(entry?.reminderTime?.toJavaLocalTime() ?: initialReminderTime)
+    }
     var categoryExpanded by remember { mutableStateOf(false) }
     var categorySearch by remember(entry, categories) {
         mutableStateOf(categories.firstOrNull { it.id == (entry?.categoryId ?: initialCategoryId) }?.name.orEmpty())
@@ -1388,7 +1396,7 @@ private fun PendingReminderField(
             confirmButton = {
                 TextButton(onClick = {
                     val selectedTime = LocalTime.of(pickerState.hour, pickerState.minute)
-                    if (isPendingReminderInFuture(date, selectedTime)) {
+                    if (isPendingReminderInFuture(date.toKotlinLocalDate(), selectedTime.toKotlinLocalTime())) {
                         errorMessage = null
                         onValueChange(selectedTime)
                         showPicker = false
@@ -1491,7 +1499,7 @@ internal fun filterPendingEntries(
     val digitQuery = normalizedQuery.filter(Char::isDigit)
     return entries
         .filter { it.type == type }
-        .filter { range == null || it.date.toKotlinLocalDate() in range.start..range.endInclusive }
+        .filter { range == null || it.date in range.start..range.endInclusive }
         .filter {
             when (status) {
                 PendingStatusFilter.ALL -> true

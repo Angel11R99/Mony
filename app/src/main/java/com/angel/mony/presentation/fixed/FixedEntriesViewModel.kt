@@ -1,5 +1,8 @@
 package com.angel.mony.presentation.fixed
 
+import com.angel.mony.core.time.toKotlinInstant
+import com.angel.mony.core.time.toKotlinLocalDate
+
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -139,8 +142,8 @@ class FixedEntriesViewModel @Inject constructor(
                     entry.copy(
                         scheduleMode = scheduleMode,
                         scheduleHour = scheduleHour.coerceIn(0, 23),
-                        scheduleSpecificDate = scheduleSpecificDate,
-                        nextRunAt = nextRun,
+                        scheduleSpecificDate = scheduleSpecificDate?.toKotlinLocalDate(),
+                        nextRunAt = nextRun?.toKotlinInstant(),
                     )
                 )
                 message.value = "Configuración guardada"
@@ -165,8 +168,8 @@ class FixedEntriesViewModel @Inject constructor(
         viewModelScope.launch {
             val result = fixedEntries.post(
                 entry = entry.copy(
-                    lastAddedAt = now,
-                    lastAddedDate = postingDate,
+                    lastAddedAt = now.toKotlinInstant(),
+                    lastAddedDate = postingDate.toKotlinLocalDate(),
                 ),
                 transaction = transaction,
             )
@@ -211,12 +214,12 @@ class FixedEntriesViewModel @Inject constructor(
         viewModelScope.launch {
             val finalResult = fixedEntries.post(
                 entry = entry.copy(
-                    lastAddedAt = now,
-                    lastAddedDate = postingDate,
+                    lastAddedAt = now.toKotlinInstant(),
+                    lastAddedDate = postingDate.toKotlinLocalDate(),
                 ),
                 transaction = transaction.copy(
-                    createdAt = now,
-                    updatedAt = now,
+                    createdAt = now.toKotlinInstant(),
+                    updatedAt = now.toKotlinInstant(),
                 ),
                 fundingSourceDescription = sourceDescription,
             )
@@ -257,8 +260,8 @@ internal fun FixedEntry.toTransaction(
     categoryId = categoryId,
     description = listOfNotNull(description, comment?.takeIf { it.isNotBlank() })
         .joinToString(" · "),
-    date = date,
-    createdAt = now,
-    updatedAt = now,
+    date = date.toKotlinLocalDate(),
+    createdAt = now.toKotlinInstant(),
+    updatedAt = now.toKotlinInstant(),
     fixedEntryId = id,
 )

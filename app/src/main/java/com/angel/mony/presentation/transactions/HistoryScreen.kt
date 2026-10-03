@@ -1149,9 +1149,9 @@ internal fun filterTransactions(
 ): List<FinanceTransaction> = transactions.filter { transaction ->
     (type == null || transaction.type == type) &&
         (categoryId == null || transaction.categoryId == categoryId) &&
-        (startDate == null || !transaction.date.isBefore(startDate)) &&
-        (endDate == null || !transaction.date.isAfter(endDate)) &&
-        (cycleRange == null || transaction.date.toKotlinLocalDate() in cycleRange.start..cycleRange.endInclusive)
+        (startDate == null || !transaction.date.toJavaLocalDate().isBefore(startDate)) &&
+        (endDate == null || !transaction.date.toJavaLocalDate().isAfter(endDate)) &&
+        (cycleRange == null || transaction.date in cycleRange.start..cycleRange.endInclusive)
 }
 
 internal fun searchCategories(categories: List<Category>, query: String): List<Category> =
@@ -1186,8 +1186,8 @@ private fun FinanceTransaction.matchesTransactionQuery(
         categories[categoryId]?.name,
         if (type == TransactionType.EXPENSE) "Gastos" else "Ingresos",
         MoneyFormatter.format(amountInCents),
-        date.format(searchDateLongFormatter),
-        date.format(searchDateNumericFormatter),
+        date.toJavaLocalDate().format(searchDateLongFormatter),
+        date.toJavaLocalDate().format(searchDateNumericFormatter),
     ).joinToString(" ")
     return haystack.contains(query, ignoreCase = true) ||
         (digitQuery.isNotEmpty() && amountInCents.toString().contains(digitQuery))

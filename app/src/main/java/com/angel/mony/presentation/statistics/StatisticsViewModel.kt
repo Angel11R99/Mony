@@ -193,8 +193,8 @@ internal fun calculateStatistics(
     val expenseByCategory = HashMap<Long, Long>()
 
     transactions.forEach { transaction ->
-        if ((startDate != null && transaction.date.isBefore(startDate)) ||
-            (endDate != null && transaction.date.isAfter(endDate))
+        if ((startDate != null && transaction.date.toJavaLocalDate().isBefore(startDate)) ||
+            (endDate != null && transaction.date.toJavaLocalDate().isAfter(endDate))
         ) return@forEach
 
         transactionCount++

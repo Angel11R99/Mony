@@ -1,15 +1,12 @@
 package com.angel.mony.domain.model
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
-import java.time.LocalDate
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ExpenseFundingEvaluationTest {
-
     @Test
-    fun case1_incomeEqualsExpenseNoOverflow() {
-        // Ingresos = 5, Gastos previos = 0, Cobertura previa = 0, Nuevo gasto = 5
+    fun incomeEqualsExpenseHasNoOverflow() {
         val evaluation = ExpenseFundingEvaluation(
             availableBeforeExpenseInCents = 500_000,
             expenseAmountInCents = 500_000,
@@ -21,8 +18,7 @@ class ExpenseFundingEvaluationTest {
     }
 
     @Test
-    fun case2_expenseExceedsIncomeOverflow() {
-        // Ingresos = 5, Nuevo gasto = 6
+    fun expenseExceedingIncomeReportsOverflow() {
         val evaluation = ExpenseFundingEvaluation(
             availableBeforeExpenseInCents = 500_000,
             expenseAmountInCents = 600_000,
@@ -34,9 +30,7 @@ class ExpenseFundingEvaluationTest {
     }
 
     @Test
-    fun case3_income10PreviousExpense8NewExpense7Overflow5() {
-        // Ingresos = 10, Gastos previos = 8, Nuevo gasto = 7
-        // Available = 10 - 8 = 2, Gasto = 7, Overflow = 5
+    fun previousExpensesReduceAvailableAmount() {
         val evaluation = ExpenseFundingEvaluation(
             availableBeforeExpenseInCents = 200_000,
             expenseAmountInCents = 700_000,
@@ -48,9 +42,7 @@ class ExpenseFundingEvaluationTest {
     }
 
     @Test
-    fun case4_previousFundingConsideredNoDoubleCounting() {
-        // Ingresos = 5, Gasto anterior = 6, Cobertura anterior = 1, Nuevo gasto = 2
-        // Available = 5 + 1 - 6 = 0, Overflow = 2
+    fun previousFundingIsNotCountedTwice() {
         val evaluation = ExpenseFundingEvaluation(
             availableBeforeExpenseInCents = 0L,
             expenseAmountInCents = 200_000,
@@ -62,9 +54,7 @@ class ExpenseFundingEvaluationTest {
     }
 
     @Test
-    fun case5_availableZeroAfterPreviousFunding() {
-        // Ingresos = 100, Cobertura previa = 20, Gastos = 120
-        // Available = 0
+    fun zeroAvailableAmountRequiresFullFunding() {
         val evaluation = ExpenseFundingEvaluation(
             availableBeforeExpenseInCents = 0L,
             expenseAmountInCents = 1_000_000,

@@ -91,6 +91,55 @@ fun BudgetCycleSchedule.toDateRange(openingMonth: LocalDate): DateRange {
 private fun LocalDate.atClampedDay(day: Int): LocalDate =
     LocalDate(year, monthNumber, day.coerceAtMost(endOfMonth().dayOfMonth))
 
+fun FinanceTransaction.belongsToActiveBudgetCycle(
+    @Suppress("UNUSED_PARAMETER") budget: BudgetConfig?,
+    period: DateRange,
+): Boolean = date in period.start..period.endInclusive
+
+fun availableForBudget(
+    budget: BudgetConfig?,
+    transactions: List<FinanceTransaction>,
+    today: LocalDate = currentLocalDate(),
+): Long {
+    if (budget == null) {
+        return transactions.sumOf {
+            if (it.type == TransactionType.INCOME) it.amountInCents else -it.amountInCents
+        }
+    }
+    return availableForBudget(budget, transactions, activeBudgetPeriod(budget, today))
+}
+
+fun availableForBudget(
+    budget: BudgetConfig?,
+    transactions: List<FinanceTransaction>,
+    period: DateRange,
+): Long {
+    if (budget == null) {
+        return transactions.filter { it.date in period.start..period.endInclusive }.sumOf {
+            if (it.type == TransactionType.INCOME) it.amountInCents else -it.amountInCents
+        }
+    }
+    return budget.amountInCents - budgetCycleExpenses(budget, transactions, period)
+}
+
+fun budgetCycleExpenses(
+    budget: BudgetConfig,
+    transactions: List<FinanceTransaction>,
+    period: DateRange,
+): Long = transactions
+    .filter { it.type == TransactionType.EXPENSE && it.belongsToActiveBudgetCycle(budget, period) }
+    .sumOf(FinanceTransaction::amountInCents)
+
+fun budgetUsagePercent(
+    budget: BudgetConfig,
+    transactions: List<FinanceTransaction>,
+    period: DateRange,
+): Int {
+    if (budget.amountInCents <= 0) return 0
+    val expenses = budgetCycleExpenses(budget, transactions, period)
+    return ((expenses * 100) / budget.amountInCents).toInt()
+}
+
 fun canManuallyCloseBudgetCycle(
     budget: BudgetConfig?,
     today: LocalDate = currentLocalDate(),
