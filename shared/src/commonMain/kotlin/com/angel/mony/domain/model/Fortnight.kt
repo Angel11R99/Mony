@@ -1,12 +1,12 @@
 package com.angel.mony.domain.model
 
-import com.angel.mony.core.time.toKotlinInstant
-import com.angel.mony.core.time.toKotlinLocalDate
-import java.time.Instant
-import java.time.LocalDate
+import com.angel.mony.core.math.addExactOrNull
+import com.angel.mony.core.math.subtractExactOrNull
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 
 /**
- * Dominio de planificación quincenal.
+ * Dominio de planificación por ciclo.
  *
  * Regla central: PLANIFICADO != PAGADO != PENDIENTE.
  * Un monto planificado nunca es un movimiento financiero; solo los abonos
@@ -64,10 +64,6 @@ fun FortnightPlanStatus.label(): String = when (this) {
     FortnightPlanStatus.CLOSED -> "Cerrada"
 }
 
-/**
- * Estado derivado de un item. El estado nunca se persiste: se recalcula
- * siempre desde lo planificado y lo realmente pagado.
- */
 fun fortnightItemStatus(plannedInCents: Long, paidInCents: Long): FortnightItemStatus = when {
     paidInCents <= 0L -> FortnightItemStatus.PENDING
     plannedInCents <= paidInCents -> FortnightItemStatus.PAID
@@ -75,12 +71,8 @@ fun fortnightItemStatus(plannedInCents: Long, paidInCents: Long): FortnightItemS
 }
 
 fun fortnightPendingInCents(plannedInCents: Long, paidInCents: Long): Long =
-    if (plannedInCents <= paidInCents) 0L else plannedInCents - paidInCents
+    if (plannedInCents <= paidInCents) 0L else exactSubtract(plannedInCents, paidInCents)
 
-/**
- * Plantilla reutilizable. Solo describe la intsención de gasto; no contiene
- * pagos, por lo que modificarla nunca altera planes ya creados.
- */
 data class FortnightTemplate(
     val id: Long = 0,
     val description: String,
@@ -133,10 +125,6 @@ data class FortnightPlan(
     val isClosed: Boolean get() = status == FortnightPlanStatus.CLOSED
 }
 
-/**
- * Item del plan. Es un snapshot: aunque cambie o se elimine la plantilla de
- * origen, los montos planificados del período ya creado se conservan.
- */
 data class FortnightPlanItem(
     val id: Long = 0,
     val planId: Long,
@@ -158,7 +146,6 @@ data class FortnightPlanItem(
     }
 }
 
-/** Abono real de un item. Es el único origen del dinero pagado del plan. */
 data class FortnightPayment(
     val id: Long = 0,
     val itemId: Long,
@@ -179,10 +166,6 @@ data class FortnightItemProgress(
     val status: FortnightItemStatus,
 )
 
-/**
- * Detalle completo de un período con todos los totales derivados.
- * No contiene datos mutables de UI.
- */
 data class FortnightPlanDetails(
     val plan: FortnightPlan,
     val items: List<FortnightPlanItem>,
@@ -206,30 +189,17 @@ data class FortnightPlanDetails(
     fun paidInCents(itemId: Long): Long = paymentsFor(itemId).moneySumOf { it.amountInCents }
 
     val totalPlannedInCents: Long get() = items.moneySumOf { it.plannedAmountInCents }
-
     val totalPaidInCents: Long get() = payments.moneySumOf { it.amountInCents }
-
     val totalPendingInCents: Long get() = itemProgress.moneySumOf { it.pendingInCents }
-
-    /** Dinero del presupuesto que todavía no fue asignado a ningún item. */
-    val unassignedInCents: Long
-        get() = Math.subtractExact(plan.budgetInCents, totalPlannedInCents)
-
-    /** Dinero del presupuesto que aún no se ha pagado realmente. */
-    val remainingInCents: Long get() = Math.subtractExact(plan.budgetInCents, totalPaidInCents)
-
+    val unassignedInCents: Long get() = exactSubtract(plan.budgetInCents, totalPlannedInCents)
+    val remainingInCents: Long get() = exactSubtract(plan.budgetInCents, totalPaidInCents)
     val pendingItemCount: Int get() = itemProgress.count { it.status != FortnightItemStatus.PAID }
-
     val paidItemCount: Int get() = itemProgress.count { it.status == FortnightItemStatus.PAID }
-
     val isOverAssigned: Boolean get() = unassignedInCents < 0
-
     val isOverSpent: Boolean get() = remainingInCents < 0
-
     val hasPayments: Boolean get() = payments.isNotEmpty()
 }
 
-/** Fila compacta del historial: mismo cálculo de totales que el detalle. */
 data class FortnightPlanSummary(
     val plan: FortnightPlan,
     val totalPlannedInCents: Long,
@@ -238,10 +208,6 @@ data class FortnightPlanSummary(
     val itemCount: Int,
 )
 
-/**
- * Construye las filas del historial reutilizando exactamente la matemática de
- * [FortnightPlanDetails], evitando reglas duplicadas entre dashboard y lista.
- */
 fun fortnightPlanSummaries(
     plans: List<FortnightPlan>,
     items: List<FortnightPlanItem>,
@@ -265,11 +231,6 @@ fun fortnightPlanSummaries(
     }
 }
 
-/**
- * Único punto donde un abono quincenal se convierte en movimiento financiero.
- * El ahorro se registra como gasto enlazado a la meta para que el progreso de
- * Savings se calcule automáticamente sin duplicar reglas.
- */
 fun FortnightPlanItem.toPaymentTransaction(
     amountInCents: Long,
     date: LocalDate,
@@ -279,14 +240,13 @@ fun FortnightPlanItem.toPaymentTransaction(
     type = TransactionType.EXPENSE,
     categoryId = categoryId,
     description = description,
-    date = date.toKotlinLocalDate(),
-    createdAt = now.toKotlinInstant(),
-    updatedAt = now.toKotlinInstant(),
+    date = date,
+    createdAt = now,
+    updatedAt = now,
     fixedEntryId = null,
     savingsGoalId = if (type == FortnightItemType.SAVINGS) savingsGoalId else null,
 )
 
-/** Resultado de validar un abono antes de tocar la base de datos. */
 sealed interface FortnightPaymentCheck {
     data object Valid : FortnightPaymentCheck
     data object InvalidAmount : FortnightPaymentCheck
@@ -306,7 +266,7 @@ fun evaluateFortnightPayment(
     if (amountInCents > pending) {
         return FortnightPaymentCheck.Overpayment(
             pendingInCents = pending,
-            excessInCents = Math.subtractExact(amountInCents, pending),
+            excessInCents = exactSubtract(amountInCents, pending),
         )
     }
     return FortnightPaymentCheck.Valid
@@ -314,6 +274,11 @@ fun evaluateFortnightPayment(
 
 private inline fun <T> Iterable<T>.moneySumOf(selector: (T) -> Long): Long {
     var total = 0L
-    for (element in this) total = Math.addExact(total, selector(element))
+    for (element in this) {
+        total = total.addExactOrNull(selector(element)) ?: throw ArithmeticException("Long overflow")
+    }
     return total
 }
+
+private fun exactSubtract(left: Long, right: Long): Long =
+    left.subtractExactOrNull(right) ?: throw ArithmeticException("Long overflow")

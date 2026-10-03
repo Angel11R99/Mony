@@ -84,6 +84,7 @@ import androidx.room.withTransaction
 import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
+import kotlinx.datetime.LocalDate as KotlinLocalDate
 
 class RoomTransactionRepository @Inject constructor(
     private val dao: TransactionDao,
@@ -1153,12 +1154,12 @@ class RoomFortnightRepository @Inject constructor(
         )
     }
 
-    override suspend fun findPlanForPeriod(start: LocalDate, endInclusive: LocalDate): FortnightPlan? =
-        planDao.getPlanForPeriod(start.toEpochDay(), endInclusive.toEpochDay())?.toDomain()
+    override suspend fun findPlanForPeriod(start: KotlinLocalDate, endInclusive: KotlinLocalDate): FortnightPlan? =
+        planDao.getPlanForPeriod(start.toEpochDays().toLong(), endInclusive.toEpochDays().toLong())?.toDomain()
 
     override suspend fun createPlan(plan: FortnightPlan, items: List<FortnightPlanItem>): Long =
         database.withTransaction {
-            val now = Instant.now()
+            val now = Instant.now().toKotlinInstant()
             val planId = planDao.insertPlan(
                 plan.copy(id = 0, createdAt = now, status = FortnightPlanStatus.OPEN, closedAt = null)
                     .toEntity(),
@@ -1181,7 +1182,7 @@ class RoomFortnightRepository @Inject constructor(
             val category = categoryDao.get(item.categoryId)
                 ?: return@withTransaction FortnightMutationResult.NotFound
             check(category.isActive) { "La categoría seleccionada ya no está disponible." }
-            val now = Instant.now()
+            val now = Instant.now().toKotlinInstant()
             if (item.id == 0L) {
                 val id = planDao.insertItem(item.copy(id = 0, createdAt = now, updatedAt = now).toEntity())
                 FortnightMutationResult.Success(id)
@@ -1209,7 +1210,7 @@ class RoomFortnightRepository @Inject constructor(
     override suspend fun registerPayment(
         itemId: Long,
         amountInCents: Long,
-        date: LocalDate,
+        date: KotlinLocalDate,
         allowOverpayment: Boolean,
     ): FortnightPaymentResult = database.withTransaction {
         val itemEntity = planDao.getItem(itemId)
@@ -1253,7 +1254,7 @@ class RoomFortnightRepository @Inject constructor(
 
         if (remainingAfterExpense < 0) {
             val overflowInCents = -remainingAfterExpense
-            val transaction = item.toPaymentTransaction(amountInCents, date, Instant.now())
+            val transaction = item.toPaymentTransaction(amountInCents, date, Instant.now().toKotlinInstant())
             return@withTransaction FortnightPaymentResult.RequiresFundingSource(
                 overflowInCents = overflowInCents,
                 availableBeforeExpenseInCents = availableBeforeExpense,
@@ -1267,14 +1268,15 @@ class RoomFortnightRepository @Inject constructor(
         }
 
         val now = Instant.now()
+        val kotlinNow = now.toKotlinInstant()
         val transactionId = transactionDao.insert(
-            item.toPaymentTransaction(amountInCents, date, now).toEntity(),
+            item.toPaymentTransaction(amountInCents, date, kotlinNow).toEntity(),
         )
         val paymentId = paymentDao.insertPayment(
             FortnightPaymentEntity(
                 itemId = itemId,
                 amountInCents = amountInCents,
-                dateEpochDay = date.toEpochDay(),
+                dateEpochDay = date.toEpochDays().toLong(),
                 transactionId = transactionId,
                 createdAtEpochMillis = now.toEpochMilli(),
             ),
@@ -1285,7 +1287,7 @@ class RoomFortnightRepository @Inject constructor(
     override suspend fun registerPaymentWithFunding(
         itemId: Long,
         amountInCents: Long,
-        date: LocalDate,
+        date: KotlinLocalDate,
         allowOverpayment: Boolean,
         fundingSourceDescription: String,
     ): FortnightPaymentResult = database.withTransaction {
@@ -1321,14 +1323,15 @@ class RoomFortnightRepository @Inject constructor(
         }
 
         val now = Instant.now()
+        val kotlinNow = now.toKotlinInstant()
         val transactionId = transactionDao.insert(
-            item.toPaymentTransaction(amountInCents, date, now).toEntity(),
+            item.toPaymentTransaction(amountInCents, date, kotlinNow).toEntity(),
         )
         val paymentId = paymentDao.insertPayment(
             FortnightPaymentEntity(
                 itemId = itemId,
                 amountInCents = amountInCents,
-                dateEpochDay = date.toEpochDay(),
+                dateEpochDay = date.toEpochDays().toLong(),
                 transactionId = transactionId,
                 createdAtEpochMillis = now.toEpochMilli(),
             ),
@@ -1352,7 +1355,7 @@ class RoomFortnightRepository @Inject constructor(
                 createdAt = now.toKotlinInstant(),
                 updatedAt = now.toKotlinInstant(),
             )
-            expenseFundingDao.insert(funding.toEntity(date.toEpochDay()))
+            expenseFundingDao.insert(funding.toEntity(date.toEpochDays().toLong()))
         }
 
         FortnightPaymentResult.Registered(paymentId, transactionId, getDetails(item.planId)!!)

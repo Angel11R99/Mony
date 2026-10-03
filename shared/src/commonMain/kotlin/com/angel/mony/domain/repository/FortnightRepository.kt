@@ -1,13 +1,13 @@
 package com.angel.mony.domain.repository
 
-import com.angel.mony.domain.model.ExpenseCreationResult
+import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.FortnightPlan
 import com.angel.mony.domain.model.FortnightPlanDetails
 import com.angel.mony.domain.model.FortnightPlanItem
 import com.angel.mony.domain.model.FortnightPlanSummary
 import com.angel.mony.domain.model.FortnightTemplate
-import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.LocalDate
 
 sealed interface FortnightMutationResult {
     data class Success(val id: Long) : FortnightMutationResult
@@ -38,16 +38,14 @@ sealed interface FortnightPaymentResult {
         val overflowInCents: Long,
         val availableBeforeExpenseInCents: Long,
         val expenseAmountInCents: Long,
-        val transaction: com.angel.mony.domain.model.FinanceTransaction,
+        val transaction: FinanceTransaction,
         val itemId: Long,
         val amountInCents: Long,
         val date: LocalDate,
         val allowOverpayment: Boolean,
     ) : FortnightPaymentResult
 
-    data class Error(
-        val message: String,
-    ) : FortnightPaymentResult
+    data class Error(val message: String) : FortnightPaymentResult
 }
 
 interface FortnightRepository {

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.time.toKotlinLocalDate
+import com.angel.mony.core.time.toKotlinInstant
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
@@ -108,7 +109,7 @@ class FortnightViewModel @Inject constructor(
     }
 
     private val selectedPeriod = MutableStateFlow(
-        initialPeriod ?: fortnightPeriodContaining(LocalDate.now(), null),
+        initialPeriod ?: fortnightPeriodContaining(LocalDate.now().toKotlinLocalDate(), null),
     )
 
     val state: StateFlow<FortnightUiState> = run {
@@ -258,7 +259,7 @@ class FortnightViewModel @Inject constructor(
             message.value = "El presupuesto debe ser mayor que cero."
             return
         }
-        val now = Instant.now()
+        val now = Instant.now().toKotlinInstant()
         val fromTemplates = uiState.templates
             .filter { it.id in selectedTemplateIds && it.appliesTo(uiState.slot) }
             .map { template ->
@@ -332,7 +333,7 @@ class FortnightViewModel @Inject constructor(
     }
 
     fun goToCurrentPeriod() {
-        selectPeriod(fortnightPeriodContaining(LocalDate.now(), state.value.budget))
+        selectPeriod(fortnightPeriodContaining(LocalDate.now().toKotlinLocalDate(), state.value.budget))
     }
 
     private fun selectPeriod(period: DateRange) {
@@ -385,7 +386,7 @@ class FortnightViewModel @Inject constructor(
                 message.value = "Selecciona la meta de ahorro antes de continuar."
             else -> {
                 val details = uiState.details ?: return
-                val now = Instant.now()
+                val now = Instant.now().toKotlinInstant()
                 viewModelScope.launch {
                     isSaving.value = true
                     val item = FortnightPlanItem(
@@ -491,7 +492,7 @@ class FortnightViewModel @Inject constructor(
                 repository.registerPayment(
                     itemId = draft.itemId,
                     amountInCents = amount,
-                    date = draft.date,
+                    date = draft.date.toKotlinLocalDate(),
                     allowOverpayment = allowOverpayment,
                 )
             }.onSuccess { result ->
@@ -539,7 +540,7 @@ class FortnightViewModel @Inject constructor(
                 repository.registerPaymentWithFunding(
                     itemId = draft.itemId,
                     amountInCents = draft.amountInCents!!,
-                    date = draft.date,
+                    date = draft.date.toKotlinLocalDate(),
                     allowOverpayment = allowOverpayment,
                     fundingSourceDescription = sourceDescription,
                 )

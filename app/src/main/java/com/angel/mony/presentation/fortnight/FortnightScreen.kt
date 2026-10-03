@@ -697,7 +697,7 @@ private fun PaymentRow(
             Column(Modifier.weight(1f)) {
                 Text(itemDescription, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    payment.date.format(dayMonthFormatter),
+                    payment.date.toJavaLocalDate().format(dayMonthFormatter),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

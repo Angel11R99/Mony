@@ -264,8 +264,8 @@ fun FortnightTemplateEntity.toDomain() = FortnightTemplate(
     type = FortnightItemType.valueOf(type),
     note = note,
     isActive = isActive,
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
-    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+    createdAt = KotlinInstant.fromEpochMilliseconds(createdAtEpochMillis),
+    updatedAt = KotlinInstant.fromEpochMilliseconds(updatedAtEpochMillis),
 )
 
 fun FortnightTemplate.toEntity() = FortnightTemplateEntity(
@@ -277,8 +277,8 @@ fun FortnightTemplate.toEntity() = FortnightTemplateEntity(
     type = type.name,
     note = note,
     isActive = isActive,
-    createdAtEpochMillis = createdAt.toEpochMilli(),
-    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+    createdAtEpochMillis = createdAt.toEpochMilliseconds(),
+    updatedAtEpochMillis = updatedAt.toEpochMilliseconds(),
 )
 
 fun FortnightPlanEntity.toDomain() = FortnightPlan(
@@ -290,8 +290,8 @@ fun FortnightPlanEntity.toDomain() = FortnightPlan(
     slot = FortnightSlot.valueOf(slot),
     budgetInCents = budgetInCents,
     status = FortnightPlanStatus.valueOf(status),
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
-    closedAt = closedAtEpochMillis?.let(Instant::ofEpochMilli),
+    createdAt = KotlinInstant.fromEpochMilliseconds(createdAtEpochMillis),
+    closedAt = closedAtEpochMillis?.let(KotlinInstant::fromEpochMilliseconds),
 )
 
 fun FortnightPlan.toEntity() = FortnightPlanEntity(
@@ -301,8 +301,8 @@ fun FortnightPlan.toEntity() = FortnightPlanEntity(
     slot = slot.name,
     budgetInCents = budgetInCents,
     status = status.name,
-    createdAtEpochMillis = createdAt.toEpochMilli(),
-    closedAtEpochMillis = closedAt?.toEpochMilli(),
+    createdAtEpochMillis = createdAt.toEpochMilliseconds(),
+    closedAtEpochMillis = closedAt?.toEpochMilliseconds(),
 )
 
 fun FortnightPlanItemEntity.toDomain() = FortnightPlanItem(
@@ -316,8 +316,8 @@ fun FortnightPlanItemEntity.toDomain() = FortnightPlanItem(
     savingsGoalId = savingsGoalId,
     note = note,
     position = position,
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
-    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+    createdAt = KotlinInstant.fromEpochMilliseconds(createdAtEpochMillis),
+    updatedAt = KotlinInstant.fromEpochMilliseconds(updatedAtEpochMillis),
 )
 
 fun FortnightPlanItem.toEntity() = FortnightPlanItemEntity(
@@ -331,26 +331,26 @@ fun FortnightPlanItem.toEntity() = FortnightPlanItemEntity(
     savingsGoalId = savingsGoalId,
     note = note,
     position = position,
-    createdAtEpochMillis = createdAt.toEpochMilli(),
-    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+    createdAtEpochMillis = createdAt.toEpochMilliseconds(),
+    updatedAtEpochMillis = updatedAt.toEpochMilliseconds(),
 )
 
 fun FortnightPaymentEntity.toDomain() = FortnightPayment(
     id = id,
     itemId = itemId,
     amountInCents = amountInCents,
-    date = LocalDate.ofEpochDay(dateEpochDay),
+    date = KotlinLocalDate.fromEpochDays(dateEpochDay.toInt()),
     transactionId = transactionId,
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    createdAt = KotlinInstant.fromEpochMilliseconds(createdAtEpochMillis),
 )
 
 fun FortnightPayment.toEntity() = FortnightPaymentEntity(
     id = id,
     itemId = itemId,
     amountInCents = amountInCents,
-    dateEpochDay = date.toEpochDay(),
+    dateEpochDay = date.toEpochDays().toLong(),
     transactionId = transactionId,
-    createdAtEpochMillis = createdAt.toEpochMilli(),
+    createdAtEpochMillis = createdAt.toEpochMilliseconds(),
 )
 
 fun ExpenseFundingEntity.toDomain() = com.angel.mony.domain.model.ExpenseFunding(

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.FinanceDataCache
+import com.angel.mony.core.time.toKotlinInstant
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FortnightItemType
 import com.angel.mony.domain.model.FortnightPeriodStyle
@@ -127,7 +128,7 @@ class FortnightTemplatesViewModel @Inject constructor(
             first == null && second == null ->
                 message.value = "Indica el monto de al menos un ciclo."
             else -> {
-                val now = Instant.now()
+                val now = Instant.now().toKotlinInstant()
                 viewModelScope.launch {
                     isSaving.value = true
                     val existing = current.templateId?.let { id ->
