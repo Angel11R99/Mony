@@ -8,10 +8,11 @@ plugins {
 kotlin {
     // AGP 9 ya no admite `androidTarget()` de KMP junto a los plugins `com.android.library`
     // o `com.android.application`. `androidLibrary` es el reemplazo oficial para AGP 9+.
-androidLibrary {
+    androidLibrary {
         namespace = "com.angel.mony.shared"
         compileSdk = 36
         minSdk = 24
+        withHostTest {}
         // `:app` compila con source/target Java 11 sin toolchain, así que `shared` se
         // alinea con `jvmTarget` en lugar de exigir un JDK 11 instalado en la máquina.
         compilerOptions {
@@ -28,6 +29,9 @@ androidLibrary {
         commonMain.dependencies {
             api(libs.kotlinx.coroutines.core)
             api(libs.kotlinx.datetime)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
         }
     }
 }

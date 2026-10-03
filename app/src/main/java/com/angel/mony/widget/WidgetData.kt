@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.glance.appwidget.updateAll
 import com.angel.mony.MainActivity
 import com.angel.mony.core.CyclePreferences
+import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
@@ -62,7 +63,7 @@ data class WidgetCoreSnapshot(
     companion object {
         fun empty(today: LocalDate = LocalDate.now()) = WidgetCoreSnapshot(
             budget = null,
-            period = DateRange.currentFortnight(today),
+            period = DateRange.currentFortnight(today.toKotlinLocalDate()),
             today = today,
             availableInCents = 0L,
             incomeInCents = 0L,
@@ -204,10 +205,12 @@ internal suspend fun loadCoreSnapshot(context: Context): WidgetCoreSnapshot {
             )
         },
         previousCycleExpenseInCents = previousCycleExpense,
-        todayExpenseInCents = (if (today in period.start..period.endInclusive) {
+        todayExpenseInCents = (if (today.toKotlinLocalDate() in period.start..period.endInclusive) {
             periodTransactions
         } else {
-            transactionRepository.observeByPeriod(DateRange(today, today)).first()
+            transactionRepository.observeByPeriod(
+                DateRange(today.toKotlinLocalDate(), today.toKotlinLocalDate()),
+            ).first()
         })
             .filter {
                 it.type == TransactionType.EXPENSE && it.date == today

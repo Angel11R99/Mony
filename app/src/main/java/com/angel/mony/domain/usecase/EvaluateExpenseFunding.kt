@@ -8,6 +8,7 @@ import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.activeBudgetPeriod
 import com.angel.mony.domain.repository.ExpenseFundingRepository
 import com.angel.mony.domain.repository.TransactionRepository
+import com.angel.mony.core.time.toKotlinLocalDate
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -40,7 +41,9 @@ class EvaluateExpenseFunding @Inject constructor(
         val transactions: List<FinanceTransaction> = transactionRepository.observeByPeriod(period).first()
 
         // Filter transactions in the period
-        val periodTransactions = transactions.filter { it.date in period.start..period.endInclusive }
+        val periodTransactions = transactions.filter {
+            it.date.toKotlinLocalDate() in period.start..period.endInclusive
+        }
 
         // Calculate income in the period
         val incomeInCents = periodTransactions
@@ -49,8 +52,8 @@ class EvaluateExpenseFunding @Inject constructor(
 
         // Calculate previous funding in the period
         val previousFundingInCents = expenseFundingRepository.sumByPeriod(
-            period.start.toEpochDay(),
-            period.endInclusive.toEpochDay(),
+            period.start.toEpochDays().toLong(),
+            period.endInclusive.toEpochDays().toLong(),
         )
 
         // Calculate expenses in the period (excluding the existing transaction if editing)

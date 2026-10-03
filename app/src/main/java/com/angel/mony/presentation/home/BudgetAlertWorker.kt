@@ -53,9 +53,9 @@ class BudgetAlertWorker(
         val transactions = entryPoint.transactions().observeByPeriod(period).first()
         val percent = budgetUsagePercent(budget, transactions, period)
         val currentLevel = BudgetAlertLevel.forUsagePercent(percent)
-        val previousLevel = preferences.lastLevel(period.start.toEpochDay())
+        val previousLevel = preferences.lastLevel(period.start.toEpochDays().toLong())
         val decision = BudgetAlertEvaluator.evaluate(previousLevel, currentLevel)
-        preferences.saveLevel(period.start.toEpochDay(), decision.levelToStore)
+        preferences.saveLevel(period.start.toEpochDays().toLong(), decision.levelToStore)
 
         if (decision.shouldNotify) {
             showNotification(currentLevel, percent, budget.amountInCents)

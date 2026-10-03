@@ -3,6 +3,7 @@ package com.angel.mony.presentation.statistics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.FinanceDataCache
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetCycleSchedule
@@ -55,7 +56,7 @@ internal fun statisticsPeriod(
     customEnd: LocalDate? = null,
 ): StatisticsPeriod = when (range) {
     StatisticsRange.CURRENT_BUDGET -> activeBudgetPeriod(budget, today).let {
-        StatisticsPeriod(startDate = it.start, endDate = it.endInclusive)
+        StatisticsPeriod(startDate = it.start.toJavaLocalDate(), endDate = it.endInclusive.toJavaLocalDate())
     }
     StatisticsRange.CURRENT_MONTH -> StatisticsPeriod(
         startDate = YearMonth.from(today).atDay(1),
@@ -80,9 +81,9 @@ internal fun previousStatisticsPeriod(
     selectedCycle != null -> budgetPeriodForSchedule(
         selectedCycle,
         (current.startDate ?: today).minusMonths(1),
-    ).let { StatisticsPeriod(it.start, it.endInclusive) }
+    ).let { StatisticsPeriod(it.start.toJavaLocalDate(), it.endInclusive.toJavaLocalDate()) }
     range == StatisticsRange.CURRENT_BUDGET -> previousBudgetPeriod(budget, today).let {
-        StatisticsPeriod(it.start, it.endInclusive)
+        StatisticsPeriod(it.start.toJavaLocalDate(), it.endInclusive.toJavaLocalDate())
     }
     range == StatisticsRange.CURRENT_MONTH -> YearMonth.from(today).minusMonths(1).let {
         StatisticsPeriod(it.atDay(1), it.atEndOfMonth())
@@ -114,7 +115,10 @@ internal fun statisticsPeriod(
     schedule: BudgetCycleSchedule,
     today: LocalDate = LocalDate.now(),
 ): StatisticsPeriod = budgetPeriodForSchedule(schedule, today).let {
-    StatisticsPeriod(startDate = it.start, endDate = it.endInclusive)
+    StatisticsPeriod(
+        startDate = it.start.toJavaLocalDate(),
+        endDate = it.endInclusive.toJavaLocalDate(),
+    )
 }
 
 data class StatisticsReport(

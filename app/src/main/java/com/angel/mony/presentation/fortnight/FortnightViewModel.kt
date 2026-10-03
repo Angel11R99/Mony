@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.FinanceDataCache
+import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
@@ -100,7 +101,9 @@ class FortnightViewModel @Inject constructor(
 
     private val initialPeriod: DateRange? = savedStateHandle.get<String>(PERIOD_START_KEY)?.let { start ->
         savedStateHandle.get<String>(PERIOD_END_KEY)?.let { end ->
-            runCatching { DateRange(LocalDate.parse(start), LocalDate.parse(end)) }.getOrNull()
+            runCatching {
+                DateRange(LocalDate.parse(start).toKotlinLocalDate(), LocalDate.parse(end).toKotlinLocalDate())
+            }.getOrNull()
         }
     }
 

@@ -1,5 +1,6 @@
 package com.angel.mony.domain.model
 
+import com.angel.mony.core.time.toJavaLocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.LocalDate
@@ -23,14 +24,14 @@ class FortnightPeriodTest {
     fun `la primera quincena es la que contiene el dia 15`() {
         val period = fortnightPeriodContaining(LocalDate.parse("2026-10-15"), null)
 
-        assertEquals(LocalDate.parse("2026-10-15"), period.endInclusive)
+        assertEquals(LocalDate.parse("2026-10-15"), period.endInclusive.toJavaLocalDate())
     }
 
     @Test
     fun `febrero usa el ultimo dia disponible`() {
         val period = fortnightPeriodContaining(LocalDate.parse("2026-02-20"), null)
 
-        assertEquals(LocalDate.parse("2026-02-28"), period.endInclusive)
+        assertEquals(LocalDate.parse("2026-02-28"), period.endInclusive.toJavaLocalDate())
     }
 
     @Test
@@ -174,6 +175,6 @@ class FortnightPeriodTest {
     }
 
     private fun assertTrueAfter(later: DateRange, earlier: DateRange) {
-        assertEquals(true, later.start.isAfter(earlier.start))
+        assertEquals(true, later.start > earlier.start)
     }
 }

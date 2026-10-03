@@ -179,12 +179,12 @@ class HomeViewModel @Inject constructor(
                         period = budget.period,
                         categoryId = categoryId,
                         existingId = null,
-                        date = budget.cycleStart?.toJavaLocalDate() ?: initialPeriod.start,
+                        date = budget.cycleStart?.toJavaLocalDate() ?: initialPeriod.start.toJavaLocalDate(),
                         now = startedAt,
                     )
                     budgetRepository.save(
                         budget.copy(
-                            cycleStart = budget.cycleStart ?: initialPeriod.start.toKotlinLocalDate(),
+                            cycleStart = budget.cycleStart ?: initialPeriod.start,
                             cycleStartedAt = budget.cycleStartedAt ?: startedAt.toKotlinInstant(),
                             incomeTransactionId = transactionId,
                         )
@@ -194,7 +194,7 @@ class HomeViewModel @Inject constructor(
                     val incomePeriod = activeBudgetPeriod(budget, linkedIncome.date)
                     budgetRepository.save(
                         budget.copy(
-                            cycleStart = incomePeriod.start.toKotlinLocalDate(),
+                            cycleStart = incomePeriod.start,
                             cycleStartedAt = budget.cycleStartedAt ?: linkedIncome.createdAt.toKotlinInstant(),
                         )
                     )
@@ -232,7 +232,7 @@ class HomeViewModel @Inject constructor(
         if (closingCycle.value) return
         val today = LocalDate.now()
         val periodToClose = budgetPeriodToClose(budget, today)
-        if (periodToClose.endInclusive.isAfter(today)) {
+        if (periodToClose.endInclusive > today.toKotlinLocalDate()) {
             context.showToast("Este ciclo todavía no ha llegado a su día de cierre")
             return
         }
@@ -252,8 +252,8 @@ class HomeViewModel @Inject constructor(
                 expenseInCents = cycleTransactions
                     .filter { it.type == TransactionType.EXPENSE }
                     .sumOf(FinanceTransaction::amountInCents),
-                startDate = periodToClose.start.toKotlinLocalDate(),
-                endDate = periodToClose.endInclusive.toKotlinLocalDate(),
+                startDate = periodToClose.start,
+                endDate = periodToClose.endInclusive,
                 closedAt = now.toKotlinInstant(),
             )
             runCatching {
@@ -264,11 +264,11 @@ class HomeViewModel @Inject constructor(
                         period = budget.period,
                         categoryId = categoryId,
                         existingId = null,
-                        date = nextStart,
+                        date = nextStart.toJavaLocalDate(),
                         now = now,
                     )
                     val nextConfig = budget.copy(
-                        cycleStart = nextStart.toKotlinLocalDate(),
+                        cycleStart = nextStart,
                         cycleStartedAt = now.toKotlinInstant(),
                         incomeTransactionId = nextIncomeId,
                     )

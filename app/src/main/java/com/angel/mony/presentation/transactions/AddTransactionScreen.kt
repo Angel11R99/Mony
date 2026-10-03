@@ -1,5 +1,7 @@
 package com.angel.mony.presentation.transactions
 
+import com.angel.mony.core.time.toJavaLocalDate
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -243,11 +245,12 @@ fun AddTransactionScreen(
             }
             val parsedDate = runCatching { LocalDate.parse(date) }.getOrNull()
             val outsidePeriod = !viewModel.isEditing && parsedDate != null &&
-                (parsedDate.isBefore(activePeriod.start) || parsedDate.isAfter(activePeriod.endInclusive))
+                (parsedDate.isBefore(activePeriod.start.toJavaLocalDate()) ||
+                    parsedDate.isAfter(activePeriod.endInclusive.toJavaLocalDate()))
             if (outsidePeriod) {
                 item {
                     Text(
-                        "Esta fecha está fuera del periodo actual (${activePeriod.start.format(periodDateFormatter)} / ${activePeriod.endInclusive.format(periodDateFormatter)}). El movimiento se registrará en el periodo correspondiente.",
+                        "Esta fecha está fuera del periodo actual (${activePeriod.start.toJavaLocalDate().format(periodDateFormatter)} / ${activePeriod.endInclusive.toJavaLocalDate().format(periodDateFormatter)}). El movimiento se registrará en el periodo correspondiente.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )

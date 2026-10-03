@@ -3,6 +3,7 @@ package com.angel.mony.widget
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.domain.model.DateRange
 import com.angel.mony.domain.model.SavingsGoalProgress
+import com.angel.mony.core.time.toJavaLocalDate
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -15,7 +16,7 @@ private val shortDateFormatter: DateTimeFormatter =
 fun formatShortDate(date: LocalDate): String = date.format(shortDateFormatter)
 
 fun cycleDaysLeft(period: DateRange, today: LocalDate): Int =
-    ChronoUnit.DAYS.between(today, period.endInclusive).coerceAtLeast(0).toInt()
+    ChronoUnit.DAYS.between(today, period.endInclusive.toJavaLocalDate()).coerceAtLeast(0).toInt()
 
 enum class PendingDayKind { TODAY, TOMORROW, OVERDUE, ON_DATE }
 

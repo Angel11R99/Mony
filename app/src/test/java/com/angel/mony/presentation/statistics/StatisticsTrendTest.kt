@@ -1,5 +1,6 @@
 package com.angel.mony.presentation.statistics
 
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.BudgetPeriod
@@ -80,8 +81,8 @@ class StatisticsTrendTest {
 
     @Test fun `previousBudgetPeriod falls back without config`() {
         val previous = previousBudgetPeriod(null, today)
-        assertEquals(LocalDate.of(2026, 8, 1), previous.start)
-        assertEquals(LocalDate.of(2026, 8, 15), previous.endInclusive)
+        assertEquals(LocalDate.of(2026, 8, 1), previous.start.toJavaLocalDate())
+        assertEquals(LocalDate.of(2026, 8, 15), previous.endInclusive.toJavaLocalDate())
     }
 
     @Test fun `custom range label formats dates`() {

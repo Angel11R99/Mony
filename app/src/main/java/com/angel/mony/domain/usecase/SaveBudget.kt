@@ -11,6 +11,7 @@ import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.TransactionRepository
 import com.angel.mony.core.time.toKotlinInstant
 import com.angel.mony.core.time.toKotlinLocalDate
+import com.angel.mony.core.time.toJavaLocalDate
 import kotlinx.coroutines.flow.first
 import java.time.Instant
 import java.time.LocalDate
@@ -51,7 +52,7 @@ class SaveBudget @Inject constructor(
             type = TransactionType.INCOME,
             categoryId = existingIncome?.categoryId ?: categoryId,
             description = if (period == BudgetPeriod.MONTHLY) "Ingreso mensual" else "Ingreso por ciclo",
-            date = if (initializesCycle) initialPeriod.start else existingIncome?.date ?: today,
+            date = if (initializesCycle) initialPeriod.start.toJavaLocalDate() else existingIncome?.date ?: today,
             createdAt = existingIncome?.createdAt ?: now,
             updatedAt = now,
         )
@@ -66,7 +67,7 @@ class SaveBudget @Inject constructor(
             BudgetConfig(
                 amountInCents = amountInCents,
                 period = period,
-                cycleStart = if (initializesCycle) initialPeriod.start.toKotlinLocalDate() else existing?.cycleStart,
+                cycleStart = if (initializesCycle) initialPeriod.start else existing?.cycleStart,
                 cycleStartedAt = if (initializesCycle) now.toKotlinInstant() else existing?.cycleStartedAt,
                 incomeTransactionId = incomeTransactionId,
                 cycleSchedules = cycleSchedules,

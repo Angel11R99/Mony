@@ -1,6 +1,6 @@
 # Checklist de Migración KMP (Mony)
 
-> **Estado actual:** `:shared` creado, diacríticos y aritmética exacta comunes, 13 archivos de modelo y 4 contratos de repositorio movidos a `commonMain`. Suite Android: **35 clases / 263 tests, 0 fallos**.
+> **Estado actual:** `:shared` creado, diacríticos, aritmética exacta y calendario presupuestario comunes, 15 archivos de modelo y 4 contratos de repositorio movidos a `commonMain`. Verificación: **Android 34 clases / 260 tests** + **shared 2 clases / 11 tests**, 0 fallos (271 tests totales).
 
 ## 1. Infraestructura KMP
 
@@ -26,11 +26,11 @@
 
 ## 3. domain/model
 
-**Comunes (13 archivos):** BackupMovement, BudgetAlertEvaluator, BudgetConfig, BudgetCycle, BudgetCycleSchedule/defaultCycleSchedules, BudgetPeriod, Category, CategoryValidator, EntryCardSize, ListProductMatcher, ListReceiptParser, SavingsGoal y TransactionType — ✅
+**Comunes (15 archivos):** BackupMovement, BudgetAlertEvaluator, BudgetConfig, BudgetCycle, BudgetCycleSchedule/defaultCycleSchedules, BudgetPeriod, Category, CategoryValidator, DateRange, BudgetCycleCalculator, EntryCardSize, ListProductMatcher, ListReceiptParser, SavingsGoal y TransactionType — ✅
 
-**Pendientes con `java.time` (10):** DateRange ⬜, **BudgetCycleCalculator** ⬜ (crítico), FinanceTransaction ⬜, FixedEntry ⬜, PendingEntry ⬜, ExpenseFunding ⬜, FixedEntrySchedule ⬜, FortnightPeriod ⬜, Fortnight ⬜, ShoppingList ⬜
+**Pendientes con `java.time` (8):** FinanceTransaction ⬜, FixedEntry ⬜, PendingEntry ⬜, ExpenseFunding ⬜, FixedEntrySchedule ⬜, FortnightPeriod ⬜, Fortnight ⬜, ShoppingList ⬜
 
-**Pendientes en `:app`: 10 archivos.** `BackupMovement`, `BudgetConfig`, `BudgetCycle` y `SavingsGoal` ya validan la transición con conversiones explícitas en los límites CSV, Room y UI. `DateRange` tiene más de 100 referencias y debe migrarse junto con repositorios, filtros, estadísticas, widgets y `BudgetCycleCalculator`.
+**Pendientes en `:app`: 8 archivos.** `BackupMovement`, `BudgetConfig`, `BudgetCycle`, `SavingsGoal`, `DateRange` y `BudgetCycleCalculator` ya validan la transición con conversiones explícitas en los límites CSV, Room y UI. Las funciones financieras que dependen de `FinanceTransaction` y los overloads Android de interoperabilidad permanecen temporalmente en el archivo Android `BudgetCycleCalculator.kt`.
 
 ## 4. domain/repository (11)
 
@@ -57,20 +57,19 @@ Progreso: **4/11 (36%)**. Cada contrato pasa a `shared` solo cuando todos sus ti
 
 ## 9. Tests
 
-⬜ Tests puros → commonTest • ✅ Android: 35 clases / 263 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
+⬜ Tests puros restantes → commonTest • ✅ DateRange/BudgetCycle: 2 clases / 11 tests en shared • ✅ Android: 34 clases / 260 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
 
 ## 10. Verificación
 
-✅ assembleDebug • ✅ testDebugUnitTest (263/263) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
+✅ assembleDebug • ✅ testDebugUnitTest (260/260) • ✅ testAndroidHostTest (11/11) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
 
 ## Siguiente paso
 
-**#1 — Completar el bloque base de fechas (`DateRange` + `BudgetCycleCalculator`)**
-1. ~~Añadir `kotlinx-datetime` (versión + dependencia `commonMain`).~~ ✅
-2. ~~Definir conversiones Android entre `java.time` y `kotlinx.datetime` en los límites de Room/UI.~~ ✅
-3. ~~Migrar `BudgetConfig` y `BudgetCycle`.~~ ✅
-4. Migrar `DateRange` junto con sus consumidores de repositorios, filtros, estadísticas y widgets; el intento aislado fue descartado porque el compilador confirmó un radio de 98 llamadores.
-5. Mantener `BudgetCycleCalculator` sin cambios de comportamiento y moverlo cuando `DateRange` sea común.
-6. Ejecutar tests de fechas/ciclo y después `assembleDebug` + `testDebugUnitTest`.
+**#1 — Bloque base de fechas (`DateRange` + `BudgetCycleCalculator`) — ✅ completado**
+1. `DateRange` y el calendario de `BudgetCycleCalculator` usan `kotlinx.datetime` en `commonMain`.
+2. Room conserva exactamente `epochDay`; UI y modelos Android convierten explícitamente en sus límites.
+3. Los cálculos que todavía reciben `FinanceTransaction` permanecen en Android hasta mover ese modelo.
+4. Las pruebas puras de fechas/ciclo se ejecutan con `testAndroidHostTest` en `shared`.
+5. `assembleDebug`, `testDebugUnitTest` y `testAndroidHostTest` están verdes.
 
-Orden tras #1: **`BudgetCycleCalculator`** (máxima precaución) → `FinanceTransaction/FixedEntry/PendingEntry` → `FortnightPeriod/Fortnight` → resto.
+**#2 — Migrar `FinanceTransaction` y `TransactionRepository`**, adaptando Room mediante los mappers existentes. Después: `FixedEntry/PendingEntry` → `FortnightPeriod/Fortnight` → resto.

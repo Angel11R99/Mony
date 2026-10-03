@@ -62,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.showToast
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.FortnightItemProgress
 import com.angel.mony.domain.model.FortnightItemStatus
@@ -175,9 +176,9 @@ fun FortnightScreen(
                                 periodLabel = buildString {
                                     append(if (isMonthly) "Ciclo mensual" else com.angel.mony.domain.model.cycleLabelForSlot(state.slot))
                                     append(" · ")
-                                    append(state.period.start.format(dayMonthFormatter))
+                                    append(state.period.start.toJavaLocalDate().format(dayMonthFormatter))
                                     append(" – ")
-                                    append(state.period.endInclusive.format(dayMonthFormatter))
+                                    append(state.period.endInclusive.toJavaLocalDate().format(dayMonthFormatter))
                                 },
                                 onPrevious = viewModel::goToPreviousPeriod,
                                 onNext = viewModel::goToNextPeriod,

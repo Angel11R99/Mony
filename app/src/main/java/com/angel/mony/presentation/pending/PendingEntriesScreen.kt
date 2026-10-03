@@ -1,5 +1,8 @@
 package com.angel.mony.presentation.pending
 
+import com.angel.mony.core.time.toJavaLocalDate
+import com.angel.mony.core.time.toKotlinLocalDate
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -749,7 +752,7 @@ private fun PendingSummaryCard(
         PendingPeriodFilter.ALL -> "TODOS LOS RECORDATORIOS"
     }
     val periodSubtitle = range?.let {
-        "${it.start.format(formatter)} – ${it.endInclusive.format(formatter)}"
+        "${it.start.toJavaLocalDate().format(formatter)} – ${it.endInclusive.toJavaLocalDate().format(formatter)}"
     } ?: "Sin filtro de fecha"
     FinanceCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1488,7 +1491,7 @@ internal fun filterPendingEntries(
     val digitQuery = normalizedQuery.filter(Char::isDigit)
     return entries
         .filter { it.type == type }
-        .filter { range == null || it.date in range.start..range.endInclusive }
+        .filter { range == null || it.date.toKotlinLocalDate() in range.start..range.endInclusive }
         .filter {
             when (status) {
                 PendingStatusFilter.ALL -> true

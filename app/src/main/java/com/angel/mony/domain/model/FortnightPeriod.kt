@@ -1,5 +1,7 @@
 package com.angel.mony.domain.model
 
+import com.angel.mony.core.time.toJavaLocalDate
+import com.angel.mony.core.time.toKotlinLocalDate
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -50,7 +52,10 @@ private fun fortnightPeriodsAround(
 ): List<DateRange> {
     val referenceMonth = YearMonth.from(date)
     return (-1..1)
-        .flatMap { offset -> schedules.map { it.toDateRange(referenceMonth.plusMonths(offset.toLong())) } }
+        .flatMap { offset ->
+            val openingMonth = referenceMonth.plusMonths(offset.toLong()).atDay(1).toKotlinLocalDate()
+            schedules.map { it.toDateRange(openingMonth) }
+        }
         .distinct()
         .sortedBy(DateRange::start)
 }
@@ -60,8 +65,8 @@ fun fortnightPeriodContaining(
     date: LocalDate,
     schedules: List<BudgetCycleSchedule>,
 ): DateRange = fortnightPeriodsAround(date, schedules)
-    .firstOrNull { date in it.start..it.endInclusive }
-    ?: schedules.first().toDateRange(YearMonth.from(date))
+    .firstOrNull { date.toKotlinLocalDate() in it.start..it.endInclusive }
+    ?: schedules.first().toDateRange(YearMonth.from(date).atDay(1).toKotlinLocalDate())
 
 /** Período quincenal actual según la configuración presupuestaria del usuario. */
 fun fortnightPeriodContaining(
@@ -73,9 +78,11 @@ fun fortnightPeriodContaining(
 fun nextFortnightPeriod(
     period: DateRange,
     schedules: List<BudgetCycleSchedule>,
-): DateRange = fortnightPeriodsAround(period.start, schedules)
-    .firstOrNull { it.start.isAfter(period.start) }
-    ?: schedules.first().toDateRange(YearMonth.from(period.start).plusMonths(1))
+): DateRange = fortnightPeriodsAround(period.start.toJavaLocalDate(), schedules)
+    .firstOrNull { it.start > period.start }
+    ?: schedules.first().toDateRange(
+        YearMonth.from(period.start.toJavaLocalDate()).plusMonths(1).atDay(1).toKotlinLocalDate(),
+    )
 
 fun nextFortnightPeriod(period: DateRange, budget: BudgetConfig?): DateRange =
     nextFortnightPeriod(period, fortnightSchedules(budget))
@@ -84,10 +91,12 @@ fun nextFortnightPeriod(period: DateRange, budget: BudgetConfig?): DateRange =
 fun previousFortnightPeriod(
     period: DateRange,
     schedules: List<BudgetCycleSchedule>,
-): DateRange = fortnightPeriodsAround(period.start, schedules)
-    .filter { it.endInclusive.isBefore(period.start) }
+): DateRange = fortnightPeriodsAround(period.start.toJavaLocalDate(), schedules)
+    .filter { it.endInclusive < period.start }
     .maxByOrNull(DateRange::endInclusive)
-    ?: schedules.last().toDateRange(YearMonth.from(period.start).minusMonths(1))
+    ?: schedules.last().toDateRange(
+        YearMonth.from(period.start.toJavaLocalDate()).minusMonths(1).atDay(1).toKotlinLocalDate(),
+    )
 
 fun previousFortnightPeriod(period: DateRange, budget: BudgetConfig?): DateRange =
     previousFortnightPeriod(period, fortnightSchedules(budget))
@@ -97,7 +106,7 @@ fun fortnightSlotFor(
     period: DateRange,
     schedules: List<BudgetCycleSchedule>,
 ): FortnightSlot {
-    val openingMonth = YearMonth.from(period.start)
+    val openingMonth = YearMonth.from(period.start.toJavaLocalDate()).atDay(1).toKotlinLocalDate()
     val index = schedules.indexOfFirst { it.toDateRange(openingMonth) == period }
     return when (index) {
         1 -> FortnightSlot.SECOND

@@ -68,6 +68,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.HistoryPdfMeta
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.time.toJavaLocalDate
+import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.core.showToast
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
@@ -119,7 +120,12 @@ private val historyCycleFilterSaver = listSaver<HistoryCycleFilter, Any>(
     save = {
         when (it) {
             HistoryCycleFilter.All -> listOf(0L)
-            is HistoryCycleFilter.Custom -> listOf(1L, it.dateRange.start.toEpochDay(), it.dateRange.endInclusive.toEpochDay(), it.displayLabel)
+            is HistoryCycleFilter.Custom -> listOf(
+                1L,
+                it.dateRange.start.toEpochDays().toLong(),
+                it.dateRange.endInclusive.toEpochDays().toLong(),
+                it.displayLabel,
+            )
         }
     },
     restore = {
@@ -127,8 +133,8 @@ private val historyCycleFilterSaver = listSaver<HistoryCycleFilter, Any>(
             0L -> HistoryCycleFilter.All
             else -> HistoryCycleFilter.Custom(
                 dateRange = DateRange(
-                    LocalDate.ofEpochDay(it[1] as Long),
-                    LocalDate.ofEpochDay(it[2] as Long),
+                    LocalDate.ofEpochDay(it[1] as Long).toKotlinLocalDate(),
+                    LocalDate.ofEpochDay(it[2] as Long).toKotlinLocalDate(),
                 ),
                 displayLabel = it[3] as String,
             )
@@ -1145,7 +1151,7 @@ internal fun filterTransactions(
         (categoryId == null || transaction.categoryId == categoryId) &&
         (startDate == null || !transaction.date.isBefore(startDate)) &&
         (endDate == null || !transaction.date.isAfter(endDate)) &&
-        (cycleRange == null || transaction.date in cycleRange.start..cycleRange.endInclusive)
+        (cycleRange == null || transaction.date.toKotlinLocalDate() in cycleRange.start..cycleRange.endInclusive)
 }
 
 internal fun searchCategories(categories: List<Category>, query: String): List<Category> =
@@ -1225,7 +1231,7 @@ internal fun currentHistoryCycleFilter(
     val current = com.angel.mony.domain.model.activeBudgetPeriod(budget, today)
     return HistoryCycleFilter.Custom(
         current,
-        "Actual: ${current.start.format(formatter)} – ${current.endInclusive.format(formatter)}",
+        "Actual: ${current.start.toJavaLocalDate().format(formatter)} – ${current.endInclusive.toJavaLocalDate().format(formatter)}",
     )
 }
 
@@ -1240,15 +1246,15 @@ private fun buildHistoryCycleOptions(
     options.add(
         HistoryCycleFilter.Custom(
             prev,
-            "Anterior: ${prev.start.format(formatter)} – ${prev.endInclusive.format(formatter)}",
+            "Anterior: ${prev.start.toJavaLocalDate().format(formatter)} – ${prev.endInclusive.toJavaLocalDate().format(formatter)}",
         ),
     )
     history.forEach { cycle ->
         val range = com.angel.mony.domain.model.DateRange(
-            cycle.startDate.toJavaLocalDate(),
-            cycle.endDate.toJavaLocalDate(),
+            cycle.startDate,
+            cycle.endDate,
         )
-        val label = "Hist: ${range.start.format(formatter)} – ${range.endInclusive.format(formatter)}"
+        val label = "Hist: ${range.start.toJavaLocalDate().format(formatter)} – ${range.endInclusive.toJavaLocalDate().format(formatter)}"
         if (options.none { it.range == range }) {
             options.add(HistoryCycleFilter.Custom(range, label))
         }

@@ -96,7 +96,7 @@ class RoomTransactionRepository @Inject constructor(
 ) : TransactionRepository {
     override fun observeAll() = dao.observeAll().map { items -> items.map { it.toDomain() } }
     override fun observeByPeriod(period: DateRange) = dao.observeByPeriod(
-        period.start.toEpochDay(), period.endInclusive.toEpochDay()
+        period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong()
     ).map { items -> items.map { it.toDomain() } }
     override fun observeBySavingsGoal(goalId: Long) =
         dao.observeBySavingsGoal(goalId).map { items -> items.map { it.toDomain() } }
@@ -175,9 +175,9 @@ class RoomTransactionRepository @Inject constructor(
         val period = activeBudgetPeriod(budgetConfig, normalized.date)
 
         // Calculate available before this expense
-        val transactions = dao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val transactions = dao.getByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong())
         val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
-        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong()) ?: 0L
         val expensesInCents = transactions.filter { it.type == TransactionType.EXPENSE.name }.sumOf { it.amountInCents }
 
         val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
@@ -235,9 +235,9 @@ class RoomTransactionRepository @Inject constructor(
         val period = activeBudgetPeriod(budgetConfig, normalized.date)
 
         // Calculate available before this expense (excluding the existing transaction)
-        val transactions = dao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val transactions = dao.getByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong())
         val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
-        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong()) ?: 0L
         val expensesInCents = transactions
             .filter { it.type == TransactionType.EXPENSE.name }
             .filterNot { it.id == existingTransactionId }
@@ -411,9 +411,9 @@ class RoomFixedEntryRepository @Inject constructor(
         val budgetConfig = database.budgetConfigDao().get()?.toDomain()
         val period = activeBudgetPeriod(budgetConfig, normalized.date)
 
-        val transactions = transactionDao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val transactions = transactionDao.getByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong())
         val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
-        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong()) ?: 0L
         val expensesInCents = transactions.filter { it.type == TransactionType.EXPENSE.name }.sumOf { it.amountInCents }
 
         val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
@@ -482,9 +482,9 @@ class RoomPendingEntryRepository @Inject constructor(
         val budgetConfig = database.budgetConfigDao().get()?.toDomain()
         val period = activeBudgetPeriod(budgetConfig, normalized.date)
 
-        val transactions = transactionDao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val transactions = transactionDao.getByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong())
         val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
-        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong()) ?: 0L
         val expensesInCents = transactions.filter { it.type == TransactionType.EXPENSE.name }.sumOf { it.amountInCents }
 
         val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
@@ -1230,9 +1230,9 @@ class RoomFortnightRepository @Inject constructor(
         val budgetConfig = database.budgetConfigDao().get()?.toDomain()
         val period = activeBudgetPeriod(budgetConfig, date)
 
-        val transactions = transactionDao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val transactions = transactionDao.getByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong())
         val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
-        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong()) ?: 0L
         val expensesInCents = transactions.filter { it.type == TransactionType.EXPENSE.name }.sumOf { it.amountInCents }
 
         val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
@@ -1324,9 +1324,9 @@ class RoomFortnightRepository @Inject constructor(
         // Create the funding record
         val budgetConfig = database.budgetConfigDao().get()?.toDomain()
         val period = activeBudgetPeriod(budgetConfig, date)
-        val transactions = transactionDao.getByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay())
+        val transactions = transactionDao.getByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong())
         val incomeInCents = transactions.filter { it.type == TransactionType.INCOME.name }.sumOf { it.amountInCents }
-        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDay(), period.endInclusive.toEpochDay()) ?: 0L
+        val previousFundingInCents = expenseFundingDao.sumByPeriod(period.start.toEpochDays().toLong(), period.endInclusive.toEpochDays().toLong()) ?: 0L
         val expensesInCents = transactions.filter { it.type == TransactionType.EXPENSE.name }.sumOf { it.amountInCents }
         val availableBeforeExpense = incomeInCents + previousFundingInCents - expensesInCents
         val overflowInCents = if (availableBeforeExpense - amountInCents < 0) -(availableBeforeExpense - amountInCents) else 0L

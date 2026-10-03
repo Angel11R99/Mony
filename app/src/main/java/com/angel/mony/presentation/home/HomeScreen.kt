@@ -77,6 +77,7 @@ import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import com.angel.mony.core.time.toJavaLocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -218,7 +219,7 @@ fun HomeScreen(
                                         )
                                     } else if (!manualCloseAvailable) {
                                         Text(
-                                            "El cierre estará disponible el ${state.currentPeriod.endInclusive.format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO")))}.",
+                                            "El cierre estará disponible el ${state.currentPeriod.endInclusive.toJavaLocalDate().format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag("es-DO")))}.",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
@@ -469,7 +470,7 @@ private fun PeriodViewOption(
                     color = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "${period.start.format(formatter)} / ${period.endInclusive.format(formatter)}".uppercase(),
+                    text = "${period.start.toJavaLocalDate().format(formatter)} / ${period.endInclusive.toJavaLocalDate().format(formatter)}".uppercase(),
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -511,12 +512,12 @@ private fun CloseCycleDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Se guardará el período del ${currentPeriod.start.format(dateFormatter)} al ${currentPeriod.endInclusive.format(dateFormatter)} en el historial. Tus movimientos y tu saldo general no se borrarán.",
+                    "Se guardará el período del ${currentPeriod.start.toJavaLocalDate().format(dateFormatter)} al ${currentPeriod.endInclusive.toJavaLocalDate().format(dateFormatter)} en el historial. Tus movimientos y tu saldo general no se borrarán.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "El próximo ciclo irá del ${nextPeriod.start.format(dateFormatter)} al ${nextPeriod.endInclusive.format(dateFormatter)}.",
+                    "El próximo ciclo irá del ${nextPeriod.start.toJavaLocalDate().format(dateFormatter)} al ${nextPeriod.endInclusive.toJavaLocalDate().format(dateFormatter)}.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

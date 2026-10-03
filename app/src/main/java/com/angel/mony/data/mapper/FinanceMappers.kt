@@ -46,6 +46,7 @@ import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.core.time.toKotlinInstant
 import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.domain.model.BudgetPeriod
+import kotlinx.datetime.LocalDate as KotlinLocalDate
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -281,8 +282,8 @@ fun FortnightTemplate.toEntity() = FortnightTemplateEntity(
 fun FortnightPlanEntity.toDomain() = FortnightPlan(
     id = id,
     period = DateRange(
-        start = LocalDate.ofEpochDay(startDateEpochDay),
-        endInclusive = LocalDate.ofEpochDay(endDateEpochDay),
+        start = KotlinLocalDate.fromEpochDays(startDateEpochDay.toInt()),
+        endInclusive = KotlinLocalDate.fromEpochDays(endDateEpochDay.toInt()),
     ),
     slot = FortnightSlot.valueOf(slot),
     budgetInCents = budgetInCents,
@@ -293,8 +294,8 @@ fun FortnightPlanEntity.toDomain() = FortnightPlan(
 
 fun FortnightPlan.toEntity() = FortnightPlanEntity(
     id = id,
-    startDateEpochDay = period.start.toEpochDay(),
-    endDateEpochDay = period.endInclusive.toEpochDay(),
+    startDateEpochDay = period.start.toEpochDays().toLong(),
+    endDateEpochDay = period.endInclusive.toEpochDays().toLong(),
     slot = slot.name,
     budgetInCents = budgetInCents,
     status = status.name,
