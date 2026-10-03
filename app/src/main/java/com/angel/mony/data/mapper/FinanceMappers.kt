@@ -170,12 +170,12 @@ fun ShoppingListEntity.toDomain() = ShoppingList(
     budgetInCents = budgetInCents,
     expenseTransactionId = expenseTransactionId,
     payableId = payableId,
-    purchaseDate = purchaseDateEpochDay?.let(LocalDate::ofEpochDay),
+    purchaseDate = purchaseDateEpochDay?.let { KotlinLocalDate.fromEpochDays(it.toInt()) },
     paymentMethod = paymentMethod?.let(com.angel.mony.domain.model.ShoppingPaymentMethod::valueOf),
     expenseCategoryId = expenseCategoryId,
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
-    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
-    completedAt = completedAtEpochMillis?.let(Instant::ofEpochMilli),
+    createdAt = KotlinInstant.fromEpochMilliseconds(createdAtEpochMillis),
+    updatedAt = KotlinInstant.fromEpochMilliseconds(updatedAtEpochMillis),
+    completedAt = completedAtEpochMillis?.let(KotlinInstant::fromEpochMilliseconds),
 )
 
 fun ShoppingList.toEntity() = ShoppingListEntity(
@@ -185,12 +185,12 @@ fun ShoppingList.toEntity() = ShoppingListEntity(
     budgetInCents = budgetInCents,
     expenseTransactionId = expenseTransactionId,
     payableId = payableId,
-    purchaseDateEpochDay = purchaseDate?.toEpochDay(),
+    purchaseDateEpochDay = purchaseDate?.toEpochDays()?.toLong(),
     paymentMethod = paymentMethod?.name,
     expenseCategoryId = expenseCategoryId,
-    createdAtEpochMillis = createdAt.toEpochMilli(),
-    updatedAtEpochMillis = updatedAt.toEpochMilli(),
-    completedAtEpochMillis = completedAt?.toEpochMilli(),
+    createdAtEpochMillis = createdAt.toEpochMilliseconds(),
+    updatedAtEpochMillis = updatedAt.toEpochMilliseconds(),
+    completedAtEpochMillis = completedAt?.toEpochMilliseconds(),
 )
 
 fun ShoppingListItemEntity.toDomain() = ShoppingListItem(
@@ -204,8 +204,8 @@ fun ShoppingListItemEntity.toDomain() = ShoppingListItem(
     isPurchased = isPurchased,
     isIdentified = isIdentified,
     notes = notes,
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
-    updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+    createdAt = KotlinInstant.fromEpochMilliseconds(createdAtEpochMillis),
+    updatedAt = KotlinInstant.fromEpochMilliseconds(updatedAtEpochMillis),
 )
 
 fun ShoppingListItem.toEntity() = ShoppingListItemEntity(
@@ -219,8 +219,8 @@ fun ShoppingListItem.toEntity() = ShoppingListItemEntity(
     isPurchased = isPurchased,
     isIdentified = isIdentified,
     notes = notes,
-    createdAtEpochMillis = createdAt.toEpochMilli(),
-    updatedAtEpochMillis = updatedAt.toEpochMilli(),
+    createdAtEpochMillis = createdAt.toEpochMilliseconds(),
+    updatedAtEpochMillis = updatedAt.toEpochMilliseconds(),
 )
 
 fun ShoppingAdjustmentEntity.toDomain() = ShoppingAdjustment(
@@ -229,7 +229,7 @@ fun ShoppingAdjustmentEntity.toDomain() = ShoppingAdjustment(
     name = name,
     isPositive = isPositive,
     amountInCents = amountInCents,
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    createdAt = KotlinInstant.fromEpochMilliseconds(createdAtEpochMillis),
 )
 
 fun ShoppingAdjustment.toEntity() = ShoppingAdjustmentEntity(
@@ -238,21 +238,21 @@ fun ShoppingAdjustment.toEntity() = ShoppingAdjustmentEntity(
     name = name,
     isPositive = isPositive,
     amountInCents = amountInCents,
-    createdAtEpochMillis = createdAt.toEpochMilli(),
+    createdAtEpochMillis = createdAt.toEpochMilliseconds(),
 )
 
 fun KnownProductEntity.toDomain() = KnownProduct(
     barcode = barcode,
     name = name,
     lastPriceInCents = lastPriceInCents,
-    lastUsedAt = Instant.ofEpochMilli(lastUsedAtEpochMillis),
+    lastUsedAt = KotlinInstant.fromEpochMilliseconds(lastUsedAtEpochMillis),
 )
 
 fun KnownProduct.toEntity() = KnownProductEntity(
     barcode = barcode,
     name = name,
     lastPriceInCents = lastPriceInCents,
-    lastUsedAtEpochMillis = lastUsedAt.toEpochMilli(),
+    lastUsedAtEpochMillis = lastUsedAt.toEpochMilliseconds(),
 )
 
 fun FortnightTemplateEntity.toDomain() = FortnightTemplate(

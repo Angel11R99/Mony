@@ -70,6 +70,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.showToast
+import com.angel.mony.core.time.atZone
+import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.domain.model.ListOcrMoneyParser
 import com.angel.mony.domain.model.ListTicketParser
 import com.angel.mony.domain.model.OcrMoneyCandidate
@@ -477,7 +479,9 @@ fun ShoppingListScreen(
         )
         FinanceDetailRow("Productos", details.items.size.toString())
         details.list.budgetInCents?.let { FinanceDetailRow("Presupuesto", MoneyFormatter.format(it)) }
-        details.list.purchaseDate?.let { FinanceDetailRow("Fecha de compra", it.format(shoppingDateFormatter)) }
+        details.list.purchaseDate?.let {
+            FinanceDetailRow("Fecha de compra", it.toJavaLocalDate().format(shoppingDateFormatter))
+        }
         details.list.paymentMethod?.let { FinanceDetailRow("Método de pago", it.spanishLabel()) }
     } }
 }
@@ -755,7 +759,9 @@ fun ShoppingListScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun FinalizeDialog(details: ShoppingListDetails, categories: List<com.angel.mony.domain.model.Category>, initialCategory: Long?, saving: Boolean, dismiss: () -> Unit, finalize: (Long?, LocalDate, ShoppingPaymentMethod) -> Unit) {
     var categoryId by remember { mutableStateOf(details.list.expenseCategoryId ?: initialCategory) }
-    var date by remember { mutableStateOf(details.list.purchaseDate ?: LocalDate.now()) }
+    var date by remember {
+        mutableStateOf(details.list.purchaseDate?.toJavaLocalDate() ?: LocalDate.now())
+    }
     var paymentMethod by remember { mutableStateOf(details.list.paymentMethod ?: ShoppingPaymentMethod.DEBIT) }
     var expanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }

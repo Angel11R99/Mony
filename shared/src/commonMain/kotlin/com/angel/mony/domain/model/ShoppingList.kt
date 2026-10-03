@@ -1,7 +1,10 @@
 package com.angel.mony.domain.model
 
-import java.time.Instant
-import java.time.LocalDate
+import com.angel.mony.core.math.addExactOrNull
+import com.angel.mony.core.math.multiplyExactOrNull
+import com.angel.mony.core.math.subtractExactOrNull
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 
 enum class ShoppingListStatus {
     PENDING,
@@ -106,13 +109,13 @@ data class ShoppingListDetails(
 ) {
     val estimatedSubtotalInCents: Long
         get() = items.moneySum { item ->
-            item.estimatedUnitPriceInCents?.let { Math.multiplyExact(item.quantity.toLong(), it) } ?: 0L
+            item.estimatedUnitPriceInCents?.let { exactMultiply(item.quantity.toLong(), it) } ?: 0L
         }
 
     val purchasedSubtotalInCents: Long
         get() = items.moneySum { item ->
             if (item.isPurchased) {
-                item.actualUnitPriceInCents?.let { Math.multiplyExact(item.quantity.toLong(), it) } ?: 0L
+                item.actualUnitPriceInCents?.let { exactMultiply(item.quantity.toLong(), it) } ?: 0L
             } else {
                 0L
             }
@@ -120,22 +123,22 @@ data class ShoppingListDetails(
 
     val finalizableSubtotalInCents: Long
         get() = items.moneySum { item ->
-            item.actualUnitPriceInCents?.let { Math.multiplyExact(item.quantity.toLong(), it) } ?: 0L
+            item.actualUnitPriceInCents?.let { exactMultiply(item.quantity.toLong(), it) } ?: 0L
         }
 
     val adjustmentTotalInCents: Long
         get() = adjustments.moneySum { adjustment ->
-            if (adjustment.isPositive) adjustment.amountInCents else Math.negateExact(adjustment.amountInCents)
+            if (adjustment.isPositive) adjustment.amountInCents else exactSubtract(0L, adjustment.amountInCents)
         }
 
     val actualTotalInCents: Long
-        get() = Math.addExact(purchasedSubtotalInCents, adjustmentTotalInCents)
+        get() = exactAdd(purchasedSubtotalInCents, adjustmentTotalInCents)
 
     val finalizableTotalInCents: Long
-        get() = Math.addExact(finalizableSubtotalInCents, adjustmentTotalInCents)
+        get() = exactAdd(finalizableSubtotalInCents, adjustmentTotalInCents)
 
     val remainingBudgetInCents: Long?
-        get() = list.budgetInCents?.let { Math.subtractExact(it, actualTotalInCents) }
+        get() = list.budgetInCents?.let { exactSubtract(it, actualTotalInCents) }
 }
 
 data class ShoppingListOverview(
@@ -144,5 +147,17 @@ data class ShoppingListOverview(
     val totalInCents: Long,
 )
 
-private inline fun <T> Iterable<T>.moneySum(value: (T) -> Long): Long =
-    fold(0L) { total, item -> Math.addExact(total, value(item)) }
+private inline fun <T> Iterable<T>.moneySum(value: (T) -> Long): Long {
+    var total = 0L
+    for (item in this) total = exactAdd(total, value(item))
+    return total
+}
+
+private fun exactAdd(left: Long, right: Long): Long =
+    left.addExactOrNull(right) ?: throw ArithmeticException("Long overflow")
+
+private fun exactSubtract(left: Long, right: Long): Long =
+    left.subtractExactOrNull(right) ?: throw ArithmeticException("Long overflow")
+
+private fun exactMultiply(left: Long, right: Long): Long =
+    left.multiplyExactOrNull(right) ?: throw ArithmeticException("Long overflow")

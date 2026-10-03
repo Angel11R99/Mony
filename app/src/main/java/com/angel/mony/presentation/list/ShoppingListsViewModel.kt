@@ -15,8 +15,8 @@ import com.angel.mony.domain.repository.ShoppingMutationResult
 import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.time.Instant
 import javax.inject.Inject
+import kotlinx.datetime.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -93,7 +93,7 @@ class ShoppingListsViewModel @Inject constructor(
             else -> viewModelScope.launch {
                 isSaving.value = true
                 runCatching {
-                    val now = Instant.now()
+                    val now = Clock.System.now()
                     repository.create(
                         ShoppingList(name = name, budgetInCents = budget, createdAt = now, updatedAt = now),
                     )

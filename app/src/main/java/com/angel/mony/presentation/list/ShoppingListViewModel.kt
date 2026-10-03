@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.KnownProduct
 import com.angel.mony.domain.model.ListProductMatcher
@@ -29,9 +30,9 @@ import com.angel.mony.domain.repository.TicketProductUpdate
 import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
+import kotlinx.datetime.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -158,7 +159,7 @@ class ShoppingListViewModel @Inject constructor(
             name.isEmpty() -> message.value = "El nombre de la lista no puede estar vacío."
             rawBudget.isNotBlank() && (budget == null || budget < 0) -> message.value = "Presupuesto no válido."
             else -> mutate("Lista actualizada.", onSaved) {
-                repository.update(details.list.copy(name = name, budgetInCents = budget, updatedAt = Instant.now()))
+                repository.update(details.list.copy(name = name, budgetInCents = budget, updatedAt = Clock.System.now()))
             }
         }
     }
@@ -167,7 +168,7 @@ class ShoppingListViewModel @Inject constructor(
         val details = state.value.details ?: return
         if (details.list.status != ShoppingListStatus.PENDING) return
         mutate("Compra iniciada.") {
-            repository.update(details.list.copy(status = ShoppingListStatus.SHOPPING, updatedAt = Instant.now()))
+            repository.update(details.list.copy(status = ShoppingListStatus.SHOPPING, updatedAt = Clock.System.now()))
         }
     }
 
@@ -185,7 +186,7 @@ class ShoppingListViewModel @Inject constructor(
             rawEstimated.isNotBlank() && estimated == null -> message.value = "El precio estimado no es válido."
             rawActual.isNotBlank() && actual == null -> message.value = "El precio real no es válido."
             else -> {
-                val now = Instant.now()
+                val now = Clock.System.now()
                 val candidate = ShoppingListItem(
                             id = existing?.id ?: 0,
                             shoppingListId = listId,
@@ -214,11 +215,11 @@ class ShoppingListViewModel @Inject constructor(
     fun changeQuantity(item: ShoppingListItem, delta: Int) {
         val quantity = item.quantity.toLong().plus(delta).coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
         if (quantity == item.quantity) return
-        saveItemCopy(item.copy(quantity = quantity, updatedAt = Instant.now()), null)
+        saveItemCopy(item.copy(quantity = quantity, updatedAt = Clock.System.now()), null)
     }
 
     fun togglePurchased(item: ShoppingListItem) = saveItemCopy(
-        item.copy(isPurchased = !item.isPurchased, updatedAt = Instant.now()),
+        item.copy(isPurchased = !item.isPurchased, updatedAt = Clock.System.now()),
         if (item.isPurchased) "Producto marcado como pendiente." else "Producto marcado como comprado.",
     )
 
@@ -240,7 +241,7 @@ class ShoppingListViewModel @Inject constructor(
                     name,
                     positive,
                     amount,
-                    existing?.createdAt ?: Instant.now(),
+                    existing?.createdAt ?: Clock.System.now(),
                 )
                 if (!hasSafeAdjustments(listOf(candidate), replaceExisting = true)) {
                     message.value = "El total de ajustes es demasiado grande."
@@ -328,7 +329,7 @@ class ShoppingListViewModel @Inject constructor(
             else -> viewModelScope.launch {
                 isSaving.value = true
                 val adjustments = adjustmentDrafts.map {
-                    ShoppingAdjustment(0, listId, it.name, it.isPositive, it.amountInCents, Instant.now())
+                    ShoppingAdjustment(0, listId, it.name, it.isPositive, it.amountInCents, Clock.System.now())
                 }
                 runCatching {
                     repository.applyTicketReview(
@@ -360,7 +361,7 @@ class ShoppingListViewModel @Inject constructor(
                 message.value = "La cantidad del producto es demasiado grande."
                 return
             }
-            saveItemCopy(existing.copy(quantity = existing.quantity + 1, updatedAt = Instant.now()), "Cantidad incrementada.")
+            saveItemCopy(existing.copy(quantity = existing.quantity + 1, updatedAt = Clock.System.now()), "Cantidad incrementada.")
             return
         }
         viewModelScope.launch {
@@ -457,7 +458,15 @@ class ShoppingListViewModel @Inject constructor(
         pendingFinalizePaymentMethod = paymentMethod
         viewModelScope.launch {
             isSaving.value = true
-            runCatching { repository.finalizePurchase(listId, categoryId, date, paymentMethod, allowMissingPrices) }
+            runCatching {
+                repository.finalizePurchase(
+                    listId,
+                    categoryId,
+                    date.toKotlinLocalDate(),
+                    paymentMethod,
+                    allowMissingPrices,
+                )
+            }
                 .onSuccess { result ->
                     when (result) {
                         is FinalizePurchaseResult.Completed -> {
@@ -509,7 +518,7 @@ class ShoppingListViewModel @Inject constructor(
             return
         }
         mutate("Compra y registro financiero actualizados.") {
-            repository.updatePurchaseSettings(listId, categoryId, date, paymentMethod)
+            repository.updatePurchaseSettings(listId, categoryId, date.toKotlinLocalDate(), paymentMethod)
         }
     }
 

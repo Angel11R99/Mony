@@ -7,8 +7,8 @@ import com.angel.mony.domain.model.ShoppingListDetails
 import com.angel.mony.domain.model.ShoppingListItem
 import com.angel.mony.domain.model.ShoppingListOverview
 import com.angel.mony.domain.model.ShoppingPaymentMethod
-import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.LocalDate
 
 sealed interface ShoppingMutationResult {
     data class Success(val id: Long) : ShoppingMutationResult
@@ -49,7 +49,11 @@ interface ShoppingListRepository {
     suspend fun deleteAdjustment(adjustmentId: Long): ShoppingMutationResult
     suspend fun findKnownProduct(barcode: String): KnownProduct?
     suspend fun findLearnedNames(detectedText: String): List<String>
-    suspend fun applyTicketReview(listId: Long, products: List<TicketProductUpdate>, adjustments: List<ShoppingAdjustment>): ShoppingMutationResult
+    suspend fun applyTicketReview(
+        listId: Long,
+        products: List<TicketProductUpdate>,
+        adjustments: List<ShoppingAdjustment>,
+    ): ShoppingMutationResult
     suspend fun duplicate(listId: Long): Long?
     suspend fun finalizePurchase(
         listId: Long,

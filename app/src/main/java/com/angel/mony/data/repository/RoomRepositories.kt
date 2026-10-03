@@ -645,11 +645,11 @@ class RoomShoppingListRepository @Inject constructor(
                 },
                 expenseTransactionId = current.expenseTransactionId,
                 payableId = current.payableId,
-                purchaseDate = current.purchaseDateEpochDay?.let(LocalDate::ofEpochDay),
+                purchaseDate = current.purchaseDateEpochDay?.let { KotlinLocalDate.fromEpochDays(it.toInt()) },
                 paymentMethod = current.paymentMethod?.let(ShoppingPaymentMethod::valueOf),
                 expenseCategoryId = current.expenseCategoryId,
                 createdAt = current.toDomain().createdAt,
-                completedAt = current.completedAtEpochMillis?.let(Instant::ofEpochMilli),
+                completedAt = current.completedAtEpochMillis?.let(kotlinx.datetime.Instant::fromEpochMilliseconds),
             ).toEntity()
         )
         if (current.status == ShoppingListStatus.COMPLETED.name) syncCompletedPurchase(list.id)
@@ -843,7 +843,7 @@ class RoomShoppingListRepository @Inject constructor(
     override suspend fun finalizePurchase(
         listId: Long,
         categoryId: Long,
-        date: LocalDate,
+        date: KotlinLocalDate,
         paymentMethod: ShoppingPaymentMethod,
         allowMissingPrices: Boolean,
     ): FinalizePurchaseResult = database.withTransaction {
@@ -882,7 +882,7 @@ class RoomShoppingListRepository @Inject constructor(
         dao.markAllItemsPurchased(listId, now.toEpochMilli())
         dao.updateList(list.copy(
             status = ShoppingListStatus.COMPLETED.name,
-            purchaseDateEpochDay = date.toEpochDay(),
+            purchaseDateEpochDay = date.toEpochDays().toLong(),
             paymentMethod = paymentMethod.name,
             expenseCategoryId = categoryId,
             completedAtEpochMillis = now.toEpochMilli(),
@@ -908,7 +908,7 @@ class RoomShoppingListRepository @Inject constructor(
     override suspend fun updatePurchaseSettings(
         listId: Long,
         categoryId: Long,
-        date: LocalDate,
+        date: KotlinLocalDate,
         paymentMethod: ShoppingPaymentMethod,
     ): ShoppingMutationResult = database.withTransaction {
         val list = dao.getList(listId) ?: return@withTransaction ShoppingMutationResult.NotFound
@@ -918,7 +918,7 @@ class RoomShoppingListRepository @Inject constructor(
             return@withTransaction ShoppingMutationResult.NotFound
         }
         dao.updateList(list.copy(
-            purchaseDateEpochDay = date.toEpochDay(),
+            purchaseDateEpochDay = date.toEpochDays().toLong(),
             paymentMethod = paymentMethod.name,
             expenseCategoryId = categoryId,
             updatedAtEpochMillis = Instant.now().toEpochMilli(),

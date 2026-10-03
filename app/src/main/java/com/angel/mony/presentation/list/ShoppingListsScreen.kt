@@ -67,6 +67,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.showToast
+import com.angel.mony.core.time.atZone
 import com.angel.mony.domain.model.EntryCardSize
 import com.angel.mony.domain.model.ShoppingList
 import com.angel.mony.domain.model.ShoppingListOverview
