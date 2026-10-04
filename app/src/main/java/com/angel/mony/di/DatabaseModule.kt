@@ -39,6 +39,10 @@ import com.angel.mony.domain.repository.SavingsRepository
 import com.angel.mony.domain.repository.ShoppingListRepository
 import com.angel.mony.domain.repository.FortnightRepository
 import com.angel.mony.domain.repository.ProductCatalogRepository
+import com.angel.mony.domain.usecase.EvaluateExpenseFunding
+import com.angel.mony.domain.usecase.SaveBudget
+import com.angel.mony.domain.usecase.SaveExpenseWithFunding
+import com.angel.mony.domain.usecase.SaveTransaction
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -408,6 +412,27 @@ object DatabaseModule {
     @Provides fun fortnightPlanDao(db: FinanceDatabase): FortnightPlanDao = db.fortnightPlanDao()
     @Provides fun fortnightPaymentDao(db: FinanceDatabase): FortnightPaymentDao = db.fortnightPaymentDao()
     @Provides fun expenseFundingDao(db: FinanceDatabase): ExpenseFundingDao = db.expenseFundingDao()
+
+    @Provides
+    fun evaluateExpenseFunding(
+        transactions: TransactionRepository,
+        expenseFunding: ExpenseFundingRepository,
+    ): EvaluateExpenseFunding = EvaluateExpenseFunding(transactions, expenseFunding)
+
+    @Provides
+    fun saveBudget(
+        budgets: BudgetRepository,
+        categories: CategoryRepository,
+        transactions: TransactionRepository,
+    ): SaveBudget = SaveBudget(budgets, categories, transactions)
+
+    @Provides
+    fun saveExpenseWithFunding(
+        transactions: TransactionRepository,
+    ): SaveExpenseWithFunding = SaveExpenseWithFunding(transactions)
+
+    @Provides
+    fun saveTransaction(transactions: TransactionRepository): SaveTransaction = SaveTransaction(transactions)
 
     private val initialCategories = listOf(
         Triple("Salario", "INCOME", "payments"),

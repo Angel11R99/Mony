@@ -2,9 +2,8 @@ package com.angel.mony.domain.usecase
 
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.repository.TransactionRepository
-import javax.inject.Inject
 
-class SaveTransaction @Inject constructor(
+class SaveTransaction(
     private val repository: TransactionRepository,
 ) {
     suspend operator fun invoke(transaction: FinanceTransaction): Long {

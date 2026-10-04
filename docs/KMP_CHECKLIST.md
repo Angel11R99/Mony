@@ -1,6 +1,6 @@
 # Checklist de Migración KMP (Mony)
 
-> **Estado actual:** `:shared` creado, dominio funcional común, diacríticos, aritmética exacta y fechas con `kotlinx.datetime`; 23 archivos de modelo y 10 contratos de repositorio movidos a `commonMain`. Verificación: **Android 28 clases / 208 tests** + **shared 9 clases / 61 tests**, 0 fallos (269 tests totales).
+> **Estado actual:** `:shared` creado, dominio funcional común, diacríticos, aritmética exacta y fechas con `kotlinx.datetime`; 23 archivos de modelo, 10 contratos de repositorio y los 4 casos de uso movidos a `commonMain`. Verificación: **Android 28 clases / 208 tests** + **shared 10 clases / 66 tests**, 0 fallos (274 tests totales).
 
 ## 1. Infraestructura KMP
 
@@ -41,7 +41,7 @@ Progreso: **10/11 (91%)**. Cada contrato pasa a `shared` solo cuando todos sus t
 
 ## 5. domain/usecase (4)
 
-⬜: EvaluateExpenseFunding, SaveBudget, SaveExpenseWithFunding, SaveTransaction — **0/4 (0%)**
+✅: EvaluateExpenseFunding, SaveBudget, SaveExpenseWithFunding, SaveTransaction — **4/4 (100%)**
 
 ## 6. Data/Room KMP
 
@@ -57,11 +57,11 @@ Progreso: **10/11 (91%)**. Cada contrato pasa a `shared` solo cuando todos sus t
 
 ## 9. Tests
 
-⬜ Tests puros restantes → commonTest • ✅ shared: 9 clases / 61 tests • ✅ Android: 28 clases / 208 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
+⬜ Tests puros restantes → commonTest • ✅ shared: 10 clases / 66 tests • ✅ Android: 28 clases / 208 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
 
 ## 10. Verificación
 
-✅ assembleDebug • ✅ testDebugUnitTest (208/208) • ✅ testAndroidHostTest (61/61) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
+✅ assembleDebug • ✅ testDebugUnitTest (208/208) • ✅ testAndroidHostTest (66/66) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
 
 ## Siguiente paso
 
@@ -91,4 +91,11 @@ Progreso: **10/11 (91%)**. Cada contrato pasa a `shared` solo cuando todos sus t
 3. Room conserva exactamente `epochDay` y `epochMillis`; no hubo cambio de esquema ni migración de datos.
 4. Las 4 pruebas de totales y desbordamiento se ejecutan en `shared`.
 
-**#6 — Migrar los 4 casos de uso a `commonMain`.** Después: `BackupRepository` → persistencia Room KMP.
+**#6 — Migrar los 4 casos de uso a `commonMain` — ✅ completado**
+1. `EvaluateExpenseFunding`, `SaveBudget`, `SaveExpenseWithFunding` y `SaveTransaction` ya no dependen de `javax.inject` ni de APIs JVM.
+2. `SaveBudget` usa `Clock` y `TimeZone` de `kotlinx.datetime`; el reloj y la zona son inyectables para pruebas deterministas.
+3. Android conserva Hilt mediante proveedores explícitos en `DatabaseModule`; no cambió el flujo de las pantallas.
+4. Cinco pruebas comunes cubren validación, normalización, financiación y creación inicial del presupuesto.
+5. `assembleDebug`, `testDebugUnitTest` y `testAndroidHostTest` están verdes.
+
+**#7 — Migrar `BackupRepository` y el modelo de backup a `commonMain`.** Después: iniciar el bloque de persistencia Room KMP.

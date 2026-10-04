@@ -9,17 +9,18 @@ import com.angel.mony.domain.model.defaultCycleSchedules
 import com.angel.mony.domain.repository.BudgetRepository
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.TransactionRepository
-import com.angel.mony.core.time.toKotlinInstant
-import com.angel.mony.core.time.toKotlinLocalDate
 import kotlinx.coroutines.flow.first
-import java.time.Instant
-import java.time.LocalDate
-import javax.inject.Inject
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
-class SaveBudget @Inject constructor(
+class SaveBudget(
     private val budgets: BudgetRepository,
     private val categories: CategoryRepository,
     private val transactions: TransactionRepository,
+    private val currentInstant: () -> Instant = { Clock.System.now() },
+    private val currentTimeZone: () -> TimeZone = { TimeZone.currentSystemDefault() },
 ) {
     suspend operator fun invoke(amountInCents: Long, period: BudgetPeriod) {
         require(amountInCents > 0) { "El monto debe ser mayor que cero" }
@@ -29,8 +30,8 @@ class SaveBudget @Inject constructor(
         val categoryId = incomeCategories.firstOrNull { it.name.equals("Salario", ignoreCase = true) }?.id
             ?: incomeCategories.firstOrNull()?.id
             ?: error("No hay una categoría de ingreso disponible")
-        val now = Instant.now()
-        val today = LocalDate.now()
+        val now = currentInstant()
+        val today = now.toLocalDateTime(currentTimeZone()).date
         val periodChanged = existing != null && existing.period != period
         val cycleSchedules = if (existing == null || periodChanged) {
             defaultCycleSchedules(period)
@@ -51,9 +52,9 @@ class SaveBudget @Inject constructor(
             type = TransactionType.INCOME,
             categoryId = existingIncome?.categoryId ?: categoryId,
             description = if (period == BudgetPeriod.MONTHLY) "Ingreso mensual" else "Ingreso por ciclo",
-            date = if (initializesCycle) initialPeriod.start else existingIncome?.date ?: today.toKotlinLocalDate(),
-            createdAt = existingIncome?.createdAt ?: now.toKotlinInstant(),
-            updatedAt = now.toKotlinInstant(),
+            date = if (initializesCycle) initialPeriod.start else existingIncome?.date ?: today,
+            createdAt = existingIncome?.createdAt ?: now,
+            updatedAt = now,
         )
         val incomeTransactionId = if (existingIncome == null) {
             transactions.create(income)
@@ -67,7 +68,7 @@ class SaveBudget @Inject constructor(
                 amountInCents = amountInCents,
                 period = period,
                 cycleStart = if (initializesCycle) initialPeriod.start else existing?.cycleStart,
-                cycleStartedAt = if (initializesCycle) now.toKotlinInstant() else existing?.cycleStartedAt,
+                cycleStartedAt = if (initializesCycle) now else existing?.cycleStartedAt,
                 incomeTransactionId = incomeTransactionId,
                 cycleSchedules = cycleSchedules,
             )
