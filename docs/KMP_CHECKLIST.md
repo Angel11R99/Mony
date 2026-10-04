@@ -1,6 +1,6 @@
 # Checklist de Migración KMP (Mony)
 
-> **Estado actual:** `:shared` creado, dominio funcional común y persistencia Room estructural en `commonMain`: 17 entidades, 12 DAOs y `FinanceDatabase` v17 con generación KSP por target. Room 2.8.3 y SQLite Bundled 2.6.1 están disponibles; migraciones y builders de plataforma siguen pendientes. Verificación: **Android 29 clases / 209 tests** + **shared 11 clases / 69 tests**, 0 fallos (278 tests totales).
+> **Estado actual:** `:shared` creado, dominio funcional común y persistencia Room estructural en `commonMain`: 17 entidades, 12 DAOs, `FinanceDatabase` v17 y las 16 migraciones 1→17. Room 2.8.3 y SQLite Bundled 2.6.1 están disponibles; builders y drivers de plataforma siguen pendientes. Verificación: **Android 29 clases / 209 tests** + **shared 12 clases / 71 tests**, 0 fallos (280 tests totales).
 
 ## 1. Infraestructura KMP
 
@@ -44,7 +44,7 @@ Progreso: **11/11 (100%)**. `shared` no depende de modelos de `:app`.
 
 ## 6. Data/Room KMP
 
-✅ 17 entidades • ✅ 12 DAOs • ✅ `FinanceDatabase` v17 + constructor KMP • ✅ generación Room/KSP Android • ✅ Room runtime 2.8.3 + SQLite Bundled 2.6.1 • ⬜ validar generación KSP iOS en macOS • ⬜ Migraciones v1–v17 (Alto, sin destructive) • ⬜ Builders/driver Android+Native (Alto) • ⬜ RoomRepositories transacciones (Alto) • ⬜ Mappers (Medio)
+✅ 17 entidades • ✅ 12 DAOs • ✅ `FinanceDatabase` v17 + constructor KMP • ✅ generación Room/KSP Android • ✅ Room runtime 2.8.3 + SQLite Bundled 2.6.1 • ✅ Migraciones v1–v17 comunes (sin destructive) • ⬜ validar generación KSP iOS en macOS • ⬜ Builders/driver Android+Native (Alto) • ⬜ RoomRepositories transacciones (Alto) • ⬜ Mappers (Medio)
 
 ## 7. Platform Services (expect/actual)
 
@@ -56,11 +56,11 @@ Progreso: **11/11 (100%)**. `shared` no depende de modelos de `:app`.
 
 ## 9. Tests
 
-⬜ Tests puros restantes → commonTest • ✅ shared: 11 clases / 69 tests • ✅ Android: 29 clases / 209 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
+⬜ Tests puros restantes → commonTest • ✅ shared: 12 clases / 71 tests • ✅ Android: 29 clases / 209 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
 
 ## 10. Verificación
 
-✅ assembleDebug • ✅ testDebugUnitTest (209/209) • ✅ testAndroidHostTest (69/69) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
+✅ assembleDebug • ✅ assembleDebugAndroidTest • ✅ testDebugUnitTest (209/209) • ✅ testAndroidHostTest (71/71) • ⬜ tests instrumentados (sin `adb`) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
 
 ## Siguiente paso
 
@@ -122,4 +122,11 @@ Progreso: **11/11 (100%)**. `shared` no depende de modelos de `:app`.
 7. `assembleDebugAndroidTest` vuelve a compilar tras actualizar una prueba de integración rezagada a `kotlinx.datetime`.
 8. `assembleDebug`, `testDebugUnitTest` y `testAndroidHostTest` están verdes.
 
-**#10 — Portar las migraciones y builders de plataforma.** Extraer la ruta SQL 1→17 a código común, activar `BundledSQLiteDriver` y comprobar una base v17 real antes de retirar el builder Android actual.
+**#10 — Extraer las migraciones Room 1→17 a `commonMain` — ✅ completado**
+1. Las 16 migraciones y sus 70 sentencias SQL viven en `FinanceMigrationSteps` y se ejecutan mediante `SQLiteConnection`.
+2. La ruta es continua de v1 a v17, no contiene operaciones destructivas y conserva los mismos tokens y orden de SQL que el código Android anterior.
+3. Android adapta cada paso común a `Migration(SupportSQLiteDatabase)`; mantiene el builder, `personal_finance.db`, el callback inicial y las migraciones expuestas a pruebas.
+4. El schema v17 permanece idéntico al commit anterior y conserva su `identityHash` (`ea77e26a1bc143f153e97eeeb971d95a6b73c11c`).
+5. `assembleDebug`, `assembleDebugAndroidTest`, `testDebugUnitTest` y `testAndroidHostTest` están verdes; los tests instrumentados compilan, pero no se ejecutaron porque este host no dispone de `adb`.
+
+**#11 — Portar builders y drivers de plataforma.** Activar `BundledSQLiteDriver` sin cambiar la ruta/nombre de la base Android, añadir el builder Native y comprobar una base v17 real antes de retirar el builder Android actual.
