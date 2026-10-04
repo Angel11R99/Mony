@@ -30,6 +30,8 @@ kotlin {
         commonMain.dependencies {
             api(libs.kotlinx.coroutines.core)
             api(libs.kotlinx.datetime)
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
             implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {

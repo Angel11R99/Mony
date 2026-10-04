@@ -1,6 +1,6 @@
 # Checklist de Migración KMP (Mony)
 
-> **Estado actual:** `:shared` creado, dominio funcional común, formato de respaldo v3 portable, diacríticos, aritmética exacta y fechas con `kotlinx.datetime`; 24 archivos de modelo, los 11 contratos de repositorio y los 4 casos de uso movidos a `commonMain`. Verificación: **Android 29 clases / 209 tests** + **shared 11 clases / 69 tests**, 0 fallos (278 tests totales).
+> **Estado actual:** `:shared` creado, dominio funcional común, formato de respaldo v3 portable y las 17 entidades Room en `commonMain`; Room 2.8.3 y SQLite Bundled 2.6.1 disponibles para los targets KMP. Verificación: **Android 29 clases / 209 tests** + **shared 11 clases / 69 tests**, 0 fallos (278 tests totales).
 
 ## 1. Infraestructura KMP
 
@@ -44,7 +44,7 @@ Progreso: **11/11 (100%)**. `shared` no depende de modelos de `:app`.
 
 ## 6. Data/Room KMP
 
-⬜ FinanceDatabase KMP 2.8.3 (Alto) • ⬜ Migraciones v1–v17 (Alto, sin destructive) • ⬜ Drivers Android+Native (Alto) • ⬜ RoomRepositories transacciones (Alto) • ⬜ Mappers (Medio) • ⬜ DAOs (Medio-Alto)
+✅ 17 entidades en `commonMain` • ✅ Room runtime 2.8.3 + SQLite Bundled 2.6.1 disponibles en `shared` • ⬜ FinanceDatabase KMP (Alto) • ⬜ Migraciones v1–v17 (Alto, sin destructive) • ⬜ Activar driver en Android+Native (Alto) • ⬜ RoomRepositories transacciones (Alto) • ⬜ Mappers (Medio) • ⬜ DAOs (Medio-Alto)
 
 ## 7. Platform Services (expect/actual)
 
@@ -105,4 +105,11 @@ Progreso: **11/11 (100%)**. `shared` no depende de modelos de `:app`.
 5. Los respaldos previos que omiten colecciones nuevas y los campos futuros desconocidos siguen siendo legibles.
 6. Tres pruebas comunes de formato y una prueba Android del adaptador están verdes.
 
-**#8 — Iniciar persistencia Room KMP.** Primer corte: configurar Room/SQLite en `shared` y portar las entidades sin cambiar el esquema v17.
+**#8 — Iniciar persistencia Room KMP: runtime y entidades — ✅ completado**
+1. Las 17 entidades Room se movieron sin cambios a `commonMain`, conservando paquetes, tablas, columnas, índices y claves foráneas.
+2. `shared` incorpora Room runtime 2.8.3 y SQLite Bundled 2.6.1; el driver aún no se activa mientras `FinanceDatabase` permanezca en Android.
+3. `FinanceDatabase`, DAOs, migraciones y repositorios siguen en `:app`; el procesador Room Android continúa generándolos desde las entidades comunes.
+4. El schema exportado v17 conserva el mismo `identityHash` y no se generó una versión nueva.
+5. `assembleDebug`, `testDebugUnitTest` y `testAndroidHostTest` están verdes.
+
+**#9 — Mover DAOs y `FinanceDatabase` a `commonMain`.** Configurar KSP por target y validar que el schema v17 generado sea idéntico antes de tocar migraciones o el builder Android.
