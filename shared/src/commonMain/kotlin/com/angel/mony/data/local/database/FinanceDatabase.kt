@@ -1,7 +1,9 @@
 package com.angel.mony.data.local.database
 
 import androidx.room.Database
+import androidx.room.ConstructedBy
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import com.angel.mony.data.local.dao.CategoryDao
 import com.angel.mony.data.local.dao.BudgetConfigDao
 import com.angel.mony.data.local.dao.BudgetCycleDao
@@ -55,6 +57,7 @@ import com.angel.mony.data.local.entity.ProductRecognitionAliasEntity
     version = 17,
     exportSchema = true,
 )
+@ConstructedBy(FinanceDatabaseConstructor::class)
 abstract class FinanceDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun transactionDao(): TransactionDao
@@ -68,4 +71,9 @@ abstract class FinanceDatabase : RoomDatabase() {
     abstract fun fortnightPlanDao(): FortnightPlanDao
     abstract fun fortnightPaymentDao(): FortnightPaymentDao
     abstract fun expenseFundingDao(): ExpenseFundingDao
+}
+
+@Suppress("KotlinNoActualForExpect")
+expect object FinanceDatabaseConstructor : RoomDatabaseConstructor<FinanceDatabase> {
+    override fun initialize(): FinanceDatabase
 }

@@ -4,6 +4,22 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.android.multiplatform.library)
+    alias(libs.plugins.ksp)
+}
+
+dependencies {
+    add("kspAndroid", libs.androidx.room.compiler)
+    listOf("kspIosArm64", "kspIosSimulatorArm64").forEach { configurationName ->
+        configurations.findByName(configurationName)?.let {
+            add(configurationName, libs.androidx.room.compiler)
+        }
+    }
+}
+
+// El plugin Room 2.8.3 aún no enlaza schemas con kspAndroidMain del nuevo
+// target androidLibrary de AGP 9; el argumento directo preserva la ruta actual.
+ksp {
+    arg("room.schemaLocation", "$rootDir/app/schemas")
 }
 
 kotlin {

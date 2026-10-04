@@ -11,9 +11,9 @@ import com.angel.mony.domain.model.ShoppingPaymentMethod
 import com.angel.mony.domain.model.ShoppingListStatus
 import com.angel.mony.domain.repository.FinalizePurchaseResult
 import com.angel.mony.domain.repository.TicketProductUpdate
-import java.time.Instant
-import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -52,24 +52,24 @@ class ShoppingPurchaseFinancialIntegrationTest {
     @Test
     fun debitEditsUpdateSameExpenseAndPaymentChangesMigrateRepresentation() = runBlocking {
         val listId = createPurchase()
-        val completed = repository.finalizePurchase(listId, categoryId, LocalDate.of(2026, 8, 15), ShoppingPaymentMethod.DEBIT)
+        val completed = repository.finalizePurchase(listId, categoryId, LocalDate(2026, 8, 15), ShoppingPaymentMethod.DEBIT)
             as FinalizePurchaseResult.Completed
         val expenseId = completed.financialRecordId
         assertEquals(15_000L, database.transactionDao().get(expenseId)?.amountInCents)
 
         val item = repository.getDetails(listId)!!.items.single()
-        repository.saveItem(item.copy(quantity = 3, updatedAt = Instant.now()))
+        repository.saveItem(item.copy(quantity = 3, updatedAt = Clock.System.now()))
         assertEquals(22_500L, database.transactionDao().get(expenseId)?.amountInCents)
         assertEquals(expenseId, repository.getDetails(listId)!!.list.expenseTransactionId)
 
-        repository.updatePurchaseSettings(listId, categoryId, LocalDate.of(2026, 8, 16), ShoppingPaymentMethod.CREDIT)
+        repository.updatePurchaseSettings(listId, categoryId, LocalDate(2026, 8, 16), ShoppingPaymentMethod.CREDIT)
         val creditList = repository.getDetails(listId)!!.list
         assertNull(creditList.expenseTransactionId)
         assertNotNull(creditList.payableId)
         assertNull(database.transactionDao().get(expenseId))
         assertEquals(22_500L, database.pendingEntryDao().get(creditList.payableId!!)!!.amountInCents)
 
-        repository.updatePurchaseSettings(listId, categoryId, LocalDate.of(2026, 8, 17), ShoppingPaymentMethod.DEBIT)
+        repository.updatePurchaseSettings(listId, categoryId, LocalDate(2026, 8, 17), ShoppingPaymentMethod.DEBIT)
         val debitAgain = repository.getDetails(listId)!!.list
         assertNotNull(debitAgain.expenseTransactionId)
         assertNull(debitAgain.payableId)
@@ -79,7 +79,7 @@ class ShoppingPurchaseFinancialIntegrationTest {
     @Test
     fun creditCreatesPayableWithoutImmediateExpense() = runBlocking {
         val listId = createPurchase()
-        repository.finalizePurchase(listId, categoryId, LocalDate.of(2026, 8, 15), ShoppingPaymentMethod.CREDIT)
+        repository.finalizePurchase(listId, categoryId, LocalDate(2026, 8, 15), ShoppingPaymentMethod.CREDIT)
         val list = repository.getDetails(listId)!!.list
         assertNotNull(list.payableId)
         assertNull(list.expenseTransactionId)
@@ -90,7 +90,7 @@ class ShoppingPurchaseFinancialIntegrationTest {
     fun startingShoppingPersistsStatusAndEnablesManualCompletionFlow() = runBlocking {
         val listId = createPurchase()
         val details = repository.getDetails(listId)!!
-        repository.update(details.list.copy(status = ShoppingListStatus.SHOPPING, updatedAt = Instant.now()))
+        repository.update(details.list.copy(status = ShoppingListStatus.SHOPPING, updatedAt = Clock.System.now()))
         assertEquals(ShoppingListStatus.SHOPPING, repository.getDetails(listId)!!.list.status)
     }
 
@@ -98,7 +98,7 @@ class ShoppingPurchaseFinancialIntegrationTest {
     fun ticketMatchUpdatesExistingProductNameQuantityAndActualPrice() = runBlocking {
         val listId = createPurchase()
         val initial = repository.getDetails(listId)!!.items.single()
-        repository.saveItem(initial.copy(estimatedUnitPriceInCents = 7_000, updatedAt = Instant.now()))
+        repository.saveItem(initial.copy(estimatedUnitPriceInCents = 7_000, updatedAt = Clock.System.now()))
         val original = repository.getDetails(listId)!!.items.single()
         repository.applyTicketReview(
             listId = listId,
@@ -123,7 +123,7 @@ class ShoppingPurchaseFinancialIntegrationTest {
     }
 
     private suspend fun createPurchase(): Long {
-        val now = Instant.now()
+        val now = Clock.System.now()
         val listId = repository.create(ShoppingList(name = "Supermercado", createdAt = now, updatedAt = now))
         repository.saveItem(
             ShoppingListItem(
