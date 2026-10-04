@@ -1,6 +1,6 @@
 # Checklist de Migración KMP (Mony)
 
-> **Estado actual:** `:shared` creado, dominio funcional común, diacríticos, aritmética exacta y fechas con `kotlinx.datetime`; 23 archivos de modelo, 10 contratos de repositorio y los 4 casos de uso movidos a `commonMain`. Verificación: **Android 28 clases / 208 tests** + **shared 10 clases / 66 tests**, 0 fallos (274 tests totales).
+> **Estado actual:** `:shared` creado, dominio funcional común, formato de respaldo v3 portable, diacríticos, aritmética exacta y fechas con `kotlinx.datetime`; 24 archivos de modelo, los 11 contratos de repositorio y los 4 casos de uso movidos a `commonMain`. Verificación: **Android 29 clases / 209 tests** + **shared 11 clases / 69 tests**, 0 fallos (278 tests totales).
 
 ## 1. Infraestructura KMP
 
@@ -8,7 +8,7 @@
 |---|---|---|
 | Módulo `:shared` + configuración | ✅ | AGP 9, `androidLibrary`, JvmTarget 11, iosArm64/iosSimulatorArm64 |
 | `include(":shared")` | ✅ | settings.gradle.kts |
-| `kotlinx.serialization` commonMain | ⬜ Pendiente | La versión 1.8.1 ya existe en el catálogo; se añadirá cuando migre el modelo de backup |
+| `kotlinx.serialization` commonMain | ✅ | 1.8.1; formato de respaldo v3 y sus 17 DTOs comunes |
 | `kotlinx.coroutines` commonMain | ✅ | 1.9.0 |
 | `kotlinx-datetime` catálogo + commonMain | ✅ | Versión 0.6.2, expuesta como API de `shared` |
 | Interoperabilidad Android `java.time` ↔ `kotlinx-datetime` | ✅ | `JavaTimeInterop.kt`, preserva fechas y nanosegundos de `Instant` |
@@ -26,7 +26,7 @@
 
 ## 3. domain/model
 
-**Comunes (23 archivos):** BackupMovement, BudgetAlertEvaluator, BudgetConfig, BudgetCycle, BudgetCycleSchedule/defaultCycleSchedules, BudgetPeriod, Category, CategoryValidator, DateRange, BudgetCycleCalculator, EntryCardSize, ExpenseFunding, FinanceTransaction, FixedEntry, FixedEntrySchedule, Fortnight, FortnightPeriod, ListProductMatcher, ListReceiptParser, PendingEntry, SavingsGoal, ShoppingList y TransactionType — ✅
+**Comunes (24 archivos):** BackupMovement, FullBackup, BudgetAlertEvaluator, BudgetConfig, BudgetCycle, BudgetCycleSchedule/defaultCycleSchedules, BudgetPeriod, Category, CategoryValidator, DateRange, BudgetCycleCalculator, EntryCardSize, ExpenseFunding, FinanceTransaction, FixedEntry, FixedEntrySchedule, Fortnight, FortnightPeriod, ListProductMatcher, ListReceiptParser, PendingEntry, SavingsGoal, ShoppingList y TransactionType — ✅
 
 **Modelos de dominio pendientes:** ninguno — ✅
 
@@ -34,10 +34,9 @@
 
 ## 4. domain/repository (11)
 
-✅: BudgetRepository, CategoryRepository, ExpenseFundingRepository, FixedEntryRepository, FortnightRepository, PendingEntryRepository, ProductCatalogRepository, SavingsRepository, ShoppingListRepository, TransactionRepository (10)
-⬜: BackupRepository (1)
+✅: BackupRepository, BudgetRepository, CategoryRepository, ExpenseFundingRepository, FixedEntryRepository, FortnightRepository, PendingEntryRepository, ProductCatalogRepository, SavingsRepository, ShoppingListRepository, TransactionRepository (11)
 
-Progreso: **10/11 (91%)**. Cada contrato pasa a `shared` solo cuando todos sus tipos de firma existan en `commonMain`; `shared` nunca depende de modelos de `:app`.
+Progreso: **11/11 (100%)**. `shared` no depende de modelos de `:app`.
 
 ## 5. domain/usecase (4)
 
@@ -57,11 +56,11 @@ Progreso: **10/11 (91%)**. Cada contrato pasa a `shared` solo cuando todos sus t
 
 ## 9. Tests
 
-⬜ Tests puros restantes → commonTest • ✅ shared: 10 clases / 66 tests • ✅ Android: 28 clases / 208 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
+⬜ Tests puros restantes → commonTest • ✅ shared: 11 clases / 69 tests • ✅ Android: 29 clases / 209 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
 
 ## 10. Verificación
 
-✅ assembleDebug • ✅ testDebugUnitTest (208/208) • ✅ testAndroidHostTest (66/66) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
+✅ assembleDebug • ✅ testDebugUnitTest (209/209) • ✅ testAndroidHostTest (69/69) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
 
 ## Siguiente paso
 
@@ -98,4 +97,12 @@ Progreso: **10/11 (91%)**. Cada contrato pasa a `shared` solo cuando todos sus t
 4. Cinco pruebas comunes cubren validación, normalización, financiación y creación inicial del presupuesto.
 5. `assembleDebug`, `testDebugUnitTest` y `testAndroidHostTest` están verdes.
 
-**#7 — Migrar `BackupRepository` y el modelo de backup a `commonMain`.** Después: iniciar el bloque de persistencia Room KMP.
+**#7 — Migrar `BackupRepository` y el modelo de backup a `commonMain` — ✅ completado**
+1. `BackupRepository`, `BackupPreview` y `BackupRestoreResult` son comunes y usan `kotlinx.datetime`.
+2. Los 17 DTOs del respaldo v3 y su codec JSON usan `kotlinx.serialization` en `commonMain`.
+3. Android conserva un adaptador explícito Entity ↔ DTO y el parser CSV legado; Room todavía no se movió.
+4. Se corrigió la pérdida de `expense_funding`: ahora se exporta, parsea y restaura con su `transactionId` remapeable.
+5. Los respaldos previos que omiten colecciones nuevas y los campos futuros desconocidos siguen siendo legibles.
+6. Tres pruebas comunes de formato y una prueba Android del adaptador están verdes.
+
+**#8 — Iniciar persistencia Room KMP.** Primer corte: configurar Room/SQLite en `shared` y portar las entidades sin cambiar el esquema v17.

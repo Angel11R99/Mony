@@ -1,5 +1,7 @@
 package com.angel.mony.domain.repository
 
+import kotlinx.datetime.LocalDate
+
 data class BackupRestoreResult(
     val insertedTransactions: Int = 0,
     val insertedCategories: Int = 0,
@@ -14,7 +16,10 @@ data class BackupRestoreResult(
     val skippedTransactions: Int = 0,
     val isLegacyCsv: Boolean = false,
 ) {
-    val totalInserted: Int get() = insertedTransactions + insertedCategories + insertedFixedEntries + insertedPendingEntries + insertedSavingsGoals + insertedShoppingLists + insertedBudgetCycles + insertedFortnightPlans + insertedFortnightPayments + insertedExpenseFunding
+    val totalInserted: Int
+        get() = insertedTransactions + insertedCategories + insertedFixedEntries + insertedPendingEntries +
+            insertedSavingsGoals + insertedShoppingLists + insertedBudgetCycles + insertedFortnightPlans +
+            insertedFortnightPayments + insertedExpenseFunding
 }
 
 interface BackupRepository {
@@ -35,6 +40,6 @@ data class BackupPreview(
     val budgetCyclesCount: Int,
     val fortnightPlansCount: Int = 0,
     val fortnightPaymentsCount: Int = 0,
-    val firstDate: java.time.LocalDate?,
-    val lastDate: java.time.LocalDate?,
+    val firstDate: LocalDate?,
+    val lastDate: LocalDate?,
 )

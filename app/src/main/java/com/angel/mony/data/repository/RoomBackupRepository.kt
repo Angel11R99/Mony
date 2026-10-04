@@ -2,9 +2,9 @@ package com.angel.mony.data.repository
 
 import androidx.room.withTransaction
 import com.angel.mony.core.FullBackupExporter
-import com.angel.mony.core.time.toJavaLocalDate
 import com.angel.mony.core.FullBackupSnapshot
 import com.angel.mony.core.ParsedBackup
+import com.angel.mony.core.time.toKotlinLocalDate
 import com.angel.mony.data.local.dao.BudgetConfigDao
 import com.angel.mony.data.local.dao.BudgetCycleDao
 import com.angel.mony.data.local.dao.CategoryDao
@@ -36,7 +36,7 @@ import com.angel.mony.domain.repository.BackupPreview
 import com.angel.mony.domain.repository.BackupRepository
 import com.angel.mony.domain.repository.BackupRestoreResult
 import javax.inject.Inject
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 class RoomBackupRepository @Inject constructor(
     private val database: FinanceDatabase,
@@ -92,20 +92,20 @@ class RoomBackupRepository @Inject constructor(
                     savingsGoalsCount = 0,
                     shoppingListsCount = 0,
                     budgetCyclesCount = 0,
-                    firstDate = movements.minOfOrNull { it.date }?.toJavaLocalDate(),
-                    lastDate = movements.maxOfOrNull { it.date }?.toJavaLocalDate(),
+                    firstDate = movements.minOfOrNull { it.date },
+                    lastDate = movements.maxOfOrNull { it.date },
                 )
             }
             is ParsedBackup.Full -> {
                 val s = parsed.snapshot
                 val allDates = mutableListOf<LocalDate>()
-                s.transactions.forEach { allDates.add(LocalDate.ofEpochDay(it.dateEpochDay)) }
-                s.pendingEntries.forEach { allDates.add(LocalDate.ofEpochDay(it.dateEpochDay)) }
+                s.transactions.forEach { allDates.add(java.time.LocalDate.ofEpochDay(it.dateEpochDay).toKotlinLocalDate()) }
+                s.pendingEntries.forEach { allDates.add(java.time.LocalDate.ofEpochDay(it.dateEpochDay).toKotlinLocalDate()) }
                 s.budgetCycles.forEach {
-                    allDates.add(LocalDate.ofEpochDay(it.startDateEpochDay))
-                    allDates.add(LocalDate.ofEpochDay(it.endDateEpochDay))
+                    allDates.add(java.time.LocalDate.ofEpochDay(it.startDateEpochDay).toKotlinLocalDate())
+                    allDates.add(java.time.LocalDate.ofEpochDay(it.endDateEpochDay).toKotlinLocalDate())
                 }
-                s.fortnightPayments.forEach { allDates.add(LocalDate.ofEpochDay(it.dateEpochDay)) }
+                s.fortnightPayments.forEach { allDates.add(java.time.LocalDate.ofEpochDay(it.dateEpochDay).toKotlinLocalDate()) }
                 BackupPreview(
                     version = FullBackupExporter.CURRENT_VERSION,
                     isLegacyCsv = false,

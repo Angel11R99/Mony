@@ -61,6 +61,7 @@ google-code-scanner = { group = "com.google.android.gms", name = "play-services-
 mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
 google-document-scanner = { group = "com.google.android.gms", name = "play-services-mlkit-document-scanner", version.ref = "googleDocumentScanner" }
 kotlinx-serialization-bom = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-bom", version.ref = "serialization" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "datetime" }
 
@@ -70,6 +71,7 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlinMultiplatform" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinMultiplatform" }
 # AGP 9 ya no permite combinar el plugin KMP con com.android.library / com.android.application.
 # Este es el plugin oficial de biblioteca Android para proyectos KMP.
 android-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }

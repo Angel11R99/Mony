@@ -194,8 +194,8 @@ class HistoryViewModel @Inject constructor(
                     }
                     RestorePreview(
                         movementsCount = preview.transactionsCount,
-                        firstDate = preview.firstDate,
-                        lastDate = preview.lastDate,
+                        firstDate = preview.firstDate?.toJavaLocalDate(),
+                        lastDate = preview.lastDate?.toJavaLocalDate(),
                         movements = emptyList(),
                         backupPreview = preview,
                         rawContent = content,
