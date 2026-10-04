@@ -1,5 +1,6 @@
 package com.angel.mony.data.local.database
 
+import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 
@@ -302,6 +303,14 @@ object FinanceMigrationSteps {
         migration15To16,
         migration16To17,
     )
+
+    val roomMigrations = all.map { step ->
+        object : Migration(step.startVersion, step.endVersion) {
+            override fun migrate(connection: SQLiteConnection) {
+                step.migrate(connection)
+            }
+        }
+    }
 
     private fun step(startVersion: Int, vararg statements: String) = FinanceMigrationStep(
         startVersion = startVersion,

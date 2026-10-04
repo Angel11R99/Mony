@@ -1,8 +1,6 @@
 package com.angel.mony.di
 
 import android.content.Context
-import androidx.room.Room
-import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.angel.mony.data.local.dao.BudgetConfigDao
@@ -20,6 +18,7 @@ import com.angel.mony.data.local.dao.TransactionDao
 import com.angel.mony.data.local.database.FinanceDatabase
 import com.angel.mony.data.local.database.FinanceMigrationStep
 import com.angel.mony.data.local.database.FinanceMigrationSteps
+import com.angel.mony.data.local.database.createFinanceDatabase
 import com.angel.mony.data.repository.OpenFoodFactsProductCatalogRepository
 import com.angel.mony.data.repository.RoomBackupRepository
 import com.angel.mony.data.repository.RoomBudgetRepository
@@ -63,31 +62,17 @@ private fun FinanceMigrationStep.toAndroidMigration() = object : Migration(start
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-    private val migrations = FinanceMigrationSteps.all.map(FinanceMigrationStep::toAndroidMigration)
+    private val androidTestMigrations = FinanceMigrationSteps.all.map(FinanceMigrationStep::toAndroidMigration)
 
-    internal val migration13To14 = migrations.first { it.startVersion == 13 }
-    internal val migration14To15 = migrations.first { it.startVersion == 14 }
-    internal val migration15To16 = migrations.first { it.startVersion == 15 }
-    internal val migration16To17 = migrations.first { it.startVersion == 16 }
+    internal val migration13To14 = androidTestMigrations.first { it.startVersion == 13 }
+    internal val migration14To15 = androidTestMigrations.first { it.startVersion == 14 }
+    internal val migration15To16 = androidTestMigrations.first { it.startVersion == 15 }
+    internal val migration16To17 = androidTestMigrations.first { it.startVersion == 16 }
 
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): FinanceDatabase =
-        Room.databaseBuilder(context, FinanceDatabase::class.java, "personal_finance.db")
-            .addMigrations(*migrations.toTypedArray())
-            .addCallback(object : RoomDatabase.Callback() {
-                override fun onCreate(db: SupportSQLiteDatabase) {
-                    super.onCreate(db)
-                    val now = System.currentTimeMillis()
-                    initialCategories.forEach { (name, type, icon) ->
-                        db.execSQL(
-                            "INSERT INTO categories (name, type, icon, isActive, createdAtEpochMillis) VALUES (?, ?, ?, 1, ?)",
-                            arrayOf<Any>(name, type, icon, now),
-                        )
-                    }
-                }
-            })
-            .build()
+        createFinanceDatabase(context)
 
     @Provides fun categoryDao(db: FinanceDatabase): CategoryDao = db.categoryDao()
     @Provides fun transactionDao(db: FinanceDatabase): TransactionDao = db.transactionDao()
@@ -122,30 +107,6 @@ object DatabaseModule {
 
     @Provides
     fun saveTransaction(transactions: TransactionRepository): SaveTransaction = SaveTransaction(transactions)
-
-    private val initialCategories = listOf(
-        Triple("Salario", "INCOME", "payments"),
-        Triple("Trabajo extra", "INCOME", "work"),
-        Triple("Freelance", "INCOME", "laptop"),
-        Triple("Venta", "INCOME", "sell"),
-        Triple("Otros ingresos", "INCOME", "add_circle"),
-        Triple("Alimentación", "EXPENSE", "restaurant"),
-        Triple("Transporte", "EXPENSE", "directions_car"),
-        Triple("Vivienda", "EXPENSE", "home"),
-        Triple("Servicios", "EXPENSE", "receipt_long"),
-        Triple("Internet", "EXPENSE", "wifi"),
-        Triple("Teléfono", "EXPENSE", "phone_android"),
-        Triple("Salud", "EXPENSE", "medical_services"),
-        Triple("Educación", "EXPENSE", "school"),
-        Triple("Entretenimiento", "EXPENSE", "movie"),
-        Triple("Compras", "EXPENSE", "shopping_cart"),
-        Triple("Deudas", "EXPENSE", "credit_card"),
-        Triple("Suscripciones", "EXPENSE", "subscriptions"),
-        Triple("Familia", "EXPENSE", "family_restroom"),
-        Triple("Ahorro", "EXPENSE", "savings"),
-        Triple("Emergencias", "EXPENSE", "emergency"),
-        Triple("Otros", "EXPENSE", "more_horiz"),
-    )
 }
 
 @Module

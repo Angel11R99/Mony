@@ -1,6 +1,6 @@
 # Checklist de Migración KMP (Mony)
 
-> **Estado actual:** `:shared` creado, dominio funcional común y persistencia Room estructural en `commonMain`: 17 entidades, 12 DAOs, `FinanceDatabase` v17 y las 16 migraciones 1→17. Room 2.8.3 y SQLite Bundled 2.6.1 están disponibles; builders y drivers de plataforma siguen pendientes. Verificación: **Android 29 clases / 209 tests** + **shared 12 clases / 71 tests**, 0 fallos (280 tests totales).
+> **Estado actual:** `:shared` creado, dominio funcional común y persistencia Room en `commonMain`: 17 entidades, 12 DAOs, `FinanceDatabase` v17, 16 migraciones y configuración compartida. Android activa SQLite Bundled 2.6.1 sobre `personal_finance.db`; iOS dispone de factory por ruta, pendiente de compilar en macOS. Verificación: **Android 29 clases / 209 tests** + **shared 12 clases / 72 tests**, 0 fallos (281 tests totales). Falta abrir una copia real v17 en dispositivo.
 
 ## 1. Infraestructura KMP
 
@@ -44,7 +44,7 @@ Progreso: **11/11 (100%)**. `shared` no depende de modelos de `:app`.
 
 ## 6. Data/Room KMP
 
-✅ 17 entidades • ✅ 12 DAOs • ✅ `FinanceDatabase` v17 + constructor KMP • ✅ generación Room/KSP Android • ✅ Room runtime 2.8.3 + SQLite Bundled 2.6.1 • ✅ Migraciones v1–v17 comunes (sin destructive) • ⬜ validar generación KSP iOS en macOS • ⬜ Builders/driver Android+Native (Alto) • ⬜ RoomRepositories transacciones (Alto) • ⬜ Mappers (Medio)
+✅ 17 entidades • ✅ 12 DAOs • ✅ `FinanceDatabase` v17 + constructor KMP • ✅ generación Room/KSP Android • ✅ Room runtime 2.8.3 + SQLite Bundled 2.6.1 • ✅ Migraciones v1–v17 comunes (sin destructive) • ✅ Builders Android+iOS y driver común • ⬜ validar generación KSP/iOS en macOS • ⬜ validar base v17 real en dispositivo • ⬜ RoomRepositories transacciones (Alto) • ⬜ Mappers (Medio)
 
 ## 7. Platform Services (expect/actual)
 
@@ -56,11 +56,11 @@ Progreso: **11/11 (100%)**. `shared` no depende de modelos de `:app`.
 
 ## 9. Tests
 
-⬜ Tests puros restantes → commonTest • ✅ shared: 12 clases / 71 tests • ✅ Android: 29 clases / 209 tests / 0 fallos • ⬜ Room KMP • ✅ NormalizationEquivalenceTest
+⬜ Tests puros restantes → commonTest • ✅ shared: 12 clases / 72 tests • ✅ Android: 29 clases / 209 tests / 0 fallos • ⬜ Room KMP en dispositivo • ✅ NormalizationEquivalenceTest
 
 ## 10. Verificación
 
-✅ assembleDebug • ✅ assembleDebugAndroidTest • ✅ testDebugUnitTest (209/209) • ✅ testAndroidHostTest (71/71) • ⬜ tests instrumentados (sin `adb`) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
+✅ assembleDebug • ✅ assembleDebugAndroidTest • ✅ testDebugUnitTest (209/209) • ✅ testAndroidHostTest (72/72) • ✅ SQLite Bundled empaquetado en 4 ABI • ⬜ tests instrumentados/base real (sin `adb`) • ⬜ ios* compile (macOS) • ✅ APK/versionado intactos
 
 ## Siguiente paso
 
@@ -129,4 +129,12 @@ Progreso: **11/11 (100%)**. `shared` no depende de modelos de `:app`.
 4. El schema v17 permanece idéntico al commit anterior y conserva su `identityHash` (`ea77e26a1bc143f153e97eeeb971d95a6b73c11c`).
 5. `assembleDebug`, `assembleDebugAndroidTest`, `testDebugUnitTest` y `testAndroidHostTest` están verdes; los tests instrumentados compilan, pero no se ejecutaron porque este host no dispone de `adb`.
 
-**#11 — Portar builders y drivers de plataforma.** Activar `BundledSQLiteDriver` sin cambiar la ruta/nombre de la base Android, añadir el builder Native y comprobar una base v17 real antes de retirar el builder Android actual.
+**#11 — Portar builders y drivers de plataforma — ⚠️ implementación completada; validación en dispositivo pendiente**
+1. La configuración común aplica `BundledSQLiteDriver`, las 16 migraciones y el callback inicial mediante `SQLiteConnection`.
+2. Android conserva `personal_finance.db`; Room sigue resolviéndolo con `Context.getDatabasePath`, por lo que no cambia la ubicación del archivo existente.
+3. iOS dispone de una factory que recibe la ruta absoluta elegida por la aplicación y usa el mismo driver y configuración.
+4. Las 21 categorías iniciales se conservan y su inserción preparada está cubierta por una prueba común.
+5. El APK contiene `libsqliteJni.so` para arm64-v8a, armeabi-v7a, x86 y x86_64.
+6. `assembleDebug`, `assembleDebugAndroidTest`, `testDebugUnitTest` y `testAndroidHostTest` están verdes. iOS requiere macOS y la apertura de una copia v17 real requiere un dispositivo con `adb`.
+
+**#12 — Validar persistencia real y migrar repositorios.** Abrir una copia de `personal_finance.db` v17 en dispositivo, comparar `user_version` y filas de las 17 tablas, y solo entonces mover mappers y `RoomRepositories` a `commonMain`.
