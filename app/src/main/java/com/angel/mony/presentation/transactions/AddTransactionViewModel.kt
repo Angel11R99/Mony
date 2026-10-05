@@ -35,13 +35,17 @@ enum class TransactionField { AMOUNT, CATEGORY, DATE }
 
 @HiltViewModel
 class AddTransactionViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
     private val transactionRepository: TransactionRepository,
     dataCache: FinanceDataCache,
     private val voiceRecognitionPreferences: VoiceRecognitionPreferences,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val skipConventionalNotice: StateFlow<Boolean> = voiceRecognitionPreferences.skipConventionalNotice
+    private val _widgetVoiceExample = MutableStateFlow(
+        savedStateHandle.get<String>(KEY_WIDGET_EXAMPLE_TEXT).orEmpty(),
+    )
+    val widgetVoiceExample: StateFlow<String> = _widgetVoiceExample
     val type = TransactionType.valueOf(savedStateHandle.get<String>("type") ?: TransactionType.EXPENSE.name)
     val categories: StateFlow<List<Category>> = dataCache.categories
         .map { items -> items.filter { it.isActive } }
@@ -98,6 +102,34 @@ class AddTransactionViewModel @Inject constructor(
 
     fun setSkipConventionalNotice(skip: Boolean) {
         voiceRecognitionPreferences.setSkipConventionalNotice(skip)
+    }
+
+    fun updateWidgetVoiceExample(openingId: String, categories: List<Category>) {
+        val catalog = VoiceExampleCatalog.build(categories)
+        val currentSession = savedStateHandle.get<String>(KEY_WIDGET_EXAMPLE_OPENING_ID)?.let { savedOpeningId ->
+            savedStateHandle.get<String>(KEY_WIDGET_EXAMPLE_KEY)?.let { key ->
+                VoiceExampleSession(savedOpeningId, key)
+            }
+        }
+        val selection = selectVoiceExample(
+            catalog = catalog,
+            rotationState = VoiceExampleRotationState(
+                remainingKeys = voiceRecognitionPreferences.widgetExampleRemainingKeys(),
+                lastKey = voiceRecognitionPreferences.widgetExampleLastKey(),
+            ),
+            currentSession = currentSession,
+            openingId = openingId,
+        )
+        if (selection.advanced) {
+            voiceRecognitionPreferences.saveWidgetExampleRotation(
+                selection.rotationState.remainingKeys,
+                selection.rotationState.lastKey,
+            )
+        }
+        savedStateHandle[KEY_WIDGET_EXAMPLE_OPENING_ID] = selection.session.openingId
+        savedStateHandle[KEY_WIDGET_EXAMPLE_KEY] = selection.session.exampleKey
+        savedStateHandle[KEY_WIDGET_EXAMPLE_TEXT] = selection.example.text
+        _widgetVoiceExample.value = selection.example.text
     }
 
     fun clearFieldError(field: TransactionField) {
@@ -262,6 +294,12 @@ class AddTransactionViewModel @Inject constructor(
         _showFundingDialog.value = null
         pendingTransaction = null
         pendingOnSaved = null
+    }
+
+    private companion object {
+        const val KEY_WIDGET_EXAMPLE_OPENING_ID = "widget_voice_example_opening_id"
+        const val KEY_WIDGET_EXAMPLE_KEY = "widget_voice_example_key"
+        const val KEY_WIDGET_EXAMPLE_TEXT = "widget_voice_example_text"
     }
 }
 

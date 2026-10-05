@@ -64,6 +64,7 @@ fun FinanceApp(
     moduleBarConfig: FloatingModuleBarConfig,
     initialType: TransactionType? = null,
     initialDestination: String? = null,
+    voiceOpeningId: String? = null,
     initialEdit: Pair<Long, TransactionType>? = null,
     appearance: AppAppearance,
     automaticCycleClose: Boolean,
@@ -105,7 +106,7 @@ fun FinanceApp(
         initialType?.let { navigateToModule("add/${it.name}") }
     }
 
-    LaunchedEffect(initialDestination) {
+    LaunchedEffect(initialDestination, voiceOpeningId) {
         if (isValidInitialDestination(initialDestination)) {
             navigateToModule(initialDestination!!)
         }
@@ -274,6 +275,7 @@ fun FinanceApp(
                     onBack = { if (!navController.popBackStack()) navigateToModule("home") },
                     onSettings = { navController.navigate("settings") },
                     voiceEntry = true,
+                    voiceOpeningId = voiceOpeningId,
                 )
             }
             composable(SettingsRoutes.PERSONALIZATION) {

@@ -89,6 +89,7 @@ fun AddTransactionScreen(
     onBack: () -> Unit,
     onSettings: () -> Unit,
     voiceEntry: Boolean = false,
+    voiceOpeningId: String? = null,
     viewModel: AddTransactionViewModel = hiltViewModel(),
 ) {
     val allCategories by viewModel.categories.collectAsStateWithLifecycle()
@@ -101,6 +102,7 @@ fun AddTransactionScreen(
     val activePeriod by viewModel.activePeriod.collectAsStateWithLifecycle()
     val fundingRequest by viewModel.showFundingDialog.collectAsStateWithLifecycle()
     val skipConventionalNotice by viewModel.skipConventionalNotice.collectAsStateWithLifecycle()
+    val widgetVoiceExample by viewModel.widgetVoiceExample.collectAsStateWithLifecycle()
     val periodDateFormatter = remember {
         DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-DO"))
     }
@@ -300,6 +302,11 @@ fun AddTransactionScreen(
             requestVoiceRecognition()
         }
     }
+    LaunchedEffect(voiceEntry, voiceOpeningId, allCategories) {
+        if (voiceEntry && voiceOpeningId != null) {
+            viewModel.updateWidgetVoiceExample(voiceOpeningId, allCategories)
+        }
+    }
     LaunchedEffect(pendingTranscript) {
         val transcript = pendingTranscript ?: return@LaunchedEffect
         pendingTranscript = null
@@ -434,7 +441,7 @@ fun AddTransactionScreen(
                     status = voiceStatus,
                     transcript = lastTranscript,
                     example = if (voiceEntry) {
-                        "Ejemplo: “Registra un gasto de quinientos pesos en Transporte, hoy, con nota guagua”."
+                        widgetVoiceExample.takeIf(String::isNotBlank)?.let { "Ejemplo: “$it”." }
                     } else null,
                     visible = voicePanelVisible,
                     listening = voiceStatus == "Escuchando…",
