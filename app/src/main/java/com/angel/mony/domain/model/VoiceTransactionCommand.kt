@@ -3,6 +3,7 @@ package com.angel.mony.domain.model
 import com.angel.mony.core.MoneyFormatter
 import java.text.Normalizer
 import java.time.Clock
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.ResolverStyle
@@ -140,7 +141,7 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
             }
         }
 
-        if (mentioned.isEmpty() && !saveRequested) {
+        if (mentioned.isEmpty() && messages.isEmpty() && !saveRequested) {
             return VoiceTransactionCommand.Invalid("No entendí el comando. Puedes registrar o corregir un movimiento.")
         }
         return VoiceTransactionCommand.Apply(result, mentioned, messages = messages)
@@ -175,17 +176,53 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         val correction = Regex("(?:cambia|pon) el monto (?:a|en) (.+?)(?=\\s+(?:en|para|hoy|ayer|anteayer|hace|con nota|nota|el dia|la fecha)\\b|$)")
             .find(text)?.groupValues?.get(1)
         if (correction != null) return correction.removeSuffix(" pesos").trim()
-        val creation = Regex("(?:gasto|ingreso|gaste|recibi)\\s+(?:de\\s+)?(.+?)(?=\\s+(?:pesos?|rd\\$?)?\\s*(?:en|para|hoy|ayer|anteayer|hace|con nota|nota|el dia|la fecha)\\b|$)")
+        val creation = Regex("(?:gasto|ingreso|gaste|recibi)\\s+(?:de\\s+)?(.+?)(?=\\s+(?:pesos?|rd\\$?)?\\s*(?:en|para|hoy|ayer|anteayer|hace|con nota|nota|el dia|la fecha|el (?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)|proximo (?:lunes|martes|miercoles|jueves|viernes|sabado|domingo))\\b|$)")
             .find(text)?.groupValues?.get(1)
         if (creation != null) return creation.removeSuffix(" pesos").trim()
         return GENERIC_CREATION_AMOUNT.find(text)?.groupValues?.get(1)?.trim()
     }
 
     private data class ParsedDate(val date: LocalDate?, val error: String? = null)
+    private data class WeekdayMention(val dayOfWeek: DayOfWeek, val direction: WeekdayDirection)
+    private enum class WeekdayDirection { RECENT, PAST, FUTURE }
 
     private fun parseDate(text: String): ParsedDate? {
         val today = LocalDate.now(clock)
-        return when {
+        val explicit = parseExplicitDate(text, today)
+        val weekday = parseWeekday(text)
+        if (explicit != null) {
+            if (
+                explicit.date != null &&
+                weekday != null &&
+                explicit.date.dayOfWeek != weekday.dayOfWeek
+            ) {
+                return ParsedDate(
+                    null,
+                    "La fecha explícita no coincide con el día de la semana. Aclara cuál fecha deseas usar.",
+                )
+            }
+            return explicit
+        }
+        return weekday?.let { ParsedDate(resolveWeekday(today, it)) }
+    }
+
+    private fun parseExplicitDate(text: String, today: LocalDate): ParsedDate? = when {
+        ISO_DATE.find(text) != null -> ParsedDate(
+            runCatching { LocalDate.parse(ISO_DATE.find(text)!!.value) }.getOrNull(),
+            "La fecha no es válida.",
+        )
+        SLASH_DATE.find(text) != null -> {
+            val date = runCatching { LocalDate.parse(SLASH_DATE.find(text)!!.value, SLASH_FORMATTER) }.getOrNull()
+            ParsedDate(date, if (date == null) "La fecha no es válida." else null)
+        }
+        FULL_DATE.find(text) != null -> {
+            val match = FULL_DATE.find(text)!!
+            val month = MONTHS[match.groupValues[2]]
+            val date = runCatching { LocalDate.of(match.groupValues[3].toInt(), month!!, match.groupValues[1].toInt()) }.getOrNull()
+            ParsedDate(date, if (date == null) "La fecha no es válida." else null)
+        }
+        INCOMPLETE_DATE.containsMatchIn(text) -> ParsedDate(null, "Indica también el año para evitar una fecha ambigua.")
+        else -> when {
             text.containsWord("anteayer") -> ParsedDate(today.minusDays(2))
             text.containsWord("ayer") -> ParsedDate(today.minusDays(1))
             text.containsWord("hoy") -> ParsedDate(today)
@@ -197,19 +234,34 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
                 }
                 if (days == null) ParsedDate(null, "No pude interpretar la fecha.") else ParsedDate(today.minusDays(days))
             }
-            ISO_DATE.find(text) != null -> ParsedDate(runCatching { LocalDate.parse(ISO_DATE.find(text)!!.value) }.getOrNull(), "La fecha no es válida.")
-            SLASH_DATE.find(text) != null -> {
-                val date = runCatching { LocalDate.parse(SLASH_DATE.find(text)!!.value, SLASH_FORMATTER) }.getOrNull()
-                ParsedDate(date, if (date == null) "La fecha no es válida." else null)
-            }
-            FULL_DATE.find(text) != null -> {
-                val match = FULL_DATE.find(text)!!
-                val month = MONTHS[match.groupValues[2]]
-                val date = runCatching { LocalDate.of(match.groupValues[3].toInt(), month!!, match.groupValues[1].toInt()) }.getOrNull()
-                ParsedDate(date, if (date == null) "La fecha no es válida." else null)
-            }
-            INCOMPLETE_DATE.containsMatchIn(text) -> ParsedDate(null, "Indica también el año para evitar una fecha ambigua.")
             else -> null
+        }
+    }
+
+    private fun parseWeekday(text: String): WeekdayMention? {
+        val futurePrefix = FUTURE_WEEKDAY_PREFIX.find(text)
+        if (futurePrefix != null) return WeekdayMention(WEEKDAYS.getValue(futurePrefix.groupValues[1]), WeekdayDirection.FUTURE)
+        val futureSuffix = FUTURE_WEEKDAY_SUFFIX.find(text)
+        if (futureSuffix != null) return WeekdayMention(WEEKDAYS.getValue(futureSuffix.groupValues[1]), WeekdayDirection.FUTURE)
+        val past = PAST_WEEKDAY.find(text)
+        if (past != null) return WeekdayMention(WEEKDAYS.getValue(past.groupValues[1]), WeekdayDirection.PAST)
+        val recent = PLAIN_WEEKDAY.find(text) ?: return null
+        return WeekdayMention(WEEKDAYS.getValue(recent.groupValues[1]), WeekdayDirection.RECENT)
+    }
+
+    private fun resolveWeekday(today: LocalDate, mention: WeekdayMention): LocalDate {
+        val current = today.dayOfWeek.value
+        val target = mention.dayOfWeek.value
+        return when (mention.direction) {
+            WeekdayDirection.RECENT -> today.minusDays(((current - target + 7) % 7).toLong())
+            WeekdayDirection.PAST -> {
+                val days = (current - target + 7) % 7
+                today.minusDays((if (days == 0) 7 else days).toLong())
+            }
+            WeekdayDirection.FUTURE -> {
+                val days = (target - current + 7) % 7
+                today.plusDays((if (days == 0) 7 else days).toLong())
+            }
         }
     }
 
@@ -255,6 +307,20 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         private val DAYS_AGO = Regex("\\bhace (\\d+|[a-z]+(?:\\s+y\\s+[a-z]+)?) dias?\\b")
         private val FULL_DATE = Regex("\\b(\\d{1,2}) de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre) de (\\d{4})\\b")
         private val INCOMPLETE_DATE = Regex("\\b\\d{1,2} de (?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\\b")
+        private const val WEEKDAY_NAMES = "lunes|martes|miercoles|jueves|viernes|sabado|domingo"
+        private val FUTURE_WEEKDAY_PREFIX = Regex("\\b(?:el\\s+)?proximo\\s+($WEEKDAY_NAMES)\\b")
+        private val FUTURE_WEEKDAY_SUFFIX = Regex("\\b(?:el\\s+)?($WEEKDAY_NAMES)\\s+que viene\\b")
+        private val PAST_WEEKDAY = Regex("\\b(?:el\\s+)?($WEEKDAY_NAMES)\\s+pasado\\b")
+        private val PLAIN_WEEKDAY = Regex("\\b(?:el\\s+)?($WEEKDAY_NAMES)\\b")
+        private val WEEKDAYS = mapOf(
+            "lunes" to DayOfWeek.MONDAY,
+            "martes" to DayOfWeek.TUESDAY,
+            "miercoles" to DayOfWeek.WEDNESDAY,
+            "jueves" to DayOfWeek.THURSDAY,
+            "viernes" to DayOfWeek.FRIDAY,
+            "sabado" to DayOfWeek.SATURDAY,
+            "domingo" to DayOfWeek.SUNDAY,
+        )
         private val MONTHS = listOf("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
             .mapIndexed { index, name -> name to index + 1 }.toMap()
     }

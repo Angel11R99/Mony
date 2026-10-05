@@ -239,7 +239,10 @@ fun AddTransactionScreen(
         if (VoiceDraftField.TYPE in command.mentioned) transactionTypeName = incomingType?.name
         if (VoiceDraftField.AMOUNT in command.mentioned) amount = command.draft.amountInCents?.let(MoneyFormatter::formatToInput).orEmpty()
         if (VoiceDraftField.CATEGORY in command.mentioned) categoryId = command.draft.categoryId
-        if (VoiceDraftField.DATE in command.mentioned) date = command.draft.date?.toString().orEmpty()
+        if (VoiceDraftField.DATE in command.mentioned) {
+            date = command.draft.date?.toString().orEmpty()
+            dateSuggestionApplied = true
+        }
         if (VoiceDraftField.NOTE in command.mentioned) note = command.draft.note.orEmpty()
         if (VoiceDraftField.FUNDING_SOURCE in command.mentioned) fundingSource = command.draft.fundingSource.orEmpty()
         saveRequested = command.draft.saveRequested
