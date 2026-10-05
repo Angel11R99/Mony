@@ -11,8 +11,8 @@
 
 <!-- APP_VERSION_START -->
 <p align="center">
-  [![Versión](https://img.shields.io/badge/versi%C3%B3n-v1.0.5-6750A4)](https://github.com/Angel11R99/Mony/releases/tag/v1.0.5)
-  [![Descargar](https://img.shields.io/badge/descargar-%C3%BAltima_versi%C3%B3n-6750A4)](https://github.com/Angel11R99/Mony/releases/latest)
+  <a href="https://github.com/Angel11R99/Mony/releases/tag/v1.0.5"><img src="https://img.shields.io/badge/versi%C3%B3n-v1.0.5-6750A4" alt="Versión de Mony" /></a>
+  <a href="https://github.com/Angel11R99/Mony/releases/latest"><img src="https://img.shields.io/badge/descargar-%C3%BAltima_versi%C3%B3n-6750A4" alt="Descargar última versión" /></a>
 </p>
 <!-- APP_VERSION_END -->
 
