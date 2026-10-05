@@ -36,6 +36,7 @@ sealed interface VoiceTransactionCommand {
     data object Clear : VoiceTransactionCommand
     data object Exit : VoiceTransactionCommand
     data object ConfirmFunding : VoiceTransactionCommand
+    data object AmbiguousType : VoiceTransactionCommand
     data class SelectCategoryOption(val index: Int) : VoiceTransactionCommand
     data class Invalid(val message: String) : VoiceTransactionCommand
 }
@@ -75,7 +76,7 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
             if (INCOME_WORDS.any { commandCore.containsWord(it) }) add(TransactionType.INCOME)
         }
         if (detectedTypes.size > 1) {
-            return VoiceTransactionCommand.Invalid("La frase menciona gasto e ingreso. ¿Cuál deseas registrar?")
+            return VoiceTransactionCommand.AmbiguousType
         }
         detectedTypes.singleOrNull()?.let {
             result = result.copy(type = it)

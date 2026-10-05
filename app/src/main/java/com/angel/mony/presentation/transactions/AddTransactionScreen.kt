@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.AlertDialog
@@ -116,6 +117,7 @@ fun AddTransactionScreen(
     var transactionTypeName by rememberSaveable {
         mutableStateOf(if (voiceEntry) null else viewModel.type.name)
     }
+    var typeNeedsConfirmation by rememberSaveable { mutableStateOf(false) }
     val transactionType = transactionTypeName?.let(TransactionType::valueOf)
     val categories = allCategories.filter { it.type == transactionType }
     var voiceStatus by rememberSaveable { mutableStateOf(if (voiceEntry) "Pulsa el micrófono y di el movimiento." else "") }
@@ -132,7 +134,8 @@ fun AddTransactionScreen(
     var showExitConfirmation by remember { mutableStateOf(false) }
     var pendingTypeChange by remember { mutableStateOf<TransactionType?>(null) }
     var pendingTypeCommand by remember { mutableStateOf<VoiceTransactionCommand.Apply?>(null) }
-    var autoStartConsumed by rememberSaveable { mutableStateOf(false) }
+    var handledVoiceOpeningId by rememberSaveable { mutableStateOf<String?>(null) }
+    var autoStartedVoiceOpeningId by rememberSaveable { mutableStateOf<String?>(null) }
     var startRecognitionToken by remember { mutableStateOf(0) }
     var startConventionalRecognitionToken by remember { mutableStateOf(0) }
     var undoAmount by rememberSaveable { mutableStateOf<String?>(null) }
@@ -140,6 +143,7 @@ fun AddTransactionScreen(
     var undoDate by rememberSaveable { mutableStateOf<String?>(null) }
     var undoCategoryId by rememberSaveable { mutableStateOf<Long?>(null) }
     var undoTypeName by rememberSaveable { mutableStateOf<String?>(null) }
+    var undoTypeNeedsConfirmation by rememberSaveable { mutableStateOf(false) }
     var hasUndo by rememberSaveable { mutableStateOf(false) }
     val interpreter = remember { VoiceTransactionInterpreter(Clock.systemDefaultZone()) }
 
@@ -212,7 +216,7 @@ fun AddTransactionScreen(
 
     fun missingFields(): String {
         val missing = buildList {
-            if (transactionType == null) add("tipo")
+            if (transactionType == null || typeNeedsConfirmation) add("tipo")
             if (MoneyFormatter.parseToCents(amount)?.let { it > 0 } != true) add("monto")
             if (categoryId == null) add("categoría")
             if (runCatching { LocalDate.parse(date) }.getOrNull() == null) add("fecha")
@@ -226,6 +230,7 @@ fun AddTransactionScreen(
         undoDate = date
         undoCategoryId = categoryId
         undoTypeName = transactionTypeName
+        undoTypeNeedsConfirmation = typeNeedsConfirmation
         hasUndo = true
     }
 
@@ -238,9 +243,21 @@ fun AddTransactionScreen(
             return
         }
         rememberUndo()
-        if (VoiceDraftField.TYPE in command.mentioned) transactionTypeName = incomingType?.name
+        if (VoiceDraftField.TYPE in command.mentioned) {
+            transactionTypeName = incomingType?.name
+            typeNeedsConfirmation = false
+            if (VoiceDraftField.CATEGORY !in command.mentioned) {
+                categoryId = validCategoryIdForType(categoryId, incomingType, allCategories)
+            }
+        }
         if (VoiceDraftField.AMOUNT in command.mentioned) amount = command.draft.amountInCents?.let(MoneyFormatter::formatToInput).orEmpty()
-        if (VoiceDraftField.CATEGORY in command.mentioned) categoryId = command.draft.categoryId
+        if (VoiceDraftField.CATEGORY in command.mentioned) {
+            categoryId = validCategoryIdForType(
+                command.draft.categoryId,
+                incomingType ?: transactionType,
+                allCategories,
+            )
+        }
         if (VoiceDraftField.DATE in command.mentioned) {
             date = command.draft.date?.toString().orEmpty()
             dateSuggestionApplied = true
@@ -296,9 +313,30 @@ fun AddTransactionScreen(
     LaunchedEffect(startRecognitionToken) {
         if (startRecognitionToken > 0 && voicePanelVisible) requestVoiceRecognition()
     }
-    LaunchedEffect(voiceEntry) {
-        if (voiceEntry && !autoStartConsumed) {
-            autoStartConsumed = true
+    LaunchedEffect(voiceEntry, voiceOpeningId) {
+        if (!voiceEntry) return@LaunchedEffect
+        val currentOpeningId = voiceOpeningId ?: "voice-entry"
+        if (handledVoiceOpeningId != null && handledVoiceOpeningId != currentOpeningId) {
+            amount = ""
+            note = ""
+            date = LocalDate.now().toString()
+            dateSuggestionApplied = false
+            categoryId = null
+            transactionTypeName = null
+            typeNeedsConfirmation = false
+            saveRequested = false
+            saveDispatched = false
+            fundingSource = ""
+            categoryOptionIds = emptyList()
+            hasUndo = false
+            lastTranscript = ""
+            pendingTranscript = null
+            voiceStatus = "Pulsa el micrófono y di el movimiento."
+            voicePanelVisible = true
+        }
+        handledVoiceOpeningId = currentOpeningId
+        if (autoStartedVoiceOpeningId != currentOpeningId) {
+            autoStartedVoiceOpeningId = currentOpeningId
             requestVoiceRecognition()
         }
     }
@@ -312,13 +350,23 @@ fun AddTransactionScreen(
         pendingTranscript = null
         when (val command = interpreter.interpret(transcript, allCategories, currentDraft())) {
             is VoiceTransactionCommand.Apply -> applyVoiceDraft(command)
-            VoiceTransactionCommand.Save -> { saveRequested = true; saveDispatched = false; voiceStatus = missingFields() }
+            VoiceTransactionCommand.Save -> {
+                if (typeNeedsConfirmation) {
+                    saveRequested = false
+                    voiceStatus = "¿Gasto o ingreso? Confirma el tipo antes de guardar."
+                } else {
+                    saveRequested = true
+                    saveDispatched = false
+                    voiceStatus = missingFields()
+                }
+            }
             VoiceTransactionCommand.Review -> voiceStatus = voiceDraftSummary(transactionType, amount, categoryId, date, note, allCategories)
             VoiceTransactionCommand.MissingFields -> voiceStatus = missingFields()
             VoiceTransactionCommand.ShowCategories -> voiceStatus = categories.joinToString(prefix = "Categorías: ") { it.name }
             VoiceTransactionCommand.Undo -> if (hasUndo) {
                 amount = undoAmount.orEmpty(); note = undoNote.orEmpty(); date = undoDate.orEmpty()
-                categoryId = undoCategoryId; transactionTypeName = undoTypeName; hasUndo = false
+                categoryId = undoCategoryId; transactionTypeName = undoTypeName
+                typeNeedsConfirmation = undoTypeNeedsConfirmation; hasUndo = false
                 voiceStatus = "Se deshizo el último cambio del borrador."
             } else voiceStatus = "No hay cambios del dictado para deshacer."
             VoiceTransactionCommand.Cancel -> { voiceController.cancel(); saveRequested = false; saveDispatched = false; voiceStatus = "Dictado cancelado." }
@@ -326,6 +374,12 @@ fun AddTransactionScreen(
             VoiceTransactionCommand.Exit -> if (hasTransactionData(amount, categoryId, note)) showExitConfirmation = true else onBack()
             VoiceTransactionCommand.ConfirmFunding -> if (fundingRequest != null && fundingSource.isNotBlank()) viewModel.confirmFundingSource(fundingSource)
                 else voiceStatus = "Indica primero la fuente del dinero."
+            VoiceTransactionCommand.AmbiguousType -> {
+                typeNeedsConfirmation = true
+                saveRequested = false
+                saveDispatched = false
+                voiceStatus = "La frase menciona gasto e ingreso. ¿Cuál deseas registrar?"
+            }
             is VoiceTransactionCommand.SelectCategoryOption -> {
                 categoryOptionIds.getOrNull(command.index)?.let { categoryId = it; categoryOptionIds = emptyList(); voiceStatus = missingFields() }
                     ?: run { voiceStatus = "Esa opción no está disponible." }
@@ -334,8 +388,8 @@ fun AddTransactionScreen(
                 if (voiceEntry && transactionType == null) "¿Gasto o ingreso?" else command.message
         }
     }
-    LaunchedEffect(saveRequested, transactionType, amount, categoryId, date, fundingRequest, fundingSource, saving) {
-        if (!saveRequested || saveDispatched || saving) return@LaunchedEffect
+    LaunchedEffect(saveRequested, typeNeedsConfirmation, transactionType, amount, categoryId, date, fundingRequest, fundingSource, saving) {
+        if (!saveRequested || typeNeedsConfirmation || saveDispatched || saving) return@LaunchedEffect
         if (fundingRequest != null) {
             if (fundingSource.isNotBlank()) {
                 saveDispatched = true
@@ -407,8 +461,8 @@ fun AddTransactionScreen(
                 GlobalSaveButton(
                     onClick = {
                         val typeToSave = transactionType
-                        if (typeToSave == null) {
-                            voiceStatus = "¿Gasto o ingreso?"
+                        if (typeToSave == null || typeNeedsConfirmation) {
+                            voiceStatus = "¿Gasto o ingreso? Confirma el tipo antes de guardar."
                         } else {
                             saveRequested = false
                             saveDispatched = true
@@ -436,6 +490,13 @@ fun AddTransactionScreen(
             contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
+            if (voiceEntry) {
+                item {
+                    VoiceTypeBadge(
+                        state = voiceTypeBadgeState(transactionType, typeNeedsConfirmation),
+                    )
+                }
+            }
             item {
                 VoiceDraftPanel(
                     status = voiceStatus,
@@ -689,6 +750,7 @@ fun AddTransactionScreen(
             confirmButton = { TextButton(onClick = {
                 amount = ""; note = ""; categoryId = null; date = LocalDate.now().toString()
                 if (voiceEntry) transactionTypeName = null
+                typeNeedsConfirmation = false
                 saveRequested = false; saveDispatched = false; fundingSource = ""; hasUndo = false
                 showClearConfirmation = false; voiceStatus = "Formulario limpio."
             }) { Text("Limpiar") } },
@@ -708,6 +770,64 @@ fun AddTransactionScreen(
 }
 
 private const val MILLIS_PER_DAY = 86_400_000L
+
+@Composable
+private fun VoiceTypeBadge(state: VoiceTypeBadgeState) {
+    val visual = when (state) {
+        VoiceTypeBadgeState.UNIDENTIFIED -> VoiceTypeBadgeVisual(
+            label = "Tipo: por identificar",
+            icon = MonyIcon.Info,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        )
+        VoiceTypeBadgeState.CONFIRMATION_REQUIRED -> VoiceTypeBadgeVisual(
+            label = "Tipo: por confirmar",
+            icon = MonyIcon.Warning,
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
+        VoiceTypeBadgeState.EXPENSE -> VoiceTypeBadgeVisual(
+            label = "Gasto",
+            icon = MonyIcon.Expense,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+        VoiceTypeBadgeState.INCOME -> VoiceTypeBadgeVisual(
+            label = "Ingreso",
+            icon = MonyIcon.Income,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+    }
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = visual.containerColor,
+        contentColor = visual.contentColor,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MonyIcon(
+                icon = visual.icon,
+                contentDescription = null,
+                tint = visual.contentColor,
+                role = MonyIconRole.STATE,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(visual.label, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+private data class VoiceTypeBadgeVisual(
+    val label: String,
+    val icon: MonyIcon,
+    val containerColor: androidx.compose.ui.graphics.Color,
+    val contentColor: androidx.compose.ui.graphics.Color,
+)
 
 @Composable
 private fun VoiceDraftPanel(

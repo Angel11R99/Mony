@@ -217,7 +217,7 @@ class AddTransactionViewModel @Inject constructor(
                 context.showToast(if (isEditing) {
                     "Movimiento actualizado correctamente"
                 } else {
-                    if (transaction.type == TransactionType.EXPENSE) "Gasto guardado correctamente" else "Ingreso guardado correctamente"
+                    if (transaction.type == TransactionType.EXPENSE) "Gasto registrado" else "Ingreso registrado"
                 })
                 fieldErrors.value = emptyMap()
                 onSaved()
@@ -259,7 +259,7 @@ class AddTransactionViewModel @Inject constructor(
                     context.showToast(if (isEditing) {
                         "Movimiento actualizado correctamente"
                     } else {
-                        if (transaction.type == TransactionType.EXPENSE) "Gasto guardado correctamente" else "Ingreso guardado correctamente"
+                        if (transaction.type == TransactionType.EXPENSE) "Gasto registrado" else "Ingreso registrado"
                     })
                     fieldErrors.value = emptyMap()
                     onSaved()

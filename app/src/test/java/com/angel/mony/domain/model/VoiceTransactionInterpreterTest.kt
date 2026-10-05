@@ -188,7 +188,7 @@ class VoiceTransactionInterpreterTest {
 
     @Test fun `rejects phrase containing both transaction types`() {
         val result = interpreter.interpret("Registra un gasto y un ingreso de cien pesos", categories)
-        assertTrue(result is VoiceTransactionCommand.Invalid)
+        assertEquals(VoiceTransactionCommand.AmbiguousType, result)
     }
 
     @Test fun `recognizes correction without overwriting other fields`() {
