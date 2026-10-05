@@ -20,8 +20,8 @@
 
 <p align="center">
   <a href="https://github.com/Angel11R99/Mony/releases/latest"><img src="https://img.shields.io/badge/Descargar_Mony-6750A4?style=for-the-badge&amp;logo=android&amp;logoColor=white" alt="Descargar Mony para Android" /></a>
-  <a href=".github/CONTRIBUTING.md"><img src="https://img.shields.io/badge/Contribuir-24112F?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="Contribuir al proyecto" /></a>
   <a href="https://github.com/Angel11R99/Mony/releases/tag/v1.0.6"><img src="https://img.shields.io/badge/Versi%C3%B3n-v1.0.6-6750A4?style=for-the-badge&amp;logo=android&amp;logoColor=white" alt="Versión de Mony" /></a>
+  <a href=".github/CONTRIBUTING.md"><img src="https://img.shields.io/badge/Contribuir-24112F?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="Contribuir al proyecto" /></a>
 </p>
 
 <p align="center">
