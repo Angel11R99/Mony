@@ -64,6 +64,7 @@ fun FinanceApp(
     moduleBarConfig: FloatingModuleBarConfig,
     initialType: TransactionType? = null,
     initialDestination: String? = null,
+    voiceOpeningId: String? = null,
     initialEdit: Pair<Long, TransactionType>? = null,
     appearance: AppAppearance,
     automaticCycleClose: Boolean,
@@ -105,7 +106,7 @@ fun FinanceApp(
         initialType?.let { navigateToModule("add/${it.name}") }
     }
 
-    LaunchedEffect(initialDestination) {
+    LaunchedEffect(initialDestination, voiceOpeningId) {
         if (isValidInitialDestination(initialDestination)) {
             navigateToModule(initialDestination!!)
         }
@@ -269,6 +270,14 @@ fun FinanceApp(
                     onNavigate = navController::navigate,
                 )
             }
+            composable("voice") {
+                AddTransactionScreen(
+                    onBack = { if (!navController.popBackStack()) navigateToModule("home") },
+                    onSettings = { navController.navigate("settings") },
+                    voiceEntry = true,
+                    voiceOpeningId = voiceOpeningId,
+                )
+            }
             composable(SettingsRoutes.PERSONALIZATION) {
                 AppearanceSettingsRoute(
                     appearance = appearance,
@@ -426,4 +435,5 @@ internal fun moduleExitTransition(
 
 internal fun shouldShowModuleBar(route: String?): Boolean = route in topLevelRoutes
 
-internal fun isValidInitialDestination(route: String?): Boolean = route in topLevelRoutes || route == "settings"
+internal fun isValidInitialDestination(route: String?): Boolean =
+    route in topLevelRoutes || route == "settings" || route == "voice"

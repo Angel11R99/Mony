@@ -1,5 +1,6 @@
 package com.angel.mony
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -40,8 +41,16 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        ensureVoiceOpeningId(intent, forceNew = true)
+        setIntent(intent)
+        recreate()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ensureVoiceOpeningId(intent, forceNew = false)
         enableEdgeToEdge()
         setContent {
             val appearancePreferences = remember { AppearancePreferences(applicationContext) }
@@ -113,6 +122,7 @@ class MainActivity : ComponentActivity() {
                             // the editor route; the add flow must not trigger too.
                             initialType = if (initialEditId == null) initialType else null,
                             initialDestination = intent.getStringExtra(EXTRA_DESTINATION),
+                            voiceOpeningId = intent.getStringExtra(EXTRA_VOICE_OPENING_ID),
                             initialEdit = if (initialEditId != null && initialType != null) {
                                 initialEditId to initialType
                             } else {
@@ -207,5 +217,13 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_TRANSACTION_TYPE = "transaction_type"
         const val EXTRA_DESTINATION = "destination"
         const val EXTRA_EDIT_TRANSACTION_ID = "edit_transaction_id"
+        const val EXTRA_VOICE_OPENING_ID = "voice_opening_id"
+    }
+
+    private fun ensureVoiceOpeningId(target: Intent, forceNew: Boolean) {
+        if (target.getStringExtra(EXTRA_DESTINATION) != "voice") return
+        if (forceNew || !target.hasExtra(EXTRA_VOICE_OPENING_ID)) {
+            target.putExtra(EXTRA_VOICE_OPENING_ID, "${System.currentTimeMillis()}-${System.nanoTime()}")
+        }
     }
 }

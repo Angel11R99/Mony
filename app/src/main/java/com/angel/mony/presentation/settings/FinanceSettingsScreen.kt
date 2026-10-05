@@ -73,6 +73,7 @@ fun FinanceSettingsRoute(
     val isSavingCycles by viewModel.isSavingCycles.collectAsStateWithLifecycle()
     val isSavingBudget by viewModel.isSavingBudget.collectAsStateWithLifecycle()
     val alertsEnabled by viewModel.alertsEnabled.collectAsStateWithLifecycle()
+    val skipConventionalVoiceNotice by viewModel.skipConventionalVoiceNotice.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(message) {
@@ -92,10 +93,12 @@ fun FinanceSettingsRoute(
         isSavingCycles = isSavingCycles,
         isSavingBudget = isSavingBudget,
         alertsEnabled = alertsEnabled,
+        skipConventionalVoiceNotice = skipConventionalVoiceNotice,
         onBack = onBack,
         onAutomaticCycleCloseChange = onAutomaticCycleCloseChange,
         onAutomaticCloseTimeChange = onAutomaticCloseTimeChange,
         onAlertsEnabledChange = viewModel::setAlertsEnabled,
+        onSkipConventionalVoiceNoticeChange = viewModel::setSkipConventionalVoiceNotice,
         onSchedulesSave = viewModel::updateCycleSchedules,
         onPeriodChange = { period ->
             if (budget == null) {
@@ -119,10 +122,12 @@ fun FinanceSettingsScreen(
     isSavingCycles: Boolean,
     isSavingBudget: Boolean,
     alertsEnabled: Boolean,
+    skipConventionalVoiceNotice: Boolean,
     onBack: () -> Unit,
     onAutomaticCycleCloseChange: (Boolean) -> Unit,
     onAutomaticCloseTimeChange: (LocalTime) -> Unit,
     onAlertsEnabledChange: (Boolean) -> Unit,
+    onSkipConventionalVoiceNoticeChange: (Boolean) -> Unit,
     onSchedulesSave: (List<BudgetCycleSchedule>) -> Unit,
     onPeriodChange: (BudgetPeriod) -> Unit,
     onBudgetSave: (amount: String, period: BudgetPeriod, onSaved: () -> Unit) -> Unit,
@@ -253,6 +258,36 @@ fun FinanceSettingsScreen(
                 onAlertsEnabledChange = onAlertsEnabledChange,
                 onEdit = { editingBudget = true },
             )
+        }
+
+        item {
+            SectionTitle("REGISTRO POR VOZ", "Controla los avisos del servicio de reconocimiento.")
+        }
+        item {
+            FinanceCard(Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    com.angel.mony.ui.iconography.MonyIcon(
+                        com.angel.mony.ui.iconography.MonyIcon.Voice,
+                        contentDescription = null,
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Omitir aviso convencional", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Si lo desactivas, Mony volverá a avisarte antes de usar un servicio de voz que puede enviar audio por internet.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = skipConventionalVoiceNotice,
+                        onCheckedChange = onSkipConventionalVoiceNoticeChange,
+                    )
+                }
+            }
         }
 
                 }

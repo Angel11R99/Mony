@@ -40,10 +40,14 @@ fun ExpenseFundingDialog(
     expenseAmountInCents: Long,
     onConfirm: (sourceDescription: String) -> Unit,
     onDismiss: () -> Unit,
+    sourceDescription: String? = null,
+    onSourceDescriptionChange: ((String) -> Unit)? = null,
+    onVoice: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    var sourceDescription by remember { mutableStateOf("") }
-    val isDescriptionValid = sourceDescription.trim().isNotEmpty()
+    var localSourceDescription by remember { mutableStateOf("") }
+    val currentSourceDescription = sourceDescription ?: localSourceDescription
+    val isDescriptionValid = currentSourceDescription.trim().isNotEmpty()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -105,8 +109,10 @@ fun ExpenseFundingDialog(
                 )
 
                 OutlinedTextField(
-                    value = sourceDescription,
-                    onValueChange = { sourceDescription = it },
+                    value = currentSourceDescription,
+                    onValueChange = { value ->
+                        if (onSourceDescriptionChange != null) onSourceDescriptionChange(value) else localSourceDescription = value
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Ej.: préstamo, efectivo guardado, otra cuenta, tarjeta de crédito...") },
                     placeholder = { Text("Origen del dinero adicional") },
@@ -114,18 +120,24 @@ fun ExpenseFundingDialog(
                         imeAction = ImeAction.Done,
                     ),
                     keyboardActions = KeyboardActions(
-                        onDone = { if (isDescriptionValid) onConfirm(sourceDescription.trim()) },
+                        onDone = { if (isDescriptionValid) onConfirm(currentSourceDescription.trim()) },
                     ),
                     visualTransformation = VisualTransformation.None,
                     singleLine = false,
                     maxLines = 4,
                 )
+                if (onVoice != null) {
+                    TextButton(onClick = onVoice) {
+                        MonyIcon(MonyIcon.Voice, contentDescription = null)
+                        Text(" Dictar fuente")
+                    }
+                }
             }
         },
         confirmButton = {
             PrimaryButton(
                 text = "Registrar gasto",
-                onClick = { if (isDescriptionValid) onConfirm(sourceDescription.trim()) },
+                onClick = { if (isDescriptionValid) onConfirm(currentSourceDescription.trim()) },
                 enabled = isDescriptionValid,
             )
         },

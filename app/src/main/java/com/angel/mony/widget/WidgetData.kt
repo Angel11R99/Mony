@@ -309,6 +309,12 @@ internal fun addTransactionIntent(context: Context, type: TransactionType) =
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
 
+internal fun voiceTransactionIntent(context: Context) =
+    Intent(context, MainActivity::class.java).apply {
+        putExtra(MainActivity.EXTRA_DESTINATION, "voice")
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    }
+
 internal fun editTransactionIntent(context: Context, transactionId: Long, isIncome: Boolean) =
     Intent(context, MainActivity::class.java).apply {
         putExtra(MainActivity.EXTRA_EDIT_TRANSACTION_ID, transactionId)
@@ -335,6 +341,7 @@ suspend fun updateAllFinanceWidgets(context: Context) {
     QuickAccessWidget().updateAll(context)
     DailySpendingWidget().updateAll(context)
     CategoryLimitsWidget().updateAll(context)
+    VoiceRegistrationWidget().updateAll(context)
 }
 
 private const val RECENT_MOVEMENTS_LIMIT = 6
