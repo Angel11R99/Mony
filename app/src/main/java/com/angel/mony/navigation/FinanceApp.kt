@@ -269,6 +269,13 @@ fun FinanceApp(
                     onNavigate = navController::navigate,
                 )
             }
+            composable("voice") {
+                AddTransactionScreen(
+                    onBack = { if (!navController.popBackStack()) navigateToModule("home") },
+                    onSettings = { navController.navigate("settings") },
+                    voiceEntry = true,
+                )
+            }
             composable(SettingsRoutes.PERSONALIZATION) {
                 AppearanceSettingsRoute(
                     appearance = appearance,
@@ -426,4 +433,5 @@ internal fun moduleExitTransition(
 
 internal fun shouldShowModuleBar(route: String?): Boolean = route in topLevelRoutes
 
-internal fun isValidInitialDestination(route: String?): Boolean = route in topLevelRoutes || route == "settings"
+internal fun isValidInitialDestination(route: String?): Boolean =
+    route in topLevelRoutes || route == "settings" || route == "voice"

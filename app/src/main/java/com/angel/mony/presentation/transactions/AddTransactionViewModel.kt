@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.showToast
+import com.angel.mony.core.VoiceRecognitionPreferences
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.DateRange
 import com.angel.mony.domain.model.ExpenseCreationResult
@@ -37,15 +38,17 @@ class AddTransactionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val transactionRepository: TransactionRepository,
     dataCache: FinanceDataCache,
+    private val voiceRecognitionPreferences: VoiceRecognitionPreferences,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
+    val skipConventionalNotice: StateFlow<Boolean> = voiceRecognitionPreferences.skipConventionalNotice
     val type = TransactionType.valueOf(savedStateHandle.get<String>("type") ?: TransactionType.EXPENSE.name)
     val categories: StateFlow<List<Category>> = dataCache.categories
-        .map { items -> items.filter { it.type == type && it.isActive } }
+        .map { items -> items.filter { it.isActive } }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            dataCache.categories.value.filter { it.type == type && it.isActive },
+            dataCache.categories.value.filter { it.isActive },
         )
     val error = MutableStateFlow<String?>(null)
     val fieldErrors = MutableStateFlow<Map<TransactionField, String>>(emptyMap())
@@ -93,6 +96,10 @@ class AddTransactionViewModel @Inject constructor(
         error.value = null
     }
 
+    fun setSkipConventionalNotice(skip: Boolean) {
+        voiceRecognitionPreferences.setSkipConventionalNotice(skip)
+    }
+
     fun clearFieldError(field: TransactionField) {
         val current = fieldErrors.value
         if (field in current) {
@@ -100,7 +107,14 @@ class AddTransactionViewModel @Inject constructor(
         }
     }
 
-    fun save(amount: String, categoryId: Long?, note: String, date: String, onSaved: () -> Unit) {
+    fun save(
+        amount: String,
+        categoryId: Long?,
+        note: String,
+        date: String,
+        onSaved: () -> Unit,
+        transactionType: TransactionType = type,
+    ) {
         if (saving.value) return
         val cents = MoneyFormatter.parseToCents(amount)
         val parsedDate = runCatching { LocalDate.parse(date) }.getOrNull()
@@ -118,7 +132,7 @@ class AddTransactionViewModel @Inject constructor(
         val transaction = FinanceTransaction(
             id = if (isEditing) transactionId else 0,
             amountInCents = cents!!,
-            type = type,
+            type = transactionType,
             categoryId = categoryId!!,
             description = note,
             date = parsedDate!!,
@@ -136,20 +150,28 @@ class AddTransactionViewModel @Inject constructor(
     }
 
     private fun saveNewTransaction(transaction: FinanceTransaction, onSaved: () -> Unit) {
+        saving.value = true
         viewModelScope.launch {
-            saving.value = true
-            val result = transactionRepository.createWithFunding(transaction, null)
-            saving.value = false
-            handleResult(result, transaction, onSaved)
+            try {
+                handleResult(transactionRepository.createWithFunding(transaction, null), transaction, onSaved)
+            } catch (_: Exception) {
+                error.value = "No se pudo guardar el movimiento. Inténtalo nuevamente."
+            } finally {
+                saving.value = false
+            }
         }
     }
 
     private fun saveExistingTransaction(transaction: FinanceTransaction, onSaved: () -> Unit) {
+        saving.value = true
         viewModelScope.launch {
-            saving.value = true
-            val result = transactionRepository.updateWithFunding(transaction, transactionId, null)
-            saving.value = false
-            handleResult(result, transaction, onSaved)
+            try {
+                handleResult(transactionRepository.updateWithFunding(transaction, transactionId, null), transaction, onSaved)
+            } catch (_: Exception) {
+                error.value = "No se pudo actualizar el movimiento. Inténtalo nuevamente."
+            } finally {
+                saving.value = false
+            }
         }
     }
 
@@ -163,7 +185,7 @@ class AddTransactionViewModel @Inject constructor(
                 context.showToast(if (isEditing) {
                     "Movimiento actualizado correctamente"
                 } else {
-                    if (type == TransactionType.EXPENSE) "Gasto guardado correctamente" else "Ingreso guardado correctamente"
+                    if (transaction.type == TransactionType.EXPENSE) "Gasto guardado correctamente" else "Ingreso guardado correctamente"
                 })
                 fieldErrors.value = emptyMap()
                 onSaved()
@@ -192,20 +214,20 @@ class AddTransactionViewModel @Inject constructor(
         pendingTransaction = null
         pendingOnSaved = null
 
+        saving.value = true
         viewModelScope.launch {
-            saving.value = true
-            val finalResult = if (isEditing) {
-                transactionRepository.updateWithFunding(transaction, transactionId, sourceDescription)
-            } else {
-                transactionRepository.createWithFunding(transaction, sourceDescription)
-            }
-            saving.value = false
-            when (finalResult) {
+            try {
+                val finalResult = if (isEditing) {
+                    transactionRepository.updateWithFunding(transaction, transactionId, sourceDescription)
+                } else {
+                    transactionRepository.createWithFunding(transaction, sourceDescription)
+                }
+                when (finalResult) {
                 is ExpenseCreationResult.Saved -> {
                     context.showToast(if (isEditing) {
                         "Movimiento actualizado correctamente"
                     } else {
-                        if (type == TransactionType.EXPENSE) "Gasto guardado correctamente" else "Ingreso guardado correctamente"
+                        if (transaction.type == TransactionType.EXPENSE) "Gasto guardado correctamente" else "Ingreso guardado correctamente"
                     })
                     fieldErrors.value = emptyMap()
                     onSaved()
@@ -224,6 +246,14 @@ class AddTransactionViewModel @Inject constructor(
                     pendingTransaction = transaction
                     pendingOnSaved = onSaved
                 }
+                }
+            } catch (_: Exception) {
+                error.value = "No se pudo guardar el financiamiento. Inténtalo nuevamente."
+                _showFundingDialog.value = result
+                pendingTransaction = transaction
+                pendingOnSaved = onSaved
+            } finally {
+                saving.value = false
             }
         }
     }

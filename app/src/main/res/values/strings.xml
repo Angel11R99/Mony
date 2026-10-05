@@ -103,6 +103,11 @@
     <string name="widget_quick_history">Historial</string>
     <string name="widget_quick_pending">Recordatorios</string>
 
+    <!-- Registro por voz -->
+    <string name="widget_voice_name">Registrar por voz</string>
+    <string name="widget_voice_description">Abre Mony para dictar un gasto o ingreso</string>
+    <string name="widget_voice_action">Registrar por voz</string>
+
     <!-- Gasto de hoy -->
     <string name="widget_today_name">Gasto de hoy</string>
     <string name="widget_today_description">Cuánto llevas gastado hoy frente a tu ritmo diario disponible</string>

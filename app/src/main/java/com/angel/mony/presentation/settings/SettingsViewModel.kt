@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.angel.mony.core.BudgetAlertPreferences
 import com.angel.mony.core.FinanceDataCache
 import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.core.VoiceRecognitionPreferences
 import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.BudgetPeriod
 import com.angel.mony.domain.repository.BudgetRepository
@@ -24,6 +25,7 @@ class SettingsViewModel @Inject constructor(
     private val budgetRepository: BudgetRepository,
     private val saveBudgetUseCase: SaveBudget,
     dataCache: FinanceDataCache,
+    private val voiceRecognitionPreferences: VoiceRecognitionPreferences,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val alertPreferences = BudgetAlertPreferences(context)
@@ -33,6 +35,7 @@ class SettingsViewModel @Inject constructor(
     val isSavingCycles = MutableStateFlow(false)
     val isSavingBudget = MutableStateFlow(false)
     val alertsEnabled: StateFlow<Boolean> = alertPreferences.alertsEnabled
+    val skipConventionalVoiceNotice: StateFlow<Boolean> = voiceRecognitionPreferences.skipConventionalNotice
 
     fun consumeMessage() {
         message.value = null
@@ -59,6 +62,15 @@ class SettingsViewModel @Inject constructor(
                 message.value = it.message ?: "No se pudieron guardar los ciclos"
             }
             isSavingCycles.value = false
+        }
+    }
+
+    fun setSkipConventionalVoiceNotice(skip: Boolean) {
+        voiceRecognitionPreferences.setSkipConventionalNotice(skip)
+        message.value = if (skip) {
+            "El aviso de reconocimiento convencional no volverá a mostrarse"
+        } else {
+            "El aviso de reconocimiento convencional volverá a mostrarse"
         }
     }
 

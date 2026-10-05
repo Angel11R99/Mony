@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:name=".FinanceApplication"
@@ -157,6 +158,17 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/category_limits_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.VoiceRegistrationWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_voice_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/voice_registration_widget_info" />
         </receiver>
     </application>
 

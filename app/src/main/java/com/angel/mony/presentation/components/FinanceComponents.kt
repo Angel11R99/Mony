@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.animation.animateColorAsState
@@ -118,12 +119,14 @@ fun SecondaryButton(
 fun GlobalSettingsButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    size: Dp = 54.dp,
 ) {
     GlobalOutlinedIconButton(
         semanticIcon = MonyIcon.Settings,
         contentDescription = "Ajustes de la app",
         onClick = onClick,
         modifier = modifier,
+        size = size,
     )
 }
 
@@ -132,6 +135,7 @@ fun GlobalSaveButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    size: Dp = 54.dp,
 ) {
     GlobalOutlinedIconButton(
         semanticIcon = MonyIcon.Save,
@@ -139,6 +143,26 @@ fun GlobalSaveButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
+        size = size,
+    )
+}
+
+@Composable
+fun GlobalVoiceButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    listening: Boolean = false,
+    size: Dp = 54.dp,
+) {
+    GlobalOutlinedIconButton(
+        semanticIcon = MonyIcon.Voice,
+        contentDescription = if (listening) "Dictado activo; reiniciar dictado" else "Iniciar dictado",
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        selected = listening,
+        size = size,
     )
 }
 
@@ -174,18 +198,32 @@ fun GlobalOutlinedIconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     size: Dp = 54.dp,
+    selected: Boolean = false,
 ) {
+    val selectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
     OutlinedIconButton(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier.size(size).then(modifier),
         shape = LocalAppShapes.current.buttonShape,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        border = BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+        ),
+        colors = IconButtonDefaults.outlinedIconButtonColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                Color.Transparent
+            },
+            contentColor = if (selected) selectedContentColor else MaterialTheme.colorScheme.onSurface,
+        ),
     ) {
         MonyIcon(
             icon = semanticIcon,
             contentDescription = contentDescription,
-            role = if (enabled) MonyIconRole.NORMAL else MonyIconRole.STATE,
+            tint = if (selected) selectedContentColor else Color.Unspecified,
+            role = if (selected || !enabled) MonyIconRole.STATE else MonyIconRole.NORMAL,
         )
     }
 }

@@ -78,6 +78,7 @@ enum class MonyIcon {
     TrendUp,
     TrendDown,
     TrendFlat,
+    Voice,
 }
 
 enum class IconPack(val displayName: String) {
