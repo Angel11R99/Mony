@@ -10,8 +10,10 @@
 </p>
 
 <!-- APP_VERSION_START -->
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-v1.0.5-6750A4)](https://github.com/Angel11R99/Mony/releases/tag/v1.0.5)
-[![Descargar](https://img.shields.io/badge/descargar-%C3%BAltima_versi%C3%B3n-6750A4)](https://github.com/Angel11R99/Mony/releases/latest)
+<p align="center">
+  [![Versión](https://img.shields.io/badge/versi%C3%B3n-v1.0.5-6750A4)](https://github.com/Angel11R99/Mony/releases/tag/v1.0.5)
+  [![Descargar](https://img.shields.io/badge/descargar-%C3%BAltima_versi%C3%B3n-6750A4)](https://github.com/Angel11R99/Mony/releases/latest)
+</p>
 <!-- APP_VERSION_END -->
 
 <p align="center">
