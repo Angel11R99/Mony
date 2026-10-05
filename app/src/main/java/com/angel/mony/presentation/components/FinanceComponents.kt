@@ -152,16 +152,16 @@ fun GlobalVoiceButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    listening: Boolean = false,
+    panelOpen: Boolean = false,
     size: Dp = 54.dp,
 ) {
     GlobalOutlinedIconButton(
         semanticIcon = MonyIcon.Voice,
-        contentDescription = if (listening) "Dictado activo; reiniciar dictado" else "Iniciar dictado",
+        contentDescription = if (panelOpen) "Cerrar panel de voz" else "Abrir registro por voz",
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        selected = listening,
+        selected = panelOpen,
         size = size,
     )
 }

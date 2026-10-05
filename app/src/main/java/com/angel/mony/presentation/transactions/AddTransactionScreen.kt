@@ -117,6 +117,7 @@ fun AddTransactionScreen(
     val transactionType = transactionTypeName?.let(TransactionType::valueOf)
     val categories = allCategories.filter { it.type == transactionType }
     var voiceStatus by rememberSaveable { mutableStateOf(if (voiceEntry) "Pulsa el micrófono y di el movimiento." else "") }
+    var voicePanelVisible by rememberSaveable { mutableStateOf(voiceEntry) }
     var lastTranscript by rememberSaveable { mutableStateOf("") }
     var pendingTranscript by remember { mutableStateOf<String?>(null) }
     var saveRequested by rememberSaveable { mutableStateOf(false) }
@@ -168,12 +169,16 @@ fun AddTransactionScreen(
         onDispose { voiceController.release() }
     }
     LaunchedEffect(startConventionalRecognitionToken) {
-        if (startConventionalRecognitionToken > 0) {
+        if (startConventionalRecognitionToken > 0 && voicePanelVisible) {
             voiceController.start(VoiceRecognitionMode.CONVENTIONAL)
         }
     }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) startRecognitionToken++ else voiceStatus = "Permiso de micrófono denegado. Puedes continuar manualmente."
+        if (granted && voicePanelVisible) {
+            startRecognitionToken++
+        } else if (!granted) {
+            voiceStatus = "Permiso de micrófono denegado. Puedes continuar manualmente."
+        }
     }
 
     fun requestVoiceRecognition() {
@@ -284,7 +289,7 @@ fun AddTransactionScreen(
         }
     }
     LaunchedEffect(startRecognitionToken) {
-        if (startRecognitionToken > 0) requestVoiceRecognition()
+        if (startRecognitionToken > 0 && voicePanelVisible) requestVoiceRecognition()
     }
     LaunchedEffect(voiceEntry) {
         if (voiceEntry && !autoStartConsumed) {
@@ -373,9 +378,19 @@ fun AddTransactionScreen(
             navigationIcon = { IconButton(onClick = ::requestExit) { MonyIcon(MonyIcon.Back, "Volver") } },
             actions = {
                 GlobalVoiceButton(
-                    onClick = ::requestVoiceRecognition,
-                    enabled = !saving,
-                    listening = voiceStatus == "Escuchando…",
+                    onClick = {
+                        if (voicePanelVisible) {
+                            voicePanelVisible = false
+                            showRemoteConsent = false
+                            pendingTranscript = null
+                            voiceController.cancel()
+                        } else {
+                            voicePanelVisible = true
+                            requestVoiceRecognition()
+                        }
+                    },
+                    enabled = voicePanelVisible || !saving,
+                    panelOpen = voicePanelVisible,
                     size = 48.dp,
                 )
                 Spacer(Modifier.width(8.dp))
@@ -418,7 +433,7 @@ fun AddTransactionScreen(
                     example = if (voiceEntry) {
                         "Ejemplo: “Registra un gasto de quinientos pesos en Transporte, hoy, con nota guagua”."
                     } else null,
-                    visible = voiceEntry || lastTranscript.isNotBlank() || voiceStatus.isNotBlank(),
+                    visible = voicePanelVisible,
                     listening = voiceStatus == "Escuchando…",
                     saving = saving,
                     onListen = ::requestVoiceRecognition,

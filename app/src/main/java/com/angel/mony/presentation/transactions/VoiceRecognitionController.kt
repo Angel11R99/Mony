@@ -27,8 +27,7 @@ class VoiceRecognitionController(
     private val onEvent: (VoiceRecognitionEvent) -> Unit,
 ) {
     private var recognizer: SpeechRecognizer? = null
-    private var deliveredFinalResult = false
-    private var activeMode = VoiceRecognitionMode.UNAVAILABLE
+    private val sessionGate = VoiceSessionGate()
 
     fun availableMode(): VoiceRecognitionMode = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context) ->
@@ -38,25 +37,24 @@ class VoiceRecognitionController(
     }
 
     fun start(mode: VoiceRecognitionMode = availableMode()) {
-        destroyRecognizer()
+        invalidateRecognizer()
         if (mode == VoiceRecognitionMode.UNAVAILABLE) {
             onEvent(VoiceRecognitionEvent.Error("El reconocimiento de voz no está disponible en este dispositivo."))
             return
         }
-        deliveredFinalResult = false
-        activeMode = mode
+        val sessionId = sessionGate.open()
         val speechRecognizer = if (mode == VoiceRecognitionMode.ON_DEVICE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
         } else {
             SpeechRecognizer.createSpeechRecognizer(context)
         }
         recognizer = speechRecognizer
-        speechRecognizer.setRecognitionListener(listener)
+        speechRecognizer.setRecognitionListener(createListener(sessionId, mode, speechRecognizer))
         val supportIntent = recognitionIntent(mode, GENERIC_SPANISH)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             speechRecognizer.checkRecognitionSupport(supportIntent, context.mainExecutor, object : RecognitionSupportCallback {
                 override fun onSupportResult(recognitionSupport: RecognitionSupport) {
-                    if (recognizer !== speechRecognizer) return
+                    if (!isCurrent(sessionId, speechRecognizer)) return
                     val availableLanguages = if (mode == VoiceRecognitionMode.ON_DEVICE) {
                         recognitionSupport.installedOnDeviceLanguages
                     } else {
@@ -64,7 +62,7 @@ class VoiceRecognitionController(
                     }
                     val spanishLanguage = preferredSpanishLanguage(availableLanguages)
                     if (availableLanguages.isNotEmpty() && spanishLanguage == null) {
-                        destroyRecognizer()
+                        finishSession(sessionId, speechRecognizer)
                         if (mode == VoiceRecognitionMode.ON_DEVICE && SpeechRecognizer.isRecognitionAvailable(context)) {
                             onEvent(VoiceRecognitionEvent.ConventionalRecognitionRequired)
                         } else {
@@ -76,7 +74,7 @@ class VoiceRecognitionController(
                 }
 
                 override fun onError(error: Int) {
-                    if (recognizer !== speechRecognizer) return
+                    if (!isCurrent(sessionId, speechRecognizer)) return
                     // Some recognition services do not publish a language catalogue. In that case
                     // start normally and let the listener report LANGUAGE_UNAVAILABLE precisely.
                     speechRecognizer.startListening(supportIntent)
@@ -93,14 +91,20 @@ class VoiceRecognitionController(
     }
 
     fun cancel() {
-        recognizer?.cancel()
-        destroyRecognizer()
+        val current = recognizer
+        sessionGate.invalidate()
+        recognizer = null
+        current?.cancel()
+        current?.destroy()
         onEvent(VoiceRecognitionEvent.Stopped)
     }
 
     fun release() {
-        recognizer?.cancel()
-        destroyRecognizer()
+        val current = recognizer
+        sessionGate.invalidate()
+        recognizer = null
+        current?.cancel()
+        current?.destroy()
     }
 
     private fun recognitionIntent(mode: VoiceRecognitionMode, language: String) = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -112,9 +116,22 @@ class VoiceRecognitionController(
         if (mode == VoiceRecognitionMode.ON_DEVICE) putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
     }
 
-    private fun destroyRecognizer() {
-        recognizer?.destroy()
+    private fun invalidateRecognizer() {
+        val current = recognizer
+        sessionGate.invalidate()
         recognizer = null
+        current?.cancel()
+        current?.destroy()
+    }
+
+    private fun isCurrent(sessionId: Long, speechRecognizer: SpeechRecognizer): Boolean =
+        sessionGate.isCurrent(sessionId) && recognizer === speechRecognizer
+
+    private fun finishSession(sessionId: Long, speechRecognizer: SpeechRecognizer) {
+        if (!isCurrent(sessionId, speechRecognizer)) return
+        sessionGate.invalidate()
+        recognizer = null
+        speechRecognizer.destroy()
     }
 
     private fun isSpanish(languageTag: String): Boolean =
@@ -124,17 +141,27 @@ class VoiceRecognitionController(
         languages.firstOrNull { it.equals(DOMINICAN_SPANISH, ignoreCase = true) }
             ?: languages.firstOrNull(::isSpanish)
 
-    private val listener = object : RecognitionListener {
-        override fun onReadyForSpeech(params: Bundle?) = onEvent(VoiceRecognitionEvent.Listening)
+    private fun createListener(
+        sessionId: Long,
+        mode: VoiceRecognitionMode,
+        speechRecognizer: SpeechRecognizer,
+    ) = object : RecognitionListener {
+        private var deliveredFinalResult = false
+
+        override fun onReadyForSpeech(params: Bundle?) {
+            if (isCurrent(sessionId, speechRecognizer)) onEvent(VoiceRecognitionEvent.Listening)
+        }
         override fun onBeginningOfSpeech() = Unit
         override fun onRmsChanged(rmsdB: Float) = Unit
         override fun onBufferReceived(buffer: ByteArray?) = Unit
-        override fun onEndOfSpeech() = onEvent(VoiceRecognitionEvent.Processing)
+        override fun onEndOfSpeech() {
+            if (isCurrent(sessionId, speechRecognizer)) onEvent(VoiceRecognitionEvent.Processing)
+        }
         override fun onPartialResults(partialResults: Bundle?) = Unit
         override fun onEvent(eventType: Int, params: Bundle?) = Unit
 
         override fun onResults(results: Bundle?) {
-            if (deliveredFinalResult) return
+            if (!isCurrent(sessionId, speechRecognizer) || deliveredFinalResult) return
             deliveredFinalResult = true
             val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
             if (text.isNullOrBlank()) {
@@ -142,17 +169,18 @@ class VoiceRecognitionController(
             } else {
                 onEvent(VoiceRecognitionEvent.Result(text))
             }
-            destroyRecognizer()
+            finishSession(sessionId, speechRecognizer)
         }
 
         override fun onError(error: Int) {
+            if (!isCurrent(sessionId, speechRecognizer)) return
             if (deliveredFinalResult && error == SpeechRecognizer.ERROR_CLIENT) return
             if (
-                activeMode == VoiceRecognitionMode.ON_DEVICE &&
+                mode == VoiceRecognitionMode.ON_DEVICE &&
                 (error == SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED || error == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE) &&
                 SpeechRecognizer.isRecognitionAvailable(context)
             ) {
-                destroyRecognizer()
+                finishSession(sessionId, speechRecognizer)
                 onEvent(VoiceRecognitionEvent.ConventionalRecognitionRequired)
                 return
             }
@@ -170,7 +198,7 @@ class VoiceRecognitionController(
                 else -> "No se pudo completar el reconocimiento de voz."
             }
             onEvent(VoiceRecognitionEvent.Error(message))
-            destroyRecognizer()
+            finishSession(sessionId, speechRecognizer)
         }
     }
 
