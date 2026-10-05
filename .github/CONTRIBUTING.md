@@ -1,98 +1,40 @@
-# Contribuir a Mony
+<h1 align="center">Construyamos un mejor Mony</h1>
+<p align="center">Errores · Ideas · Código · Documentación</p>
 
-Las contribuciones a Mony son bienvenidas. Puedes proponer correcciones, mejoras y nuevas funciones mediante el repositorio oficial.
+## `01` — Empieza con un issue
 
-Todo cambio pasa por revisión del titular del proyecto. Al participar debes respetar la [licencia de Mony](../LICENSE.md). Puedes crear un fork y modificar el código para preparar tu contribución, pero no redistribuir Mony, publicar versiones derivadas ni presentar el proyecto como propio.
+Busca si existe uno similar y [abre un issue](https://github.com/Angel11R99/Mony/issues/new/choose). Antes de desarrollar una PR, espera confirmación del titular. Las funciones nuevas deben discutirse y aprobarse previamente.
 
-## Formas de contribuir
+Para reportar un fallo, incluye **versión de Mony y Android, dispositivo, pasos, resultado esperado y observado**, y capturas si ayudan. No publiques datos financieros, respaldos, credenciales ni información personal.
 
-- Reportar fallos reproducibles.
-- Corregir errores.
-- Mejorar pruebas y documentación.
-- Proponer mejoras de accesibilidad o experiencia de usuario.
-- Implementar funciones previamente discutidas y aprobadas.
-- Revisar código y aportar observaciones técnicas.
+## `02` — Prepara tu cambio
 
-Antes de desarrollar cualquier cambio que vaya a enviarse mediante una pull request, abre un issue, comprueba que no exista otro equivalente y espera confirmación.
+Crea un fork y una rama para un único cambio. Abre el proyecto en Android Studio, sincroniza Gradle y compila antes de empezar.
 
-## Preparación del proyecto
+| Verificación | Windows | macOS / Linux |
+| :--- | :--- | :--- |
+| Compilación | `.\gradlew.bat assembleDebug` | `./gradlew assembleDebug` |
+| Pruebas unitarias | `.\gradlew.bat testDebugUnitTest` | `./gradlew testDebugUnitTest` |
 
-1. Crea un fork del repositorio.
-2. Crea una rama enfocada en un único cambio.
-3. Abre el proyecto en Android Studio y espera la sincronización de Gradle.
-4. Compila el proyecto antes de comenzar:
+**Las reglas esenciales:**
 
-```powershell
-.\gradlew.bat assembleDebug    # Windows
-./gradlew assembleDebug        # Unix
-```
+- Inspecciona el código existente y conserva las capas Kotlin / Compose / ViewModel / repositorios / Room / Hilt; no accedas a DAOs desde pantallas o ViewModels.
+- Mantén las finanzas disponibles sin conexión, textos en español y montos DOP en centavos enteros; reutiliza el formateador monetario y las utilidades de fecha.
+- Respeta los temas claro, oscuro y del sistema, valida las entradas, muestra mensajes comprensibles y actualiza los widgets afectados.
+- Evita cambios ajenos al objetivo, dependencias innecesarias, publicidad, seguimiento y servicios remotos no aprobados.
+- Añade pruebas relevantes para cambios de lógica, presupuesto, fechas, validación o cálculos cuando sea práctico.
 
-## Reglas de desarrollo
+> [!IMPORTANT]
+> Si cambia el esquema de Room: incrementa su versión, añade y registra una migración explícita no destructiva, genera el esquema JSON y verifica la conservación de datos. Nunca uses `fallbackToDestructiveMigration()`.
 
-- Inspecciona la implementación existente antes de modificarla.
-- Mantén cada contribución enfocada y evita refactorizaciones no relacionadas.
-- Conserva la arquitectura actual (Kotlin, Compose, ViewModel, repositorios, Room, Hilt).
-- Mantén las funciones financieras principales disponibles sin conexión.
-- Escribe todos los textos visibles en español.
-- Utiliza pesos dominicanos (DOP / RD$) y conserva los montos en centavos enteros.
-- Utiliza el formateador monetario compartido y las utilidades de fecha existentes.
-- No accedas a DAOs directamente desde pantallas o ViewModels.
-- No agregues dependencias innecesarias, publicidad, seguimiento ni servicios remotos no aprobados.
-- Mantén compatibilidad con los temas claro, oscuro y del sistema.
-- Proporciona validación y mensajes comprensibles para acciones importantes.
-- Actualiza los widgets cuando cambien datos que estos muestran.
+Las convenciones completas están en [AGENTS.md](../AGENTS.md).
 
-## Datos y migraciones
+## `03` — Envía tu PR
 
-Los datos financieros existentes deben conservarse. Todo cambio en el esquema de Room debe incluir:
+Vincula un **issue abierto de este repositorio, creado antes que la PR**, mediante `Closes #123`, `Fixes #123` o `Resolves #123`. No debe existir otra PR abierta para el mismo issue. La comprobación automática valida estos requisitos y rechaza referencias a otras PR.
 
-1. Incremento de la versión de la base de datos.
-2. Migración explícita y no destructiva.
-3. Registro de la migración.
-4. Nuevo esquema JSON.
-5. Pruebas o verificación de conservación de datos.
+Usa la [plantilla de PR](PULL_REQUEST_TEMPLATE.md): problema, solución, pasos de verificación, pruebas ejecutadas, evidencia visual y migraciones cuando correspondan. El titular revisa y decide la incorporación.
 
-No utilices `fallbackToDestructiveMigration()`.
+---
 
-## Pruebas
-
-```powershell
-.\gradlew.bat testDebugUnitTest    # pruebas unitarias
-.\gradlew.bat assembleDebug        # verificación de compilación
-```
-
-En Unix sustituye `.\gradlew.bat` por `./gradlew`. Los cambios de lógica de negocio, presupuesto, fechas, validación o cálculos deben incluir pruebas relevantes cuando sea práctico.
-
-## Pull requests
-
-Toda pull request debe estar vinculada a un issue abierto que se haya creado antes que la PR. Incluye en la descripción una palabra de cierre reconocida por GitHub:
-
-```text
-Closes #123
-```
-
-También puedes utilizar `Fixes #123` o `Resolves #123`. La referencia debe pertenecer a este repositorio.
-
-La verificación automática rechazará una PR cuando:
-
-- No incluya una referencia de cierre a un issue.
-- El issue no exista, esté cerrado o se haya creado después que la PR.
-- La referencia apunte a otra pull request en lugar de un issue.
-- Otra PR abierta ya esté vinculada al mismo issue.
-
-Cada pull request debe incluir:
-
-- Descripción del problema o mejora.
-- Explicación de la solución.
-- Pasos para verificarla.
-- Pruebas ejecutadas.
-- Capturas o grabaciones para cambios visuales.
-- Consideraciones de migración cuando correspondan.
-
-## Reportar fallos
-
-Incluye: versión de Mony y de Android, dispositivo o emulador utilizado, pasos exactos para reproducir el problema, resultado esperado y resultado observado, capturas o mensajes relevantes. No publiques movimientos financieros, archivos de respaldo, credenciales ni información personal.
-
-## Derechos sobre las contribuciones
-
-Al enviar código, documentación o recursos confirmas que son de tu autoría o que tienes permiso para aportarlos. También aceptas las condiciones de contribución indicadas en [LICENSE.md](../LICENSE.md), que permiten integrar y distribuir tu aporte como parte de Mony.
+**Al contribuir**, confirmas la autoría o el permiso para aportar tu trabajo y aceptas las [condiciones de la licencia](../LICENSE.md), que permiten integrar y distribuir el aporte como parte de Mony. Los forks sirven para estudiar o contribuir; redistribuir, publicar derivados o presentar Mony como propio requiere autorización.

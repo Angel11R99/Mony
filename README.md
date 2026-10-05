@@ -1,80 +1,84 @@
-# Mony
+<p align="center">
+  <img src="docs/assets/mony-banner.svg" width="100%" alt="Mony — Tus finanzas, en tu órbita. Finanzas personales para Android." />
+</p>
+
+<h1 align="center">Tu dinero. Tu ritmo. Tu Mony.</h1>
+
+<p align="center">
+  Registra hoy, entiende tus hábitos y prepara lo que viene.<br />
+  <strong>Finanzas personales para Android, con tus datos en tu dispositivo.</strong>
+</p>
 
 <!-- APP_VERSION_START -->
 [![Versión](https://img.shields.io/badge/versi%C3%B3n-v1.0.5-6750A4)](https://github.com/Angel11R99/Mony/releases/tag/v1.0.5)
 [![Descargar](https://img.shields.io/badge/descargar-%C3%BAltima_versi%C3%B3n-6750A4)](https://github.com/Angel11R99/Mony/releases/latest)
 <!-- APP_VERSION_END -->
 
-Mony es una aplicación Android de finanzas personales diseñada para registrar y consultar tus movimientos con rapidez. Room mantiene los datos financieros localmente para que las funciones principales sigan disponibles sin conexión a Internet.
+<p align="center">
+  <a href="https://github.com/Angel11R99/Mony/releases/latest"><img src="https://img.shields.io/badge/Descargar_Mony-6750A4?style=for-the-badge&amp;logo=android&amp;logoColor=white" alt="Descargar Mony para Android" /></a>
+  <a href=".github/CONTRIBUTING.md"><img src="https://img.shields.io/badge/Contribuir-24112F?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="Contribuir al proyecto" /></a>
+</p>
 
-## Descargar
+<p align="center">
+  <a href="#01--tu-día-a-día">Funciones</a> ·
+  <a href="#02--tus-datos-contigo">Privacidad</a> ·
+  <a href="#03--por-dentro">Desarrollo</a> ·
+  <a href="#04--forma-parte">Contribuir</a>
+</p>
+
+## `01` — Tu día a día
+
+| Registra | Organiza | Visualiza |
+| :--- | :--- | :--- |
+| Ingresos y gastos: crea, edita y duplica movimientos. | Presupuestos mensuales o por ciclos, con cierre manual o automático. | Estadísticas por período y categoría, comparaciones y límites de gasto. |
+| Listas de compra con precios, descuentos, recargos y métodos de pago. | Entradas recurrentes, pagos y cobros pendientes con recordatorios. | Historial con búsqueda, filtros y exportación a PDF, Excel y CSV. |
+| Códigos de barras y lectura de tickets. | Metas de ahorro y categorías personalizables. | Once widgets para consultar tus finanzas y acceder a acciones rápidas. |
+
+<p align="center"><strong>RD$ / DOP</strong> · Tema claro, oscuro o del sistema · Colores configurables</p>
+
+## `02` — Tus datos, contigo
+
+> [!NOTE]
+> Las funciones financieras esenciales funcionan sin Internet, sin cuenta y sin servidor. Room mantiene los datos financieros localmente.
+
+La consulta externa de productos por código de barras es opcional. Más detalles en la [política de privacidad](docs/PRIVACY_POLICY.md).
 
 <!-- APP_DOWNLOAD_START -->
 Descarga **Mony v1.0.5** desde su [release en GitHub](https://github.com/Angel11R99/Mony/releases/tag/v1.0.5) o consulta [todas las versiones disponibles](https://github.com/Angel11R99/Mony/releases).
 <!-- APP_DOWNLOAD_END -->
 
-## Funciones principales
+## `03` — Por dentro
 
-- Registro, edición, duplicado y eliminación de ingresos y gastos.
-- Presupuestos mensuales o por ciclos con ciclos y cierre manual o automático.
-- Historial con filtros, búsqueda y exportación local a PDF, Excel y CSV.
-- Estadísticas por período y categoría, comparaciones y límites de gasto.
-- Entradas fijas recurrentes y pagos o cobros pendientes con recordatorios.
-- Metas de ahorro y seguimiento de su progreso.
-- Listas de compra con productos, precios, descuentos, recargos y métodos de pago.
-- Escaneo de códigos de barras y lectura de tickets; la consulta externa de productos es opcional.
-- Categorías personalizables y límites de presupuesto por categoría.
-- Apariencia clara, oscura o según el sistema, con colores configurables.
-- Once widgets para balances, presupuesto, estadísticas, movimientos, accesos rápidos y otros resúmenes.
-- Soporte para pesos dominicanos (`DOP`, `RD$`).
+**Kotlin · Jetpack Compose · Material 3 · Room · Hilt**<br />
+Coroutines / Flow · Navigation Compose · WorkManager · Glance · ML Kit · Google Code Scanner
 
-## Privacidad y funcionamiento sin conexión
+Arquitectura por capas con MVVM: reglas de negocio en `domain`, persistencia en `data` y pantallas con ViewModels en `presentation`.
 
-Room es la fuente principal de los datos financieros y las funciones esenciales no requieren una cuenta, un servidor ni conexión a Internet. La consulta de productos por código de barras puede usar un servicio externo de forma opcional. Consulta la [Política de privacidad de Mony](docs/PRIVACY_POLICY.md) para conocer los detalles.
+<details>
+<summary><strong>Compilar y preparar una versión</strong></summary>
 
-## Arquitectura y tecnologías
+Abre el proyecto en Android Studio y sincroniza Gradle.
 
-Arquitectura por capas similar a Clean Architecture con MVVM:
+| Acción | Windows | macOS / Linux |
+| :--- | :--- | :--- |
+| Compilar debug | `.\gradlew.bat assembleDebug` | `./gradlew assembleDebug` |
+| Pruebas unitarias | `.\gradlew.bat testDebugUnitTest` | `./gradlew testDebugUnitTest` |
+| Preparar siguiente parche y compilar release | `.\gradlew.bat buildNextRelease` | `./gradlew buildNextRelease` |
 
-- **domain**: modelos y reglas de negocio en Kotlin puro.
-- **data**: base de datos Room, mapeadores e implementaciones de repositorios.
-- **presentation**: pantallas con Jetpack Compose y ViewModels.
-- **navigation**: grafo de navegación principal.
-- **ui**: tema y preferencias de apariencia.
-- **widget**: widgets creados con Glance.
-- **di**: inyección de dependencias con Hilt.
-- **core**: utilidades compartidas, como el formato monetario.
+La versión vive en `version.properties`. `buildNextRelease` incrementa el parche y `versionCode`, sincroniza este README y genera el APK en `app/build/outputs/apk/release/`. Para un salto minor o major, usa `-PversionBump=minor` o `-PversionBump=major`.
 
-Stack: Kotlin, coroutines/Flow, Jetpack Compose + Material 3, Room, Hilt, Navigation Compose, WorkManager, Glance, ML Kit y Google Code Scanner.
+Configura una firma de producción antes de publicar; nunca subas claves privadas ni APK sin firmar.
 
-## Compilación
+**Capas auxiliares:** `navigation` conecta las pantallas, `ui` define la apariencia, `widget` contiene los widgets, `di` configura Hilt y `core` reúne utilidades compartidas.
 
-```powershell
-.\gradlew.bat assembleDebug    # Windows
-./gradlew assembleDebug        # Unix
-```
+</details>
 
-Lee [CONTRIBUTING.md](.github/CONTRIBUTING.md) para instrucciones detalladas de desarrollo y pruebas.
+## `04` — Forma parte
 
-## Preparar la siguiente versión
+¿Un fallo reproducible o una idea para mejorar Mony? [Abre un issue](https://github.com/Angel11R99/Mony/issues/new/choose). Para aportar código, consulta la [guía breve de contribución](.github/CONTRIBUTING.md).
 
-La versión se administra en `version.properties`. Para incrementar automáticamente el parche, aumentar `versionCode` y compilar el APK release:
+**Código fuente disponible, con permisos limitados:** estudio, uso personal no comercial y contribuciones al proyecto oficial. Redistribución, versiones derivadas y uso comercial requieren autorización escrita. [Ver licencia](LICENSE.md).
 
-```powershell
-.\gradlew.bat buildNextRelease
-```
-
-El APK release se genera en `app/build/outputs/apk/release/`. Antes de publicarlo debes configurar una firma de producción; no publiques APK sin firmar ni claves privadas en el repositorio.
-
-## Contribuciones
-
-Los reportes de errores, mejoras y contribuciones de código son bienvenidos y serán revisados por el propietario del proyecto. Lee [CONTRIBUTING.md](.github/CONTRIBUTING.md) antes de abrir un issue o pull request.
-
-## Licencia
-
-Mony tiene código fuente disponible para inspección y contribuciones. Se permite modificarlo para uso personal o para contribuir al proyecto oficial, pero no redistribuirlo, renombrarlo, usarlo comercialmente ni publicar versiones derivadas sin autorización escrita. Consulta [LICENSE.md](LICENSE.md).
-
-## Agradecimientos
-
-- Inspirada en la necesidad de administrar finanzas personales de forma simple y sin conexión.
-- Construida con prácticas modernas de desarrollo Android.
+<p align="center">
+  <sub>Creado por <a href="https://github.com/Angel11R99">Angel Rodriguez</a> · Hecho para llevar tus finanzas a tu ritmo.</sub>
+</p>
