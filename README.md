@@ -2,7 +2,7 @@
   <img src="docs/assets/mony-banner.svg" width="100%" alt="Mony — Tus finanzas, en tu órbita. Finanzas personales para Android." />
 </p>
 
-<h1 align="center">Tu dinero. Tu ritmo. Tu Mony.</h1>
+<h1 align="center">Tu historial. Tu ritmo. Tu Mony.</h1>
 
 <p align="center">
   Registra hoy, entiende tus hábitos y prepara lo que viene.<br />
