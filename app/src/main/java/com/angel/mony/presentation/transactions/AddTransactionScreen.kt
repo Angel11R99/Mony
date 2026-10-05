@@ -590,7 +590,7 @@ fun AddTransactionScreen(
             title = { Text("Reconocimiento convencional") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Este dispositivo no ofrece reconocimiento local. El servicio convencional puede enviar el audio a un proveedor remoto y requerir internet. Puedes aceptarlo o continuar manualmente.")
+                    Text("Este dispositivo no ofrece reconocimiento local en español. El servicio convencional puede enviar el audio a un proveedor remoto y requerir internet. Puedes aceptarlo o continuar manualmente.")
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

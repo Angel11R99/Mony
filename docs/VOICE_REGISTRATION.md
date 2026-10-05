@@ -6,7 +6,8 @@ el reconocedor en el dispositivo desde Android 12 (API 31) cuando está disponib
 
 Si el dispositivo solo ofrece reconocimiento convencional, Mony avisa que el audio puede enviarse
 al proveedor del servicio y que puede requerir internet. La persona debe aceptarlo antes de iniciar
-la escucha. El registro manual continúa disponible sin conexión.
+la escucha. El diálogo permite marcar **No volver a mostrar**; esta autorización puede revocarse en
+`Ajustes → Finanzas → Registro por voz`. El registro manual continúa disponible sin conexión.
 
 ## Gramática
 

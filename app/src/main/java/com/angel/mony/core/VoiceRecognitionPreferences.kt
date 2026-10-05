@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 @Singleton
 class VoiceRecognitionPreferences @Inject constructor(
-    @param:ApplicationContext context: Context,
+    @ApplicationContext context: Context,
 ) {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val mutableSkipConventionalNotice = MutableStateFlow(
