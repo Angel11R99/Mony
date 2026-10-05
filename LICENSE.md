@@ -9,6 +9,17 @@ de forma personal o preparar contribuciones para el repositorio oficial.
 Esta licencia no convierte a Mony en software de dominio público ni concede
 permiso para redistribuirlo como un producto independiente.
 
+## De un vistazo
+
+| Permitido | Requiere autorización escrita |
+| :--- | :--- |
+| Estudiar el código, uso personal no comercial, modificaciones privadas y contribuciones oficiales. | Redistribuir código o APK, publicar derivados, renombrar o explotar comercialmente Mony. |
+
+Este resumen es orientativo; las condiciones completas siguientes rigen el uso de Mony.
+
+<details>
+<summary><strong>Leer las condiciones completas de la licencia</strong></summary>
+
 ## Usos permitidos
 
 Se permite:
@@ -69,3 +80,5 @@ IMPOSIBILIDAD DE USAR EL SOFTWARE.
 
 Para solicitar permisos adicionales, debe obtenerse autorización expresa y por
 escrito del titular de Mony.
+
+</details>
