@@ -1,0 +1,26 @@
+package com.angel.mony.ui.iconography.vendor.mingcute
+
+// GENERATED FILE - do not edit by hand.
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.unit.dp
+
+public fun mingCuteHome3(): ImageVector = ImageVector.Builder(
+  name = "MingCute.Home3", defaultWidth = 24.dp, defaultHeight = 24.dp,
+  viewportWidth = 24f, viewportHeight = 24f,
+).apply {
+    addPath(
+      pathData = PathParser().parsePathString("M4 11c-.63 0-1.46.162-1.851-.48a1 1 0 0 1-.139-.398 1 1 0 0 1 .379-.913l8.383-6.521c.398-.285.864-.445 1.358-.412a2.1 2.1 0 0 1 1.098.412l8.383 6.521c.161.144.251.243.327.45.089.243.077.519-.03.754-.345.754-1.237.587-1.908.587v8c-.016.419-.13.819-.376 1.162-.38.531-.979.814-1.624.838H6c-1.135-.042-1.958-.865-2-2Zm1.622-1.772c.24.219.356.442.378.772v8.943l.006.051L9 19v-5a3.16 3.16 0 0 1 .536-1.708 3 3 0 0 1 1.442-1.111c1.736-.653 3.604.477 3.967 2.256L15 14v5l2.994-.006.006-.051V10c.022-.33.138-.553.378-.772L12 4.278ZM11 19h2v-4.96c-.023-.557-.411-1.037-1-1.037s-.978.48-1 1.037Z").toNodes(),
+      fill = SolidColor(Color.Black),
+      stroke = null,
+      strokeLineWidth = 1f,
+      strokeLineCap = StrokeCap.Butt,
+      strokeLineJoin = StrokeJoin.Miter,
+      pathFillType = PathFillType.NonZero,
+    )
+}.build()

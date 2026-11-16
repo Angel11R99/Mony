@@ -46,7 +46,10 @@ class IconographyTest {
         MonyIcon.entries.forEach { icon ->
             IconPack.entries.forEach { pack ->
                 val asset = MonyIconResolver.resolve(icon, pack)
-                assertTrue(asset is MonyIconAsset.Tintable || asset is MonyIconAsset.Multicolor)
+                assertTrue(
+                    asset is MonyIconAsset.Tintable || asset is MonyIconAsset.Multicolor ||
+                        asset is MonyIconAsset.FixedColor,
+                )
             }
         }
     }

@@ -44,7 +44,7 @@ fun MonyIcon(
 ) {
     val config = LocalIconography.current
     val pack = packOverride ?: config.pack
-    val asset = MonyIconResolver.resolve(icon, pack)
+    val asset = remember(icon, pack) { MonyIconResolver.resolve(icon, pack) }
     val iconModifier = if (size == null) modifier else modifier.size(size)
     val resolvedTint = resolveIconTint(
         config = config,
@@ -83,6 +83,12 @@ fun MonyIcon(
                 tint = Color.Unspecified,
             )
         }
+        is MonyIconAsset.FixedColor -> Icon(
+            imageVector = asset.imageVector,
+            contentDescription = contentDescription,
+            modifier = iconModifier,
+            tint = Color.Unspecified,
+        )
 
     }
 }

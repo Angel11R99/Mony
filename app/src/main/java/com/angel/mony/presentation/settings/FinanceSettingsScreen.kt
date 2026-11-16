@@ -386,9 +386,14 @@ private fun BudgetSettingsCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 com.angel.mony.ui.iconography.MonyIcon(
-                    com.angel.mony.ui.iconography.MonyIcon.AlertsEnabled,
+                    if (alertsEnabled) {
+                        com.angel.mony.ui.iconography.MonyIcon.AlertsEnabled
+                    } else {
+                        com.angel.mony.ui.iconography.MonyIcon.AlertsDisabled
+                    },
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = if (alertsEnabled) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
                     role = com.angel.mony.ui.iconography.MonyIconRole.STATE,
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

@@ -72,6 +72,26 @@ El mapa vivo está en `MonyColorIconMappings.kt`. Para cambiar la ilustración d
 El generador no tiene dependencias de npm y falla de forma explícita ante máscaras con recorte
 real, viewports inesperados o iconos ausentes.
 
+## MingCute y Flat Color Icons
+
+Los packs **MingCute** (Core Regular, MingCute 3.1.0, Apache-2.0) y **Flat Color Icons** (Icons8,
+1.0.2, MIT) están incluidos como `ImageVector` en `ui/iconography/vendor`. Solo se empaqueta el
+subconjunto usado por Mony: 50 glifos MingCute y 21 Flat Color. No hay dependencias de iconos en
+runtime ni descargas de red. Flat Color conserva los colores originales del artwork y no recibe
+tinte global; MingCute sigue el color seleccionado en Apariencia.
+
+Las licencias distribuidas con la app están en `app/src/main/assets/licenses`. El origen y el
+subconjunto se reproducen con:
+
+```text
+npm pack @mingcute/svg@3.1.0
+npm pack @iconify-json/flat-color-icons@1.2.3
+node tools/icons/generate-packs.mjs --mingcute <paquete-mingcute> --flat <paquete-flat>/icons.json
+```
+
+Los iconos no mapeados en cualquiera de estos dos packs usan el fallback Material del mismo
+significado; estados semánticos conservan así su color y lectura accesible.
+
 Si una ilustración Mony Color o un equivalente de otro pack no existe, el resolver devuelve el
 `ImageVector` Material del mismo significado. El fallback ignora el color global monocromático de
 Mony Color, pero respeta siempre un `tint` explícito o `MonyIconRole.STATE` para no perder estados

@@ -86,6 +86,8 @@ enum class IconPack(val displayName: String) {
     LUCIDE("Lucide"),
     PHOSPHOR("Phosphor"),
     MONY_COLOR("Mony Color"),
+    MINGCUTE("MingCute"),
+    FLAT_COLOR("Flat Color Icons"),
 }
 
 enum class IconColorMode(val displayName: String) {

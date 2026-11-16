@@ -1,0 +1,26 @@
+package com.angel.mony.ui.iconography.vendor.mingcute
+
+// GENERATED FILE - do not edit by hand.
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.unit.dp
+
+public fun mingCuteChartBar(): ImageVector = ImageVector.Builder(
+  name = "MingCute.ChartBar", defaultWidth = 24.dp, defaultHeight = 24.dp,
+  viewportWidth = 24f, viewportHeight = 24f,
+).apply {
+    addPath(
+      pathData = PathParser().parsePathString("M8 11V5a2.1 2.1 0 0 1 .376-1.162c.38-.531.979-.814 1.624-.838h4c1.135.042 1.958.865 2 2v3h4c1.135.042 1.958.865 2 2v9c-.029.799-.474 1.524-1.224 1.84-.247.104-.509.15-.776.16H4c-1.135-.042-1.958-.865-2-2v-6a2.1 2.1 0 0 1 .376-1.162c.38-.531.979-.814 1.624-.838Zm8-1v9l3.994-.006v-8.988Zm-2.006-4.994h-3.988L10 19h4Zm-9.988 8v5.988L8 19v-6Z").toNodes(),
+      fill = SolidColor(Color.Black),
+      stroke = null,
+      strokeLineWidth = 1f,
+      strokeLineCap = StrokeCap.Butt,
+      strokeLineJoin = StrokeJoin.Miter,
+      pathFillType = PathFillType.NonZero,
+    )
+}.build()
