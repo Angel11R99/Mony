@@ -17,6 +17,16 @@ fun activeBudgetPeriod(
     today: LocalDate = LocalDate.now(),
 ): DateRange {
     if (budget == null) return DateRange.current(BudgetPeriod.FORTNIGHTLY, today)
+    // A cycle may be closed manually or automatically on its inclusive closing day.
+    // The next cycle starts on the following day, so schedule-based lookup alone would
+    // still report the just-closed cycle for the remainder of the closing day.
+    budget.cycleStart
+        ?.takeIf { it.isAfter(today) }
+        ?.let { nextStart ->
+            configuredPeriodsAround(budget, nextStart)
+                .firstOrNull { it.start == nextStart }
+                ?.let { return it }
+        }
     return configuredPeriodsAround(budget, today)
         .filter { today in it.start..it.endInclusive }
         .maxByOrNull(DateRange::start)

@@ -54,6 +54,30 @@ class BudgetCycleTest {
         )
     }
 
+    @Test fun `closed cycle advances active period on its closing day`() {
+        val nextStart = LocalDate.of(2026, 8, 16)
+        val config = BudgetConfig(
+            amountInCents = 100_000,
+            period = BudgetPeriod.FORTNIGHTLY,
+            cycleStart = nextStart,
+            cycleStartedAt = Instant.parse("2026-08-15T21:00:00Z"),
+        )
+
+        val active = activeBudgetPeriod(config, LocalDate.of(2026, 8, 15))
+        val openingIncome = transaction(
+            id = 5,
+            date = nextStart,
+            amountInCents = 100_000,
+            type = TransactionType.INCOME,
+        )
+
+        assertEquals(
+            DateRange(LocalDate.of(2026, 8, 16), LocalDate.of(2026, 8, 31)),
+            active,
+        )
+        assertTrue(openingIncome.belongsToActiveBudgetCycle(config, active))
+    }
+
     @Test fun `day 31 is clamped to the end of short months`() {
         val config = BudgetConfig(
             amountInCents = 100_000,
