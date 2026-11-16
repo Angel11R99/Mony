@@ -9,19 +9,19 @@ import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.adamglin.PhosphorIcons
-import com.angel.mony.ui.iconography.vendor.iconpark.IconParkPalette
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.*
 import com.composables.icons.lucide.*
 import com.angel.mony.ui.iconography.vendor.flatcolor.*
+import com.angel.mony.ui.iconography.vendor.fluentemojiflat.*
 import com.angel.mony.ui.iconography.vendor.mingcute.*
+import com.angel.mony.ui.iconography.vendor.openmoji.*
 
 sealed interface MonyIconAsset {
     data class Tintable(
         val imageVector: ImageVector,
         val usesGlobalTint: Boolean = true,
     ) : MonyIconAsset
-    data class Multicolor(val build: MonyColorVector) : MonyIconAsset
     data class FixedColor(val imageVector: ImageVector) : MonyIconAsset
 }
 
@@ -29,25 +29,16 @@ object MonyIconResolver {
     fun resolve(icon: MonyIcon, pack: IconPack): MonyIconAsset =
         resolveOrNull(icon, pack) ?: MonyIconAsset.Tintable(
             imageVector = resolveMaterial(icon),
-            usesGlobalTint = pack != IconPack.MONY_COLOR,
         )
-
-    /**
-     * Builds a Mony Color vector directly, bypassing the material fallback.
-     *
-     * Used by the appearance preview, which must only offer the styles that actually change the
-     * artwork. Icons with no Mony Color glyph return `null` instead of silently falling back.
-     */
-    fun resolveMonyColor(icon: MonyIcon, palette: IconParkPalette): ImageVector? =
-        MONY_COLOR_VECTORS[icon]?.invoke(palette)
 
     internal fun resolveOrNull(icon: MonyIcon, pack: IconPack): MonyIconAsset? = when (pack) {
         IconPack.MATERIAL -> MonyIconAsset.Tintable(resolveMaterial(icon))
         IconPack.LUCIDE -> resolveLucide(icon)?.let(MonyIconAsset::Tintable)
         IconPack.PHOSPHOR -> resolvePhosphor(icon)?.let(MonyIconAsset::Tintable)
-        IconPack.MONY_COLOR -> MONY_COLOR_VECTORS[icon]?.let(MonyIconAsset::Multicolor)
         IconPack.MINGCUTE -> resolveMingCute(icon)?.let(MonyIconAsset::Tintable)
         IconPack.FLAT_COLOR -> resolveFlatColor(icon)?.let(MonyIconAsset::FixedColor)
+        IconPack.FLUENT_EMOJI_FLAT -> FLUENT_EMOJI_FLAT_ICONS[icon]?.invoke()?.let(MonyIconAsset::FixedColor)
+        IconPack.OPENMOJI -> OPENMOJI_ICONS[icon]?.invoke()?.let(MonyIconAsset::FixedColor)
     }
 
     /** Selected Core Regular MingCute artwork. Unmapped semantic states keep the Material fallback. */
@@ -145,6 +136,87 @@ object MonyIconResolver {
         MonyIcon.Upload to ::flatColorUpload,
         MonyIcon.Share to ::flatColorShare,
         MonyIcon.Time to ::flatColorClock,
+    )
+
+    private val FLUENT_EMOJI_FLAT_ICONS: Map<MonyIcon, () -> ImageVector> = mapOf(
+        MonyIcon.Home to ::fluentFlatHouse,
+        MonyIcon.Fixed to ::fluentFlatAlarmClock,
+        MonyIcon.Pending to ::fluentFlatBell,
+        MonyIcon.Savings to ::fluentFlatMoneyBag,
+        MonyIcon.Shopping to ::fluentFlatShoppingCart,
+        MonyIcon.Statistics to ::fluentFlatBarChart,
+        MonyIcon.Fortnight to ::fluentFlatCalendar,
+        MonyIcon.Calendar to ::fluentFlatCalendar,
+        MonyIcon.Settings to ::fluentFlatGear,
+        MonyIcon.Appearance to ::fluentFlatArtistPalette,
+        MonyIcon.Navigation to ::fluentFlatControlKnobs,
+        MonyIcon.Finance to ::fluentFlatBank,
+        MonyIcon.Edit to ::fluentFlatPencil,
+        MonyIcon.Delete to ::fluentFlatWastebasket,
+        MonyIcon.Search to ::fluentFlatMagnifyingGlassTiltedLeft,
+        MonyIcon.Income to ::fluentFlatDollarBanknote,
+        MonyIcon.Expense to ::fluentFlatCreditCard,
+        MonyIcon.Food to ::fluentFlatForkAndKnife,
+        MonyIcon.Debt to ::fluentFlatCreditCard,
+        MonyIcon.Education to ::fluentFlatSchool,
+        MonyIcon.Emergency to ::fluentFlatHospital,
+        MonyIcon.Entertainment to ::fluentFlatGameDie,
+        MonyIcon.Internet to ::fluentFlatGlobeWithMeridians,
+        MonyIcon.Health to ::fluentFlatHospital,
+        MonyIcon.Services to ::fluentFlatToolbox,
+        MonyIcon.Subscription to ::fluentFlatRepeatButton,
+        MonyIcon.Phone to ::fluentFlatTelephone,
+        MonyIcon.Transport to ::fluentFlatAutomobile,
+        MonyIcon.Housing to ::fluentFlatHouse,
+        MonyIcon.Lock to ::fluentFlatLocked,
+        MonyIcon.Unlock to ::fluentFlatUnlocked,
+        MonyIcon.Save to ::fluentFlatFloppyDisk,
+        MonyIcon.AlertsEnabled to ::fluentFlatBell,
+        MonyIcon.AlertsDisabled to ::fluentFlatBellWithSlash,
+        MonyIcon.TrendUp to ::fluentFlatChartIncreasing,
+        MonyIcon.TrendDown to ::fluentFlatChartDecreasing,
+    )
+
+    private val OPENMOJI_ICONS: Map<MonyIcon, () -> ImageVector> = mapOf(
+        MonyIcon.Home to ::openMojiHouse,
+        MonyIcon.Fixed to ::openMojiAlarmClock,
+        MonyIcon.Pending to ::openMojiBell,
+        MonyIcon.Savings to ::openMojiMoneyBag,
+        MonyIcon.Shopping to ::openMojiShoppingCart,
+        MonyIcon.Statistics to ::openMojiBarChart,
+        MonyIcon.Fortnight to ::openMojiCalendar,
+        MonyIcon.Calendar to ::openMojiCalendar,
+        MonyIcon.Settings to ::openMojiGear,
+        MonyIcon.Appearance to ::openMojiArtistPalette,
+        MonyIcon.Navigation to ::openMojiControlKnobs,
+        MonyIcon.Finance to ::openMojiBank,
+        MonyIcon.Edit to ::openMojiPencil,
+        MonyIcon.Delete to ::openMojiWastebasket,
+        MonyIcon.Search to ::openMojiMagnifyingGlassTiltedLeft,
+        MonyIcon.Income to ::openMojiDollarBanknote,
+        MonyIcon.Expense to ::openMojiCreditCard,
+        MonyIcon.Food to ::openMojiForkAndKnife,
+        MonyIcon.Debt to ::openMojiCreditCard,
+        MonyIcon.Education to ::openMojiSchool,
+        MonyIcon.Emergency to ::openMojiHospital,
+        MonyIcon.Entertainment to ::openMojiGameDie,
+        MonyIcon.Internet to ::openMojiGlobeWithMeridians,
+        MonyIcon.Health to ::openMojiHospital,
+        MonyIcon.Services to ::openMojiToolbox,
+        MonyIcon.Subscription to ::openMojiRepeatButton,
+        MonyIcon.Phone to ::openMojiTelephone,
+        MonyIcon.Transport to ::openMojiAutomobile,
+        MonyIcon.Housing to ::openMojiHouse,
+        MonyIcon.Lock to ::openMojiLocked,
+        MonyIcon.Unlock to ::openMojiUnlocked,
+        MonyIcon.Save to ::openMojiFloppyDisk,
+        MonyIcon.Share to ::openMojiShare,
+        MonyIcon.Download to ::openMojiDownload,
+        MonyIcon.Upload to ::openMojiUpload,
+        MonyIcon.AlertsEnabled to ::openMojiBell,
+        MonyIcon.AlertsDisabled to ::openMojiBellWithSlash,
+        MonyIcon.TrendUp to ::openMojiChartIncreasing,
+        MonyIcon.TrendDown to ::openMojiChartDecreasing,
     )
 
     private fun resolveMaterial(icon: MonyIcon): ImageVector = when (icon) {

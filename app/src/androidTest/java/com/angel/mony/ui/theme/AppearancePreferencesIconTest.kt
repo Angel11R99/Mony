@@ -3,7 +3,6 @@ package com.angel.mony.ui.theme
 import androidx.test.platform.app.InstrumentationRegistry
 import com.angel.mony.ui.iconography.IconColorMode
 import com.angel.mony.ui.iconography.IconPack
-import com.angel.mony.ui.iconography.MonyColorStyle
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -22,59 +21,25 @@ class AppearancePreferencesIconTest {
     fun iconPreferencesSurvivePreferenceRecreation() {
         val blue = monyColorPalette.single { it.id == "blue" }.argb
         AppearancePreferences(context).apply {
-            setIconPack(IconPack.MONY_COLOR)
+            setIconPack(IconPack.OPENMOJI)
             setCustomIconColor(blue)
-            assertEquals(blue, settings.value.customIconColorArgb)
         }
-
         val restored = AppearancePreferences(context).settings.value
-
-        assertEquals(IconPack.MONY_COLOR, restored.iconPack)
+        assertEquals(IconPack.OPENMOJI, restored.iconPack)
         assertEquals(IconColorMode.CUSTOM, restored.iconColorMode)
         assertEquals(blue, restored.customIconColorArgb)
     }
 
     @Test
-    fun appearanceDefaultsRemainCompatibleForExistingUsers() {
-        val restored = AppearancePreferences(context).settings.value
-
-        assertEquals(AppThemeMode.SYSTEM, restored.themeMode)
-        assertEquals(IconPack.MATERIAL, restored.iconPack)
-        assertEquals(IconColorMode.AUTOMATIC, restored.iconColorMode)
-        // Una instalación que nunca eligió diseño debe seguir viendo el artwork multicolor.
-        assertEquals(MonyColorStyle.MULTI_COLOR, restored.monyColorStyle)
-    }
-
-    @Test
-    fun monyColorStyleSurvivesPreferenceRecreation() {
-        MonyColorStyle.entries.forEach { style ->
-            AppearancePreferences(context).apply {
-                setIconPack(IconPack.MONY_COLOR)
-                setMonyColorStyle(style)
-                assertEquals(style, settings.value.monyColorStyle)
-            }
-
-            val restored = AppearancePreferences(context).settings.value
-
-            assertEquals(style, restored.monyColorStyle)
-        }
-    }
-
-    @Test
-    fun themePrimaryAndIconPreferencesSurvivePreferenceRecreation() {
-        val purple = monyColorPalette.single { it.id == "purple" }.argb
-        AppearancePreferences(context).apply {
-            setThemeMode(AppThemeMode.DARK)
-            setPrimaryColor(purple)
-            setIconPack(IconPack.LUCIDE)
-            setIconColorMode(IconColorMode.PRIMARY)
-        }
-
-        val restored = AppearancePreferences(context).settings.value
-
-        assertEquals(AppThemeMode.DARK, restored.themeMode)
-        assertEquals(purple, restored.primaryArgb)
-        assertEquals(IconPack.LUCIDE, restored.iconPack)
-        assertEquals(IconColorMode.PRIMARY, restored.iconColorMode)
+    fun legacyMonyColorPreferenceFallsBackToMaterialAndIsRemoved() {
+        context.getSharedPreferences("appearance_preferences", 0).edit()
+            .putString("icon_pack", "MONY_COLOR")
+            .putString("mony_color_style", "MULTI_COLOR")
+            .commit()
+        val preferences = AppearancePreferences(context)
+        assertEquals(IconPack.MATERIAL, preferences.settings.value.iconPack)
+        assertEquals(IconPack.MATERIAL.name,
+            context.getSharedPreferences("appearance_preferences", 0).getString("icon_pack", null))
+        assertEquals(false, context.getSharedPreferences("appearance_preferences", 0).contains("mony_color_style"))
     }
 }

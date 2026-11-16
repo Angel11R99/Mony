@@ -5,7 +5,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.angel.mony.ui.iconography.IconColorMode
 import com.angel.mony.ui.iconography.IconPack
-import com.angel.mony.ui.iconography.MonyColorStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -24,13 +23,21 @@ data class AppAppearance(
     val iconPack: IconPack = IconPack.MATERIAL,
     val iconColorMode: IconColorMode = IconColorMode.AUTOMATIC,
     val customIconColorArgb: Int = DEFAULT_PRIMARY_ARGB,
-    val monyColorStyle: MonyColorStyle = MonyColorStyle.MULTI_COLOR,
 )
 
 class AppearancePreferences(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val mutableSettings = MutableStateFlow(read(preferences))
     val settings: StateFlow<AppAppearance> = mutableSettings
+
+    init {
+        val legacyPack = preferences.getString(KEY_ICON_PACK, null)
+        if (legacyPack == "MONY_COLOR" || preferences.contains(KEY_MONY_COLOR_STYLE)) {
+            val edit = preferences.edit().remove(KEY_MONY_COLOR_STYLE)
+            if (legacyPack == "MONY_COLOR") edit.putString(KEY_ICON_PACK, IconPack.MATERIAL.name)
+            edit.apply()
+        }
+    }
 
     fun setThemeMode(mode: AppThemeMode) = update(mutableSettings.value.copy(themeMode = mode))
 
@@ -96,8 +103,6 @@ class AppearancePreferences(context: Context) {
         update(mutableSettings.value.copy(backgroundIntensity = intensity.coerceIn(0f, 1f)))
     fun setIconPack(pack: IconPack) = update(mutableSettings.value.copy(iconPack = pack))
     fun setIconColorMode(mode: IconColorMode) = update(mutableSettings.value.copy(iconColorMode = mode))
-    fun setMonyColorStyle(style: MonyColorStyle) =
-        update(mutableSettings.value.copy(monyColorStyle = style))
     fun setCustomIconColor(argb: Int) = update(
         mutableSettings.value.copy(
             iconColorMode = IconColorMode.CUSTOM,
@@ -118,7 +123,6 @@ class AppearancePreferences(context: Context) {
             .putString(KEY_ICON_PACK, value.iconPack.name)
             .putString(KEY_ICON_COLOR_MODE, value.iconColorMode.name)
             .putLong(KEY_CUSTOM_ICON_COLOR, value.customIconColorArgb.toLong())
-            .putString(KEY_MONY_COLOR_STYLE, value.monyColorStyle.name)
             .apply()
         mutableSettings.value = value
     }
@@ -150,9 +154,6 @@ class AppearancePreferences(context: Context) {
             iconColorMode = parseIconColorMode(preferences.getString(KEY_ICON_COLOR_MODE, null)),
             customIconColorArgb = preferences
                 .getLong(KEY_CUSTOM_ICON_COLOR, DEFAULT_PRIMARY_ARGB.toLong()).toInt(),
-            monyColorStyle = parseMonyColorStyle(
-                preferences.getString(KEY_MONY_COLOR_STYLE, null)
-            ),
         )
     }
 }
@@ -179,14 +180,6 @@ internal fun parseIconPack(value: String?): IconPack =
 
 internal fun parseIconColorMode(value: String?): IconColorMode =
     value?.let { runCatching { IconColorMode.valueOf(it) }.getOrNull() } ?: IconColorMode.AUTOMATIC
-
-/**
- * Las instalaciones existentes nunca guardaron un estilo, por lo que el valor ausente o corrupto
- * se resuelve a [MonyColorStyle.MULTI_COLOR] y conserva el aspecto que ya tenía el pack.
- */
-internal fun parseMonyColorStyle(value: String?): MonyColorStyle =
-    value?.let { runCatching { MonyColorStyle.valueOf(it) }.getOrNull() }
-        ?: MonyColorStyle.MULTI_COLOR
 
 const val DARK_INCOMPATIBLE_LUMINANCE_THRESHOLD: Float = 0.18f
 const val LIGHT_INCOMPATIBLE_LUMINANCE_THRESHOLD: Float = 0.65f
