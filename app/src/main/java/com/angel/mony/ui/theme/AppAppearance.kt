@@ -101,7 +101,13 @@ class AppearancePreferences(context: Context) {
         update(mutableSettings.value.copy(backgroundDecoration = decoration))
     fun setBackgroundIntensity(intensity: Float) =
         update(mutableSettings.value.copy(backgroundIntensity = intensity.coerceIn(0f, 1f)))
-    fun setIconPack(pack: IconPack) = update(mutableSettings.value.copy(iconPack = pack))
+    fun setIconPack(pack: IconPack) = update(
+        mutableSettings.value.copy(
+            iconPack = pack,
+            iconColorMode = if (pack.usesOriginalColors) IconColorMode.AUTOMATIC
+            else mutableSettings.value.iconColorMode,
+        )
+    )
     fun setIconColorMode(mode: IconColorMode) = update(mutableSettings.value.copy(iconColorMode = mode))
     fun setCustomIconColor(argb: Int) = update(
         mutableSettings.value.copy(
