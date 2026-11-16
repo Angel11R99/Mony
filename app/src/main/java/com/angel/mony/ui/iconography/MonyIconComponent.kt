@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
@@ -21,7 +20,6 @@ data class IconographyConfig(
     val pack: IconPack = IconPack.MATERIAL,
     val colorMode: IconColorMode = IconColorMode.AUTOMATIC,
     val customColor: Color = Color.Unspecified,
-    val monyColorStyle: MonyColorStyle = MonyColorStyle.MULTI_COLOR,
 )
 
 val LocalIconography = compositionLocalOf { IconographyConfig() }
@@ -44,7 +42,7 @@ fun MonyIcon(
 ) {
     val config = LocalIconography.current
     val pack = packOverride ?: config.pack
-    val asset = MonyIconResolver.resolve(icon, pack)
+    val asset = remember(icon, pack) { MonyIconResolver.resolve(icon, pack) }
     val iconModifier = if (size == null) modifier else modifier.size(size)
     val resolvedTint = resolveIconTint(
         config = config,
@@ -65,24 +63,12 @@ fun MonyIcon(
                 LocalContentColor.current
             },
         )
-        is MonyIconAsset.Multicolor -> {
-            // The vendored artwork is parameterised by its four IconPark colour slots, so a style
-            // change only swaps the palette. onSurface keeps a stable, always contrasting frame
-            // even inside containers whose content colour would fight the blue accents, and the
-            // knockout colour lets the filled theme cut its detail out of the surrounding surface.
-            val colorScheme = MaterialTheme.colorScheme
-            val palette = config.monyColorStyle.palette(
-                colorScheme.onSurface,
-                colorScheme.knockoutColor(),
-            )
-            val imageVector = remember(asset.build, palette) { asset.build(palette) }
-            Icon(
-                imageVector = imageVector,
-                contentDescription = contentDescription,
-                modifier = iconModifier,
-                tint = Color.Unspecified,
-            )
-        }
+        is MonyIconAsset.FixedColor -> Icon(
+            imageVector = asset.imageVector,
+            contentDescription = contentDescription,
+            modifier = iconModifier,
+            tint = Color.Unspecified,
+        )
 
     }
 }
@@ -102,16 +88,6 @@ fun resolveIconTint(
         config.customColor
     else -> localContentColor
 }
-
-/**
- * Colour that cuts detail out of a solid IconPark body.
- *
- * The filled style paints the body in `onSurface`, which is light in a dark theme, so a literal
- * white detail would be invisible. Matching the surrounding background keeps the cutout readable in
- * both themes while staying white on light surfaces.
- */
-fun ColorScheme.knockoutColor(): Color =
-    if (background.luminance() > 0.5f) Color.White else background
 
 fun hasIconContrast(foreground: Color, background: Color, minimumRatio: Float = 3f): Boolean {
     if (foreground == Color.Unspecified || background == Color.Unspecified) return false

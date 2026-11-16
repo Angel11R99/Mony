@@ -96,7 +96,7 @@ Selector interno de secciones que muestra solo controles relacionados:
 
 1. **Colores/Tema**: tema del sistema, claro u oscuro. Color principal para botones, selección, ingresos y elementos destacados. Color secundario/acento para gastos, alertas y acciones que requieren atención. Selector de colores, vista previa en vivo y restablecer apariencia.
 2. **Estilo**: geometría de botones, tarjetas y chips; familia tipográfica global; decoración de fondo (ninguna, médica o gatos) y su intensidad cuando aplica. Hay vistas previas de forma/fondo y sugerencias de combinación de fuente.
-3. **Iconos**: paquete Material, Lucide, Phosphor, IconPark o Mony Color (según selector); estilo específico para Mony Color; modo de color de iconos y selector personalizado si se elige ese modo. Vista previa. La preferencia es global.
+3. **Iconos**: paquete Material, Lucide, Phosphor, MingCute, Flat Color Icons, Fluent Emoji Flat; modo de color global y vista previa.
 
 Los cambios se reflejan de inmediato y persisten; la apariencia de widgets debe acompañar el cambio.
 
@@ -217,4 +217,5 @@ App
     ├── Finanzas
     └── Categorías
 ```
+
 

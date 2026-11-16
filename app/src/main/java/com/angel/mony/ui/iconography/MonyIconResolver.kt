@@ -9,42 +9,171 @@ import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.adamglin.PhosphorIcons
-import com.angel.mony.ui.iconography.vendor.iconpark.IconParkPalette
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.*
 import com.composables.icons.lucide.*
+import com.angel.mony.ui.iconography.vendor.flatcolor.*
+import com.angel.mony.ui.iconography.vendor.fluentemojiflat.*
+import com.angel.mony.ui.iconography.vendor.mingcute.*
 
 sealed interface MonyIconAsset {
     data class Tintable(
         val imageVector: ImageVector,
         val usesGlobalTint: Boolean = true,
     ) : MonyIconAsset
-    data class Multicolor(val build: MonyColorVector) : MonyIconAsset
+    data class FixedColor(val imageVector: ImageVector) : MonyIconAsset
 }
 
 object MonyIconResolver {
     fun resolve(icon: MonyIcon, pack: IconPack): MonyIconAsset =
         resolveOrNull(icon, pack) ?: MonyIconAsset.Tintable(
             imageVector = resolveMaterial(icon),
-            usesGlobalTint = pack != IconPack.MONY_COLOR,
         )
-
-    /**
-     * Builds a Mony Color vector directly, bypassing the material fallback.
-     *
-     * Used by the appearance preview, which must only offer the styles that actually change the
-     * artwork. Icons with no Mony Color glyph return `null` instead of silently falling back.
-     */
-    fun resolveMonyColor(icon: MonyIcon, palette: IconParkPalette): ImageVector? =
-        MONY_COLOR_VECTORS[icon]?.invoke(palette)
 
     internal fun resolveOrNull(icon: MonyIcon, pack: IconPack): MonyIconAsset? = when (pack) {
         IconPack.MATERIAL -> MonyIconAsset.Tintable(resolveMaterial(icon))
         IconPack.LUCIDE -> resolveLucide(icon)?.let(MonyIconAsset::Tintable)
         IconPack.PHOSPHOR -> resolvePhosphor(icon)?.let(MonyIconAsset::Tintable)
-        IconPack.MONY_COLOR -> MONY_COLOR_VECTORS[icon]?.let(MonyIconAsset::Multicolor)
+        IconPack.MINGCUTE -> resolveMingCute(icon)?.let(MonyIconAsset::Tintable)
+        IconPack.FLAT_COLOR -> resolveFlatColor(icon)?.let(MonyIconAsset::FixedColor)
+        IconPack.FLUENT_EMOJI_FLAT -> FLUENT_EMOJI_FLAT_ICONS[icon]?.invoke()?.let(MonyIconAsset::FixedColor)
     }
 
+    /** Selected Core Regular MingCute artwork. Unmapped semantic states keep the Material fallback. */
+    private fun resolveMingCute(icon: MonyIcon): ImageVector? = MINGCUTE_ICONS[icon]?.invoke()
+
+    /** The Icons8-derived flat pack keeps its original per-path colors and ignores global tint. */
+    private fun resolveFlatColor(icon: MonyIcon): ImageVector? = FLAT_COLOR_ICONS[icon]?.invoke()
+
+    private val MINGCUTE_ICONS: Map<MonyIcon, () -> ImageVector> = mapOf(
+        MonyIcon.Home to ::mingCuteWallet4,
+        MonyIcon.Fixed to ::mingCuteAlarm2,
+        MonyIcon.Pending to ::mingCuteNotification,
+        MonyIcon.Savings to ::mingCutePigMoney,
+        MonyIcon.Shopping to ::mingCuteShoppingBag3,
+        MonyIcon.Statistics to ::mingCuteChartBar,
+        MonyIcon.Fortnight to ::mingCuteCalendar2,
+        MonyIcon.Calendar to ::mingCuteCalendar2,
+        MonyIcon.History to ::mingCuteHistory,
+        MonyIcon.Settings to ::mingCuteSettings3,
+        MonyIcon.Appearance to ::mingCutePalette,
+        MonyIcon.Navigation to ::mingCuteFilter2,
+        MonyIcon.Finance to ::mingCuteWallet,
+        MonyIcon.Add to ::mingCuteAdd,
+        MonyIcon.Edit to ::mingCuteEdit,
+        MonyIcon.Delete to ::mingCuteDelete,
+        MonyIcon.Search to ::mingCuteSearch,
+        MonyIcon.More to ::mingCuteMore1,
+        MonyIcon.Check to ::mingCuteCheck,
+        MonyIcon.Close to ::mingCuteClose,
+        MonyIcon.Warning to ::mingCuteWarning,
+        MonyIcon.Info to ::mingCuteInformation,
+        MonyIcon.Category to ::mingCuteTag,
+        MonyIcon.Completed to ::mingCuteCheckCircle,
+        MonyIcon.Expense to ::mingCuteBankCard,
+        MonyIcon.Income to ::mingCuteHandCoins,
+        MonyIcon.Food to ::mingCuteForkKnife,
+        MonyIcon.Debt to ::mingCuteBankCard,
+        MonyIcon.Entertainment to ::mingCuteGame2,
+        MonyIcon.Family to ::mingCuteGroup,
+        MonyIcon.Internet to ::mingCuteWifi,
+        MonyIcon.AlertsDisabled to ::mingCuteNotificationOff,
+        MonyIcon.Subscription to ::mingCuteRefresh3,
+        MonyIcon.Transport to ::mingCuteCar2,
+        MonyIcon.Housing to ::mingCuteHome3,
+        MonyIcon.Lock to ::mingCuteLock,
+        MonyIcon.Unlock to ::mingCuteUnlock,
+        MonyIcon.Template to ::mingCutePackage2,
+        MonyIcon.Save to ::mingCuteSave,
+        MonyIcon.Filter to ::mingCuteFilter2,
+        MonyIcon.Download to ::mingCuteDownload2,
+        MonyIcon.Upload to ::mingCuteUpload2,
+        MonyIcon.Share to ::mingCuteShare3,
+        MonyIcon.Copy to ::mingCuteCopy,
+        MonyIcon.Pin to ::mingCutePin,
+        MonyIcon.Previous to ::mingCuteArrowLeft,
+        MonyIcon.Next to ::mingCuteArrowRight,
+        MonyIcon.Error to ::mingCuteWarning,
+        MonyIcon.Time to ::mingCuteTime,
+        MonyIcon.AlertsEnabled to ::mingCuteNotification,
+        MonyIcon.Reopen to ::mingCuteRefresh3,
+        MonyIcon.ScanBarcode to ::mingCuteScan,
+        MonyIcon.Voice to ::mingCuteMic,
+        MonyIcon.TrendUp to ::mingCuteArrowUp,
+        MonyIcon.TrendDown to ::mingCuteArrowDown,
+    )
+
+    private val FLAT_COLOR_ICONS: Map<MonyIcon, () -> ImageVector> = mapOf(
+        MonyIcon.Home to ::flatColorHome,
+        MonyIcon.Fixed to ::flatColorAlarmClock,
+        MonyIcon.Pending to ::flatColorAlarmClock,
+        MonyIcon.Savings to ::flatColorSafe,
+        MonyIcon.Shopping to ::flatColorShop,
+        MonyIcon.Statistics to ::flatColorPieChart,
+        MonyIcon.Fortnight to ::flatColorCalendar,
+        MonyIcon.Calendar to ::flatColorCalendar,
+        MonyIcon.History to ::flatColorClock,
+        MonyIcon.Settings to ::flatColorSettings,
+        MonyIcon.Appearance to ::flatColorSettings,
+        MonyIcon.AlertsEnabled to ::flatColorAlarmClock,
+        MonyIcon.Finance to ::flatColorMoneyTransfer,
+        MonyIcon.Add to ::flatColorPlus,
+        MonyIcon.Edit to ::flatColorEditImage,
+        MonyIcon.Search to ::flatColorSearch,
+        MonyIcon.Expense to ::flatColorMoneyTransfer,
+        MonyIcon.Income to ::flatColorMoneyTransfer,
+        MonyIcon.Education to ::flatColorReadingEbook,
+        MonyIcon.Services to ::flatColorServices,
+        MonyIcon.Phone to ::flatColorPhone,
+        MonyIcon.Housing to ::flatColorHome,
+        MonyIcon.Lock to ::flatColorLock,
+        MonyIcon.Unlock to ::flatColorUnlock,
+        MonyIcon.Template to ::flatColorBookmark,
+        MonyIcon.Save to ::flatColorSafe,
+        MonyIcon.Download to ::flatColorDownload,
+        MonyIcon.Upload to ::flatColorUpload,
+        MonyIcon.Share to ::flatColorShare,
+        MonyIcon.Time to ::flatColorClock,
+    )
+
+    private val FLUENT_EMOJI_FLAT_ICONS: Map<MonyIcon, () -> ImageVector> = mapOf(
+        MonyIcon.Home to ::fluentFlatHouse,
+        MonyIcon.Fixed to ::fluentFlatAlarmClock,
+        MonyIcon.Pending to ::fluentFlatBell,
+        MonyIcon.Savings to ::fluentFlatMoneyBag,
+        MonyIcon.Shopping to ::fluentFlatShoppingCart,
+        MonyIcon.Statistics to ::fluentFlatBarChart,
+        MonyIcon.Fortnight to ::fluentFlatCalendar,
+        MonyIcon.Calendar to ::fluentFlatCalendar,
+        MonyIcon.Settings to ::fluentFlatGear,
+        MonyIcon.Appearance to ::fluentFlatArtistPalette,
+        MonyIcon.Navigation to ::fluentFlatControlKnobs,
+        MonyIcon.Finance to ::fluentFlatBank,
+        MonyIcon.Edit to ::fluentFlatPencil,
+        MonyIcon.Delete to ::fluentFlatWastebasket,
+        MonyIcon.Search to ::fluentFlatMagnifyingGlassTiltedLeft,
+        MonyIcon.Income to ::fluentFlatDollarBanknote,
+        MonyIcon.Expense to ::fluentFlatCreditCard,
+        MonyIcon.Food to ::fluentFlatForkAndKnife,
+        MonyIcon.Debt to ::fluentFlatCreditCard,
+        MonyIcon.Education to ::fluentFlatSchool,
+        MonyIcon.Emergency to ::fluentFlatHospital,
+        MonyIcon.Entertainment to ::fluentFlatGameDie,
+        MonyIcon.Internet to ::fluentFlatGlobeWithMeridians,
+        MonyIcon.Health to ::fluentFlatHospital,
+        MonyIcon.Services to ::fluentFlatToolbox,
+        MonyIcon.Subscription to ::fluentFlatRepeatButton,
+        MonyIcon.Phone to ::fluentFlatTelephone,
+        MonyIcon.Transport to ::fluentFlatAutomobile,
+        MonyIcon.Housing to ::fluentFlatHouse,
+        MonyIcon.Lock to ::fluentFlatLocked,
+        MonyIcon.Unlock to ::fluentFlatUnlocked,
+        MonyIcon.Save to ::fluentFlatFloppyDisk,
+        MonyIcon.AlertsEnabled to ::fluentFlatBell,
+        MonyIcon.AlertsDisabled to ::fluentFlatBellWithSlash,
+        MonyIcon.TrendUp to ::fluentFlatChartIncreasing,
+        MonyIcon.TrendDown to ::fluentFlatChartDecreasing,
+    )
 
     private fun resolveMaterial(icon: MonyIcon): ImageVector = when (icon) {
         MonyIcon.Home -> Icons.Outlined.AccountBalanceWallet
@@ -248,3 +377,4 @@ object MonyIconResolver {
         MonyIcon.Voice -> null // Material fallback: this dependency version has no microphone glyph.
     }
 }
+

@@ -19,7 +19,6 @@ import com.angel.mony.ui.iconography.IconColorMode
 import com.angel.mony.ui.iconography.IconPack
 import com.angel.mony.ui.iconography.IconographyConfig
 import com.angel.mony.ui.iconography.LocalIconography
-import com.angel.mony.ui.iconography.MonyColorStyle
 
 private fun financeDarkColors(primarySeed: Color, accentSeed: Color) = darkColorScheme(
     primary = primarySeed,
@@ -97,7 +96,6 @@ fun PersonalFinanceTrackerTheme(
     iconPack: IconPack = IconPack.MATERIAL,
     iconColorMode: IconColorMode = IconColorMode.AUTOMATIC,
     customIconColor: Color = Color.Unspecified,
-    monyColorStyle: MonyColorStyle = MonyColorStyle.MULTI_COLOR,
     content: @Composable () -> Unit,
 ) {
     val appShapes = remember(shapeStyle) { createAppShapes(shapeStyle) }
@@ -109,7 +107,6 @@ fun PersonalFinanceTrackerTheme(
             iconPack,
             iconColorMode,
             customIconColor,
-            monyColorStyle,
         ),
     ) {
         MaterialTheme(

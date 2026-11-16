@@ -118,7 +118,7 @@ fun HomeScreen(
             TopAppBar(
                 title = { ModuleTitle("Inicio") },
                 actions = {
-                    GlobalSettingsButton(onClick = onSettings)
+                    GlobalSettingsButton(onClick = onSettings) 
                     Spacer(Modifier.width(14.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

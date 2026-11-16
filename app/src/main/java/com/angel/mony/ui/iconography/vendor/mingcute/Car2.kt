@@ -1,0 +1,26 @@
+package com.angel.mony.ui.iconography.vendor.mingcute
+
+// GENERATED FILE - do not edit by hand.
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.unit.dp
+
+public fun mingCuteCar2(): ImageVector = ImageVector.Builder(
+  name = "MingCute.Car2", defaultWidth = 24.dp, defaultHeight = 24.dp,
+  viewportWidth = 24f, viewportHeight = 24f,
+).apply {
+    addPath(
+      pathData = PathParser().parsePathString("M11.301 13.983a14 14 0 0 1-1.325-.125c-.954-.133-1.9-.362-2.801-.701-.27-.101-.603-.206-.827-.398a1.01 1.01 0 0 1-.249-1.192 1.01 1.01 0 0 1 1.086-.55c.172.033.338.126.499.192l.786.276a12.3 12.3 0 0 0 4.744.456 12 12 0 0 0 1.945-.35l.952-.302c.496-.186.928-.473 1.453-.115a1 1 0 0 1 .088 1.585c-.224.192-.557.297-.827.398-.901.339-1.847.568-2.801.701l-1.276.122a15 15 0 0 1-1.447.003M15 19H9c-.084 1.14-.827 1.957-2 2H5.118c-.726-.026-1.359-.382-1.733-1.009l-.056-.097-1.118-2.236-.124-.323A2.3 2.3 0 0 1 2 16.764v-4.498c.014-.352.101-.68.264-.993l3.58-6.265c.205-.331.476-.606.825-.785.285-.146.593-.212.911-.223h8.84l.317.028c.604.097 1.101.465 1.419.98l3.58 6.265c.163.313.25.641.264.993v4.498a2.3 2.3 0 0 1-.211.894l-1.118 2.236a2.1 2.1 0 0 1-.648.745 2.1 2.1 0 0 1-1.141.361H17c-1.173-.043-1.916-.86-2-2m2.006-.006h1.872l.029-.044 1.067-2.134.019-.054.007-.056v-4.375l-.032-.122-3.522-6.163-.029-.041H7.583l-.029.041-3.522 6.163-.032.122v4.375l.007.056.019.054 1.067 2.134.029.044h1.872c.013-.35-.061-.877.04-1.253.122-.453.515-.711.966-.741h8c.451.03.844.288.966.741.101.376.027.903.04 1.253").toNodes(),
+      fill = SolidColor(Color.Black),
+      stroke = null,
+      strokeLineWidth = 1f,
+      strokeLineCap = StrokeCap.Butt,
+      strokeLineJoin = StrokeJoin.Miter,
+      pathFillType = PathFillType.NonZero,
+    )
+}.build()
