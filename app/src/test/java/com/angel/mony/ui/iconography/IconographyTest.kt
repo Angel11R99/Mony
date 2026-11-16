@@ -41,7 +41,7 @@ class IconographyTest {
     }
 
     @Test fun `colorful packs retain fixed colors and expose colorful category icons`() {
-        listOf(IconPack.FLAT_COLOR, IconPack.FLUENT_EMOJI_FLAT, IconPack.OPENMOJI).forEach { pack ->
+        listOf(IconPack.FLAT_COLOR, IconPack.FLUENT_EMOJI_FLAT).forEach { pack ->
             listOf(MonyIcon.Savings, MonyIcon.Food, MonyIcon.Transport).forEach { icon ->
                 assertTrue(MonyIconResolver.resolve(icon, pack) is MonyIconAsset.FixedColor)
             }

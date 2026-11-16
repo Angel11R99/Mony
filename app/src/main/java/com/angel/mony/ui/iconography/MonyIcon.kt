@@ -88,7 +88,6 @@ enum class IconPack(
     MINGCUTE("MingCute"),
     FLAT_COLOR("Flat Color Icons", usesOriginalColors = true),
     FLUENT_EMOJI_FLAT("Fluent Emoji Flat", usesOriginalColors = true),
-    OPENMOJI("OpenMoji", usesOriginalColors = true),
 }
 
 enum class IconColorMode(val displayName: String) {

@@ -15,7 +15,6 @@ import com.composables.icons.lucide.*
 import com.angel.mony.ui.iconography.vendor.flatcolor.*
 import com.angel.mony.ui.iconography.vendor.fluentemojiflat.*
 import com.angel.mony.ui.iconography.vendor.mingcute.*
-import com.angel.mony.ui.iconography.vendor.openmoji.*
 
 sealed interface MonyIconAsset {
     data class Tintable(
@@ -38,7 +37,6 @@ object MonyIconResolver {
         IconPack.MINGCUTE -> resolveMingCute(icon)?.let(MonyIconAsset::Tintable)
         IconPack.FLAT_COLOR -> resolveFlatColor(icon)?.let(MonyIconAsset::FixedColor)
         IconPack.FLUENT_EMOJI_FLAT -> FLUENT_EMOJI_FLAT_ICONS[icon]?.invoke()?.let(MonyIconAsset::FixedColor)
-        IconPack.OPENMOJI -> OPENMOJI_ICONS[icon]?.invoke()?.let(MonyIconAsset::FixedColor)
     }
 
     /** Selected Core Regular MingCute artwork. Unmapped semantic states keep the Material fallback. */
@@ -175,48 +173,6 @@ object MonyIconResolver {
         MonyIcon.AlertsDisabled to ::fluentFlatBellWithSlash,
         MonyIcon.TrendUp to ::fluentFlatChartIncreasing,
         MonyIcon.TrendDown to ::fluentFlatChartDecreasing,
-    )
-
-    private val OPENMOJI_ICONS: Map<MonyIcon, () -> ImageVector> = mapOf(
-        MonyIcon.Home to ::openMojiHouse,
-        MonyIcon.Fixed to ::openMojiAlarmClock,
-        MonyIcon.Pending to ::openMojiBell,
-        MonyIcon.Savings to ::openMojiMoneyBag,
-        MonyIcon.Shopping to ::openMojiShoppingCart,
-        MonyIcon.Statistics to ::openMojiBarChart,
-        MonyIcon.Fortnight to ::openMojiCalendar,
-        MonyIcon.Calendar to ::openMojiCalendar,
-        MonyIcon.Settings to ::openMojiGear,
-        MonyIcon.Appearance to ::openMojiArtistPalette,
-        MonyIcon.Navigation to ::openMojiControlKnobs,
-        MonyIcon.Finance to ::openMojiBank,
-        MonyIcon.Edit to ::openMojiPencil,
-        MonyIcon.Delete to ::openMojiWastebasket,
-        MonyIcon.Search to ::openMojiMagnifyingGlassTiltedLeft,
-        MonyIcon.Income to ::openMojiDollarBanknote,
-        MonyIcon.Expense to ::openMojiCreditCard,
-        MonyIcon.Food to ::openMojiForkAndKnife,
-        MonyIcon.Debt to ::openMojiCreditCard,
-        MonyIcon.Education to ::openMojiSchool,
-        MonyIcon.Emergency to ::openMojiHospital,
-        MonyIcon.Entertainment to ::openMojiGameDie,
-        MonyIcon.Internet to ::openMojiGlobeWithMeridians,
-        MonyIcon.Health to ::openMojiHospital,
-        MonyIcon.Services to ::openMojiToolbox,
-        MonyIcon.Subscription to ::openMojiRepeatButton,
-        MonyIcon.Phone to ::openMojiTelephone,
-        MonyIcon.Transport to ::openMojiAutomobile,
-        MonyIcon.Housing to ::openMojiHouse,
-        MonyIcon.Lock to ::openMojiLocked,
-        MonyIcon.Unlock to ::openMojiUnlocked,
-        MonyIcon.Save to ::openMojiFloppyDisk,
-        MonyIcon.Share to ::openMojiShare,
-        MonyIcon.Download to ::openMojiDownload,
-        MonyIcon.Upload to ::openMojiUpload,
-        MonyIcon.AlertsEnabled to ::openMojiBell,
-        MonyIcon.AlertsDisabled to ::openMojiBellWithSlash,
-        MonyIcon.TrendUp to ::openMojiChartIncreasing,
-        MonyIcon.TrendDown to ::openMojiChartDecreasing,
     )
 
     private fun resolveMaterial(icon: MonyIcon): ImageVector = when (icon) {
@@ -421,3 +377,4 @@ object MonyIconResolver {
         MonyIcon.Voice -> null // Material fallback: this dependency version has no microphone glyph.
     }
 }
+

@@ -21,11 +21,11 @@ class AppearancePreferencesIconTest {
     fun iconPreferencesSurvivePreferenceRecreation() {
         val blue = monyColorPalette.single { it.id == "blue" }.argb
         AppearancePreferences(context).apply {
-            setIconPack(IconPack.OPENMOJI)
+            setIconPack(IconPack.FLUENT_EMOJI_FLAT)
             setCustomIconColor(blue)
         }
         val restored = AppearancePreferences(context).settings.value
-        assertEquals(IconPack.OPENMOJI, restored.iconPack)
+        assertEquals(IconPack.FLUENT_EMOJI_FLAT, restored.iconPack)
         assertEquals(IconColorMode.CUSTOM, restored.iconColorMode)
         assertEquals(blue, restored.customIconColorArgb)
     }

@@ -34,15 +34,6 @@ const FLUENT_FLAT = [
   'toolbox', 'unlocked', 'warning', 'wastebasket',
 ]
 
-const OPENMOJI = [
-  'alarm-clock', 'artist-palette', 'automobile', 'bank', 'bar-chart', 'bell', 'bell-with-slash',
-  'calendar', 'chart-increasing', 'chart-decreasing', 'coin', 'control-knobs', 'credit-card',
-  'dollar-banknote', 'floppy-disk', 'fork-and-knife', 'game-die', 'gear',
-  'globe-with-meridians', 'hospital', 'house', 'locked', 'magnifying-glass-tilted-left',
-  'money-bag', 'pencil', 'repeat-button', 'school', 'shopping-cart', 'telephone',
-  'toolbox', 'unlocked', 'warning', 'wastebasket', 'download', 'upload', 'share',
-]
-
 const TAG = /<(\/)?([a-zA-Z][\w:-]*)((?:\s+[\w:.-]+\s*=\s*"[^"]*")*)\s*(\/)?\s*>/g
 const ATTR = /([\w:.-]+)\s*=\s*"([^"]*)"/g
 
@@ -143,29 +134,26 @@ const COMMON_IMPORTS = `import androidx.compose.ui.graphics.Color\nimport androi
 function readArgs() {
   const args = process.argv.slice(2)
   const value = (key) => { const i = args.indexOf(key); return i < 0 ? null : args[i + 1] }
-  if (!value('--mingcute') || !value('--flat') || !value('--fluent-flat') || !value('--openmoji')) {
-    throw new Error('Faltan fuentes: --mingcute <package> --flat <icons.json> --fluent-flat <icons.json> --openmoji <icons.json>')
+  if (!value('--mingcute') || !value('--flat') || !value('--fluent-flat')) {
+    throw new Error('Faltan fuentes: --mingcute <package> --flat <icons.json> --fluent-flat <icons.json>')
   }
   return {
     mingcute: resolve(value('--mingcute')),
     flat: resolve(value('--flat')),
     fluentFlat: resolve(value('--fluent-flat')),
-    openmoji: resolve(value('--openmoji')),
   }
 }
 
 function main() {
-  const { mingcute, flat, fluentFlat, openmoji } = readArgs()
+  const { mingcute, flat, fluentFlat } = readArgs()
   const flatSet = JSON.parse(readFileSync(flat, 'utf8'))
   const fluentSet = JSON.parse(readFileSync(fluentFlat, 'utf8'))
-  const openMojiSet = JSON.parse(readFileSync(openmoji, 'utf8'))
   const mingDir = join(mingcute, 'core-regular')
   const mingOut = join(BASE, 'mingcute')
   const flatOut = join(BASE, 'flatcolor')
   const fluentOut = join(BASE, 'fluentemojiflat')
-  const openMojiOut = join(BASE, 'openmoji')
   mkdirSync(mingOut, { recursive: true }); mkdirSync(flatOut, { recursive: true })
-  mkdirSync(fluentOut, { recursive: true }); mkdirSync(openMojiOut, { recursive: true })
+  mkdirSync(fluentOut, { recursive: true })
 
   const mingFunctions = []
   for (const name of MINGCUTE) {
@@ -206,8 +194,7 @@ function main() {
     }
   }
   generateFixedColorSet(FLUENT_FLAT, fluentSet, fluentOut, 'FluentEmojiFlat', 'fluentFlat')
-  generateFixedColorSet(OPENMOJI, openMojiSet, openMojiOut, 'OpenMoji', 'openMoji')
-  console.log(`Generados ${mingFunctions.length} MingCute, ${flatFunctions.length} Flat Color, ${FLUENT_FLAT.length} Fluent Emoji Flat y ${OPENMOJI.length} OpenMoji.`)
+  console.log(`Generados ${mingFunctions.length} MingCute, ${flatFunctions.length} Flat Color y ${FLUENT_FLAT.length} Fluent Emoji Flat.`)
 }
 
 main()
