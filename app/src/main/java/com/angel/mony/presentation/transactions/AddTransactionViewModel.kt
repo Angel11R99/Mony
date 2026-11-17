@@ -17,6 +17,8 @@ import com.angel.mony.domain.model.NaturalLanguageTransactionEngine
 import com.angel.mony.domain.model.NaturalLanguageInterpretation
 import com.angel.mony.domain.model.VoiceTransactionDraft
 import com.angel.mony.domain.model.LocalLanguageModelManager
+import com.angel.mony.domain.model.LocalModelFailure
+import com.angel.mony.domain.model.LocalModelPreparation
 import com.angel.mony.domain.model.findPossibleDuplicate
 import com.angel.mony.domain.model.activeBudgetPeriod
 import com.angel.mony.domain.repository.TransactionRepository
@@ -24,6 +26,8 @@ import com.angel.mony.widget.updateAllFinanceWidgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,6 +41,14 @@ import java.time.Instant
 import javax.inject.Inject
 
 enum class TransactionField { AMOUNT, CATEGORY, DATE }
+
+enum class LocalAiPhase { PREPARING, READY, NOT_INSTALLED, ERROR }
+
+data class LocalAiReadiness(
+    val phase: LocalAiPhase = LocalAiPhase.PREPARING,
+    val modelId: String? = null,
+    val failure: LocalModelFailure? = null,
+)
 
 @HiltViewModel
 class AddTransactionViewModel @Inject constructor(
@@ -64,9 +76,44 @@ class AddTransactionViewModel @Inject constructor(
     val error = MutableStateFlow<String?>(null)
     val fieldErrors = MutableStateFlow<Map<TransactionField, String>>(emptyMap())
     val saving = MutableStateFlow(false)
-    val voiceModelInstalled = MutableStateFlow(localModelManager.isModelInstalled(localModelManager.activeModelId))
+    val localAiReadiness = MutableStateFlow(LocalAiReadiness())
+    private var modelPreparationJob: Job? = null
+
     fun refreshVoiceModelState() {
-        voiceModelInstalled.value = localModelManager.isModelInstalled(localModelManager.activeModelId)
+        if (modelPreparationJob?.isActive == true) return
+        localAiReadiness.value = LocalAiReadiness(LocalAiPhase.PREPARING)
+        modelPreparationJob = viewModelScope.launch {
+            val preparation = runCatching {
+                withContext(Dispatchers.IO) { localModelManager.prepareActiveModel() }
+            }.getOrElse {
+                localAiReadiness.value = LocalAiReadiness(LocalAiPhase.ERROR, failure = LocalModelFailure.INITIALIZATION)
+                return@launch
+            }
+            when (preparation) {
+                LocalModelPreparation.NoInstalledModel -> {
+                    localAiReadiness.value = LocalAiReadiness(LocalAiPhase.NOT_INSTALLED)
+                }
+                is LocalModelPreparation.Ready -> {
+                    localAiReadiness.value = LocalAiReadiness(LocalAiPhase.READY, preparation.modelId)
+                }
+                is LocalModelPreparation.Failed -> {
+                    localAiReadiness.value = LocalAiReadiness(
+                        LocalAiPhase.ERROR,
+                        preparation.modelId,
+                        preparation.reason,
+                    )
+                }
+            }
+        }
+    }
+
+    fun releaseVoiceModel() {
+        val preparationToCancel = modelPreparationJob
+        modelPreparationJob = viewModelScope.launch {
+            preparationToCancel?.cancelAndJoin()
+            withContext(Dispatchers.IO) { localModelManager.unloadActiveModel() }
+            localAiReadiness.value = LocalAiReadiness(LocalAiPhase.PREPARING)
+        }
     }
     val editingTransaction = MutableStateFlow<FinanceTransaction?>(null)
     private val transactionId = savedStateHandle.get<Long>("transactionId") ?: 0L
@@ -106,6 +153,7 @@ class AddTransactionViewModel @Inject constructor(
     val possibleDuplicate: StateFlow<FinanceTransaction?> = _possibleDuplicate
 
     init {
+        refreshVoiceModelState()
         if (transactionId != 0L) viewModelScope.launch {
             editingTransaction.value = transactionRepository.get(transactionId)
         }

@@ -12,10 +12,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.angel.mony.presentation.transactions.LocalAiPhase
+import com.angel.mony.presentation.transactions.LocalAiReadiness
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.ui.iconography.MonyIcon
@@ -82,12 +85,10 @@ private data class VoiceTypeBadgeVisual(
 @Composable
 internal fun VoiceDraftPanel(
     status: String,
-    transcript: String,
     example: String?,
-    visible: Boolean,
     listening: Boolean,
     saving: Boolean,
-    modelInstalled: Boolean,
+    readiness: LocalAiReadiness,
     interpreting: Boolean,
     onManageModels: () -> Unit,
     textInput: String,
@@ -95,95 +96,68 @@ internal fun VoiceDraftPanel(
     onInterpretText: () -> Unit,
     onListen: () -> Unit,
     onStop: () -> Unit,
-    onCancel: () -> Unit,
-    onSave: () -> Unit,
 ) {
-    if (!visible) return
     Surface(
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                MonyIcon(
-                    MonyIcon.Voice,
-                    contentDescription = null,
-                    tint = if (listening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                    role = MonyIconRole.STATE,
-                )
-                Text(
-                    text = status.ifBlank { "Dictado listo." },
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            if (example != null) {
-                Text(
-                    text = example,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (transcript.isNotBlank()) Text("“$transcript”", style = MaterialTheme.typography.bodySmall)
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Describe tu movimiento", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
                 value = textInput,
                 onValueChange = onTextInputChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Describe el movimiento") },
-                supportingText = { Text("El texto escrito y el dictado usan la misma comprensión del movimiento.") },
+                placeholder = { if (example != null) Text(example, style = MaterialTheme.typography.bodyMedium) },
                 minLines = 2,
+                maxLines = 4,
+                trailingIcon = {
+                    IconButton(
+                        onClick = if (listening) onStop else onListen,
+                        enabled = !saving && !interpreting,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        MonyIcon(
+                            MonyIcon.Voice,
+                            contentDescription = if (listening) "Detener dictado" else "Dictar descripción",
+                            tint = if (listening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            role = MonyIconRole.STATE,
+                        )
+                    }
+                },
             )
-            SecondaryButton(
-                if (interpreting) "Interpretando…" else if (modelInstalled) "Interpretar con IA" else "Interpretar texto",
-                onClick = onInterpretText,
-                enabled = textInput.isNotBlank() && !saving && !interpreting,
-            )
-            if (interpreting) CircularProgressIndicator()
-            Text(
-                if (modelInstalled) "Modelo de comprensión local listo para usar sin conexión."
-                else "No hay un modelo instalado. El registro manual sigue disponible.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (!modelInstalled) SecondaryButton("Ver modelos en Ajustes", onClick = onManageModels, enabled = !saving)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SecondaryButton(
-                    text = "Micrófono",
-                    onClick = onListen,
-                    enabled = !listening && !saving,
-                    modifier = Modifier.weight(1f),
-                )
-                SecondaryButton(
-                    text = "Detener",
-                    onClick = onStop,
-                    enabled = listening,
-                    modifier = Modifier.weight(1f),
-                )
+            if (status.isNotBlank()) {
+                Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else if (readiness.phase == LocalAiPhase.PREPARING) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Text("Preparando IA…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SecondaryButton(
-                    text = "Cancelar",
-                    onClick = onCancel,
-                    enabled = !saving,
-                    modifier = Modifier.weight(1f),
+            when (readiness.phase) {
+                LocalAiPhase.READY -> PrimaryButton(
+                    text = if (interpreting) "Interpretando…" else "Interpretar",
+                    onClick = onInterpretText,
+                    enabled = textInput.isNotBlank() && !saving && !interpreting,
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                PrimaryButton(
-                    text = "Guardar",
-                    onClick = onSave,
+                LocalAiPhase.PREPARING -> Unit
+                LocalAiPhase.NOT_INSTALLED -> SecondaryButton(
+                    "Configurar IA",
+                    onClick = onManageModels,
                     enabled = !saving,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
+                LocalAiPhase.ERROR -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val message = when (readiness.failure) {
+                        com.angel.mony.domain.model.LocalModelFailure.INVALID_FILE -> "El archivo del modelo está dañado."
+                        com.angel.mony.domain.model.LocalModelFailure.INSUFFICIENT_MEMORY -> "Este teléfono no tiene memoria suficiente para abrir el modelo."
+                        com.angel.mony.domain.model.LocalModelFailure.INCOMPATIBLE -> "Este modelo no es compatible con el motor de Mony."
+                        else -> "No se pudo preparar la IA."
+                    }
+                    Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    SecondaryButton("Configurar IA", onClick = onManageModels, enabled = !saving)
+                }
             }
         }
     }
