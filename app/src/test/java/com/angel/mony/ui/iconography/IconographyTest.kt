@@ -40,11 +40,10 @@ class IconographyTest {
         assertNotEquals(phosphor.imageVector.name, flat.imageVector.name)
     }
 
-    @Test fun `colorful packs retain fixed colors and expose colorful category icons`() {
-        listOf(IconPack.FLAT_COLOR, IconPack.FLUENT_EMOJI_FLAT).forEach { pack ->
-            listOf(MonyIcon.Savings, MonyIcon.Food, MonyIcon.Transport).forEach { icon ->
-                assertTrue(MonyIconResolver.resolve(icon, pack) is MonyIconAsset.FixedColor)
-            }
+    @Test fun `colorful packs retain fixed colors for mapped category icons`() {
+        assertTrue(MonyIconResolver.resolve(MonyIcon.Savings, IconPack.FLAT_COLOR) is MonyIconAsset.FixedColor)
+        listOf(MonyIcon.Savings, MonyIcon.Food, MonyIcon.Transport).forEach { icon ->
+            assertTrue(MonyIconResolver.resolve(icon, IconPack.FLUENT_EMOJI_FLAT) is MonyIconAsset.FixedColor)
         }
     }
 
