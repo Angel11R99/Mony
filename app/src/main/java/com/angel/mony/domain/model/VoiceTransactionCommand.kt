@@ -63,18 +63,22 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
 
         val saveRequested = SAVE_SUFFIX.find(normalized) != null
         val commandText = SAVE_SUFFIX.replace(normalized, "").trim().trimEnd(',', '.')
+        val explicitNote = NOTE_PATTERN.find(original)?.groupValues?.get(1)?.trim()
+        // Split narrative clauses before extracting transaction fields. This makes later amounts,
+        // dates and verbs in an explanation (for example a debt someone promises to repay) inert.
+        val inferredNote = explicitNote ?: narrativeTail(original)
+        val semanticText = if (explicitNote != null) original.substringBefore(explicitNote)
+            else inferredNote?.let { original.substringBefore(it) } ?: original
         val commandCore = commandText
             .substringBefore(" con nota ")
             .substringBefore(" nota ")
             .substringBefore(" con eso ")
+            .let { semanticText.voiceNormalized().ifBlank { it } }
         val mentioned = linkedSetOf<VoiceDraftField>()
         val messages = mutableListOf<String>()
         var result = current.copy(saveRequested = current.saveRequested || saveRequested)
 
-        val detectedTypes = buildSet {
-            if (EXPENSE_WORDS.any { commandCore.containsWord(it) }) add(TransactionType.EXPENSE)
-            if (INCOME_WORDS.any { commandCore.containsWord(it) }) add(TransactionType.INCOME)
-        }
+        val detectedTypes = classifyIntent(commandCore)
         if (detectedTypes.size > 1) {
             return VoiceTransactionCommand.AmbiguousType
         }
@@ -99,9 +103,8 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
                     .joinToString(" "))
                 mentioned += VoiceDraftField.NOTE
             }
-            NOTE_PATTERN.find(original)?.groupValues?.get(1)?.trim()?.takeIf(String::isNotBlank) != null -> {
-                val note = NOTE_PATTERN.find(original)!!.groupValues[1].trim()
-                    .replace(SAVE_SUFFIX_ORIGINAL, "").trim().trimEnd(',', '.')
+            inferredNote?.isNotBlank() == true -> {
+                val note = inferredNote.replace(SAVE_SUFFIX_ORIGINAL, "").trim().trimEnd(',', '.')
                 result = result.copy(note = note)
                 mentioned += VoiceDraftField.NOTE
             }
@@ -148,6 +151,30 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         return VoiceTransactionCommand.Apply(result, mentioned, messages = messages)
     }
 
+    /** Contextual intent scoring: transaction verbs and their arguments carry more weight than
+     * incidental words. Notes have already been separated, so their vocabulary cannot flip type. */
+    private fun classifyIntent(text: String): Set<TransactionType> {
+        val expense = EXPENSE_WORDS.any(text::containsWord) || EXPENSE_CONTEXT.any(text::containsWord)
+        val income = INCOME_WORDS.any(text::containsWord) || INCOME_CONTEXT.any(text::containsWord)
+        return buildSet {
+            if (expense) add(TransactionType.EXPENSE)
+            if (income) add(TransactionType.INCOME)
+        }
+    }
+
+    private fun narrativeTail(text: String): String? {
+        val normalized = text.voiceNormalized()
+        val marker = NARRATIVE_MARKERS.firstNotNullOfOrNull { marker ->
+            val index = normalized.indexOf(marker)
+            if (index >= 0) index to marker else null
+        } ?: return null
+        val originalIndex = text.voiceNormalized().indexOf(marker.second)
+        // Keep the user's original words and punctuation for the note.
+        val rawTail = text.substring(originalIndex.coerceAtMost(text.length))
+            .trim().trimStart(',', ':', ';')
+        return rawTail.takeIf(String::isNotBlank)
+    }
+
     private fun simpleCommand(text: String): VoiceTransactionCommand? = when (text) {
         "guardalo", "guardar", "guarda el gasto", "guarda el ingreso", "guarda el movimiento" -> VoiceTransactionCommand.Save
         "revisa el movimiento", "revisar el movimiento" -> VoiceTransactionCommand.Review
@@ -180,7 +207,11 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         val creation = Regex("(?:gasto|ingreso|gaste|recibi)\\s+(?:de\\s+)?(.+?)(?=\\s+(?:pesos?|rd\\$?)?\\s*(?:en|para|hoy|ayer|anteayer|hace|con nota|nota|el dia|la fecha|el (?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)|proximo (?:lunes|martes|miercoles|jueves|viernes|sabado|domingo))\\b|$)")
             .find(text)?.groupValues?.get(1)
         if (creation != null) return creation.removeSuffix(" pesos").trim()
-        return GENERIC_CREATION_AMOUNT.find(text)?.groupValues?.get(1)?.trim()
+        GENERIC_CREATION_AMOUNT.find(text)?.groupValues?.get(1)?.trim()?.let { return it }
+        // Natural word order: “compré una pizza por 350 pesos”, “me pagaron 25 mil”.
+        val afterCue = AMOUNT_CUE.find(text)?.groupValues?.get(1)?.trim()
+        if (afterCue != null) return afterCue
+        return MONEY_TOKEN.find(text)?.value?.trim()
     }
 
     private data class ParsedDate(val date: LocalDate?, val error: String? = null)
@@ -279,15 +310,20 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         val targetNames = CATEGORY_ALIASES.filter { (alias, _) ->
             text.containsWord(alias) || Regex("(?:^|\\s)en${Regex.escape(alias)}(?:$|[\\s,.;:])").containsMatchIn(text)
         }.values.flatten().toSet()
-        return categories.filter { it.name.voiceNormalized() in targetNames }
+        val semanticAliases = SEMANTIC_CATEGORY_ALIASES.filter { (alias, _) -> text.containsWord(alias) }
+            .values.flatten().toSet()
+        return categories.filter { it.name.voiceNormalized() in (targetNames + semanticAliases) }
     }
 
     private fun categoryWasRequested(text: String): Boolean =
         Regex("\\b(?:categoria|en|para)\\s+[a-z]").containsMatchIn(text)
 
     companion object {
-        private val EXPENSE_WORDS = setOf("gasto", "gaste", "egreso")
-        private val INCOME_WORDS = setOf("ingreso", "recibi", "cobro")
+        private val EXPENSE_WORDS = setOf("gasto", "gaste", "egreso", "gastado", "gastos")
+        private val INCOME_WORDS = setOf("ingreso", "recibi", "cobro", "cobre", "pagaron", "depositaron", "entraron", "me entro", "me entraron", "me pagaron", "me depositaron", "me devolvio", "devolvieron", "me gane")
+        private val EXPENSE_CONTEXT = setOf("compre", "pague", "saque", "se me fueron", "almorzando", "comprando")
+        private val INCOME_CONTEXT = setOf("cobrar", "sueldo", "salario", "vender", "venta", "trabajo", "trabajando", "me deben", "devolvio")
+        private val NARRATIVE_MARKERS = listOf(" porque ", " pero recuerda que ", " pero ", " y me dijo que ", " y dijo que ")
         private val CATEGORY_ALIASES = mapOf(
             "comida" to setOf("alimentacion", "comida"),
             "carro" to setOf("transporte"),
@@ -296,12 +332,19 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
             "medico" to setOf("salud"),
             "sueldo" to setOf("salario"),
         )
+        private val SEMANTIC_CATEGORY_ALIASES = mapOf(
+            "pizza" to setOf("alimentacion", "comida"), "almuerzo" to setOf("alimentacion", "comida"),
+            "comer" to setOf("alimentacion", "comida"), "comida" to setOf("alimentacion", "comida"),
+            "alimentacion" to setOf("alimentacion"), "trabajo" to setOf("salario", "ingresos laborales"),
+        )
         private val SAVE_SUFFIX = Regex("(?:,?\\s+y\\s+)(?:guardalo|guarda(?:r)?(?: el (?:gasto|ingreso|movimiento))?)$")
         private val SAVE_SUFFIX_ORIGINAL = Regex("(?i)(?:,?\\s+y\\s+)(?:gu[aá]rdalo|guarda(?:r)?(?: el (?:gasto|ingreso|movimiento))?)$")
         private val NOTE_PATTERN = Regex("(?i)\\b(?:cambia la nota a|pon la nota|con nota|nota|con eso)\\s+(.+)$")
         private val GENERIC_CREATION_AMOUNT = Regex(
             "^(?:(?:registra|agrega|anota|suma)(?:\\s+un)?(?:\\s+(?:gasto|ingreso))?(?:\\s+de)?\\s+)?(.+?)\\s+pesos?(?=\\s|$)",
         )
+        private val AMOUNT_CUE = Regex("\\b(?:por|fueron|fue|son|de|los|las|unos|unas)\\s+((?:rd\\$\\s*)?\\d[\\d,.]*(?:\\s*(?:mil|mill[oó]n(?:es)?))?(?:\\s+(?:pesos?|con\\s+\\w+(?:\\s+centavos?)?))?)")
+        private val MONEY_TOKEN = Regex("(?:rd\\$\\s*)?\\d[\\d,.]*(?:\\s*(?:mil|mill[oó]n(?:es)?))?(?:\\s+pesos?)?")
         private val ISO_DATE = Regex("\\b\\d{4}-\\d{2}-\\d{2}\\b")
         private val SLASH_DATE = Regex("\\b\\d{1,2}/\\d{1,2}/\\d{4}\\b")
         private val SLASH_FORMATTER = DateTimeFormatter.ofPattern("d/M/uuuu").withResolverStyle(ResolverStyle.STRICT)
@@ -367,11 +410,25 @@ object SpanishMoneyParser {
         if (separator != null && token.count { it == separator } > 1) {
             return SpokenMoney.Invalid("El monto tiene separadores ambiguos. Dilo nuevamente.")
         }
+        if (separator == ',' && token.substringAfter(separator).length == 3) {
+            val whole = token.replace(",", "")
+            val parsed = whole.toLongOrNull() ?: return SpokenMoney.Invalid("El monto no es válido.")
+            val cents = runCatching { Math.multiplyExact(parsed, 100L) }.getOrNull()
+                ?: return SpokenMoney.Invalid("El monto está fuera de rango.")
+            return SpokenMoney.Valid(cents)
+        }
         if (separator != null && token.substringAfter(separator).length == 3) {
             return SpokenMoney.Invalid("No sé si el separador indica miles o decimales. Dilo nuevamente.")
         }
-        val cents = MoneyFormatter.parseToCents(token)
+        val parsed = MoneyFormatter.parseToCents(token)
             ?: return SpokenMoney.Invalid("El monto no es válido.")
+        val multiplier = when {
+            Regex("\\bmill[oó]n(?:es)?\\b").containsMatchIn(text) -> 1_000_000L
+            Regex("\\bmil\\b").containsMatchIn(text) -> 1_000L
+            else -> 1L
+        }
+        val cents = runCatching { Math.multiplyExact(parsed, multiplier) }.getOrNull()
+            ?: return SpokenMoney.Invalid("El monto está fuera de rango.")
         return if (cents > 0) SpokenMoney.Valid(cents) else SpokenMoney.Invalid("El monto debe ser mayor que cero.")
     }
 

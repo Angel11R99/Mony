@@ -165,6 +165,38 @@ class VoiceTransactionInterpreterTest {
         assertEquals(3_500L, (SpanishMoneyParser.parse("treinta y cinco") as SpokenMoney.Valid).cents)
     }
 
+    @Test fun `understands natural expense and preserves narrative without reserved words`() {
+        val expanded = categories + Category(5, "Alimentación", TransactionType.EXPENSE, "food", true)
+        val result = interpreter.interpret(
+            "Hoy gasté 1,250 pesos de gasto porque compré unas cosas para la casa, pero recuerda que mi hermano me debe 500 y dijo que me los va a pagar el viernes",
+            expanded,
+        ) as VoiceTransactionCommand.Apply
+        assertEquals(TransactionType.EXPENSE, result.draft.type)
+        assertEquals(125_000L, result.draft.amountInCents)
+        assertEquals("2026-10-05", result.draft.date.toString())
+        assertFalse(result.draft.saveRequested)
+        assertTrue(result.draft.note.orEmpty().contains("mi hermano me debe 500"))
+        assertNull(result.draft.categoryId)
+    }
+
+    @Test fun `parses colloquial income amount multiplier and payment date`() {
+        val result = interpreter.interpret("Me pagaron 25 mil pesos de mi sueldo hoy", categories)
+            as VoiceTransactionCommand.Apply
+        assertEquals(TransactionType.INCOME, result.draft.type)
+        assertEquals(2_500_000L, result.draft.amountInCents)
+        assertEquals(2L, result.draft.categoryId)
+        assertEquals("2026-10-05", result.draft.date.toString())
+    }
+
+    @Test fun `matches food meaning to active custom category`() {
+        val expanded = categories + Category(5, "Alimentación", TransactionType.EXPENSE, "food", true)
+        val result = interpreter.interpret("Compré una pizza por 350 pesos", expanded)
+            as VoiceTransactionCommand.Apply
+        assertEquals(TransactionType.EXPENSE, result.draft.type)
+        assertEquals(35_000L, result.draft.amountInCents)
+        assertEquals(5L, result.draft.categoryId)
+    }
+
     @Test fun `requires year for explicit month date`() {
         val result = interpreter.interpret("Registra un gasto de cien pesos en Transporte el 7 de octubre", categories)
             as VoiceTransactionCommand.Apply
