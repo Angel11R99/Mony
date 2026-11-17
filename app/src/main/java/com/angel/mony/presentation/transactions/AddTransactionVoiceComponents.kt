@@ -10,6 +10,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,6 +86,14 @@ internal fun VoiceDraftPanel(
     visible: Boolean,
     listening: Boolean,
     saving: Boolean,
+    modelInstalled: Boolean,
+    modelCompatible: Boolean,
+    modelDownloadProgress: Int?,
+    modelError: String?,
+    onDownloadModel: () -> Unit,
+    textInput: String,
+    onTextInputChange: (String) -> Unit,
+    onInterpretText: () -> Unit,
     onListen: () -> Unit,
     onStop: () -> Unit,
     onCancel: () -> Unit,
@@ -122,6 +131,25 @@ internal fun VoiceDraftPanel(
                 )
             }
             if (transcript.isNotBlank()) Text("“$transcript”", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = textInput,
+                onValueChange = onTextInputChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Describe el movimiento") },
+                supportingText = { Text("El texto usa el mismo intérprete local que el dictado.") },
+                minLines = 2,
+            )
+            SecondaryButton("Interpretar texto", onClick = onInterpretText, enabled = textInput.isNotBlank() && !saving)
+            when {
+                modelDownloadProgress != null -> Text("Descargando el modelo local… $modelDownloadProgress%", style = MaterialTheme.typography.bodySmall)
+                modelInstalled -> Text("Comprensión local con IA disponible sin conexión.", style = MaterialTheme.typography.bodySmall)
+                modelError != null -> Text(modelError, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                modelCompatible -> {
+                    Text("Puedes instalar un modelo local de unos 329 MB. La transcripción se procesa en el teléfono.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SecondaryButton("Instalar comprensión local", onClick = onDownloadModel, enabled = !saving)
+                }
+                else -> Text("La comprensión avanzada local no es compatible con la memoria de este dispositivo.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

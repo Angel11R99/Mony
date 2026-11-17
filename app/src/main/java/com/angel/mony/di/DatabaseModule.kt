@@ -29,6 +29,7 @@ import com.angel.mony.data.repository.RoomFortnightRepository
 import com.angel.mony.data.repository.RoomBackupRepository
 import com.angel.mony.data.repository.RoomExpenseFundingRepository
 import com.angel.mony.data.repository.OpenFoodFactsProductCatalogRepository
+import com.angel.mony.data.nlp.OnDeviceNaturalLanguageTransactionEngine
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.BudgetRepository
 import com.angel.mony.domain.repository.ExpenseFundingRepository
@@ -39,6 +40,8 @@ import com.angel.mony.domain.repository.SavingsRepository
 import com.angel.mony.domain.repository.ShoppingListRepository
 import com.angel.mony.domain.repository.FortnightRepository
 import com.angel.mony.domain.repository.ProductCatalogRepository
+import com.angel.mony.domain.model.NaturalLanguageTransactionEngine
+import com.angel.mony.domain.model.LocalLanguageModelManager
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -437,6 +440,8 @@ object DatabaseModule {
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
+    @Binds abstract fun naturalLanguageTransactions(implementation: OnDeviceNaturalLanguageTransactionEngine): NaturalLanguageTransactionEngine
+    @Binds abstract fun localLanguageModelManager(implementation: OnDeviceNaturalLanguageTransactionEngine): LocalLanguageModelManager
     @Binds abstract fun transactions(implementation: RoomTransactionRepository): TransactionRepository
     @Binds abstract fun categories(implementation: RoomCategoryRepository): CategoryRepository
     @Binds abstract fun budget(implementation: RoomBudgetRepository): BudgetRepository

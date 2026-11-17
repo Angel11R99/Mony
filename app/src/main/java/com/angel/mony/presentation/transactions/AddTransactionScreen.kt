@@ -63,7 +63,6 @@ import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.VoiceDraftField
 import com.angel.mony.domain.model.VoiceTransactionCommand
 import com.angel.mony.domain.model.VoiceTransactionDraft
-import com.angel.mony.domain.model.VoiceTransactionInterpreter
 import com.angel.mony.core.showToast
 import com.angel.mony.presentation.components.AmountVisualTransformation
 import com.angel.mony.presentation.components.FinanceTextField
@@ -79,7 +78,6 @@ import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.ui.iconography.MonyIcon
 import com.angel.mony.ui.iconography.MonyIconRole
 import androidx.core.content.ContextCompat
-import java.time.Clock
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -104,6 +102,9 @@ fun AddTransactionScreen(
     val fundingRequest by viewModel.showFundingDialog.collectAsStateWithLifecycle()
     val skipConventionalNotice by viewModel.skipConventionalNotice.collectAsStateWithLifecycle()
     val widgetVoiceExample by viewModel.widgetVoiceExample.collectAsStateWithLifecycle()
+    val voiceModelInstalled by viewModel.voiceModelInstalled.collectAsStateWithLifecycle()
+    val voiceModelDownloadProgress by viewModel.voiceModelDownloadProgress.collectAsStateWithLifecycle()
+    val voiceModelError by viewModel.voiceModelError.collectAsStateWithLifecycle()
     val periodDateFormatter = remember {
         DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-DO"))
     }
@@ -124,6 +125,7 @@ fun AddTransactionScreen(
     var voicePanelVisible by rememberSaveable { mutableStateOf(voiceEntry) }
     var lastTranscript by rememberSaveable { mutableStateOf("") }
     var pendingTranscript by remember { mutableStateOf<String?>(null) }
+    var voiceTextInput by rememberSaveable { mutableStateOf("") }
     var saveRequested by rememberSaveable { mutableStateOf(false) }
     var saveDispatched by rememberSaveable { mutableStateOf(false) }
     var fundingSource by rememberSaveable { mutableStateOf("") }
@@ -145,7 +147,6 @@ fun AddTransactionScreen(
     var undoTypeName by rememberSaveable { mutableStateOf<String?>(null) }
     var undoTypeNeedsConfirmation by rememberSaveable { mutableStateOf(false) }
     var hasUndo by rememberSaveable { mutableStateOf(false) }
-    val interpreter = remember { VoiceTransactionInterpreter(Clock.systemDefaultZone()) }
 
     val eventHandler by rememberUpdatedState<(VoiceRecognitionEvent) -> Unit> { event ->
         when (event) {
@@ -348,7 +349,14 @@ fun AddTransactionScreen(
     LaunchedEffect(pendingTranscript) {
         val transcript = pendingTranscript ?: return@LaunchedEffect
         pendingTranscript = null
-        when (val command = interpreter.interpret(transcript, allCategories, currentDraft())) {
+        val draftAtStart = currentDraft()
+        voiceStatus = "Comprendiendo el movimiento…"
+        val interpretation = viewModel.interpretVoice(transcript, allCategories, draftAtStart)
+        if (currentDraft() != draftAtStart) {
+            voiceStatus = "El formulario cambió mientras se interpretaba. Revisa el dictado antes de aplicarlo."
+            return@LaunchedEffect
+        }
+        when (val command = interpretation.command) {
             is VoiceTransactionCommand.Apply -> applyVoiceDraft(command)
             VoiceTransactionCommand.Save -> {
                 if (typeNeedsConfirmation) {
@@ -387,6 +395,11 @@ fun AddTransactionScreen(
             is VoiceTransactionCommand.Invalid -> voiceStatus =
                 if (voiceEntry && transactionType == null) "¿Gasto o ingreso?" else command.message
         }
+        val engineLabel = when (interpretation.engine) {
+            com.angel.mony.domain.model.InterpretationEngine.ON_DEVICE_LLM -> "Interpretación local completada. "
+            com.angel.mony.domain.model.InterpretationEngine.LOCAL_FALLBACK -> "Comprensión básica local. "
+        }
+        if (voiceStatus.isNotBlank() && !voiceStatus.startsWith(engineLabel)) voiceStatus = engineLabel + voiceStatus
     }
     LaunchedEffect(saveRequested, typeNeedsConfirmation, transactionType, amount, categoryId, date, fundingRequest, fundingSource, saving) {
         if (!saveRequested || typeNeedsConfirmation || saveDispatched || saving) return@LaunchedEffect
@@ -507,6 +520,14 @@ fun AddTransactionScreen(
                     visible = voicePanelVisible,
                     listening = voiceStatus == "Escuchando…",
                     saving = saving,
+                    modelInstalled = voiceModelInstalled,
+                    modelCompatible = viewModel.voiceModelCompatible,
+                    modelDownloadProgress = voiceModelDownloadProgress,
+                    modelError = voiceModelError,
+                    onDownloadModel = viewModel::downloadVoiceModel,
+                    textInput = voiceTextInput,
+                    onTextInputChange = { voiceTextInput = it },
+                    onInterpretText = { voiceTextInput.trim().takeIf(String::isNotBlank)?.let { pendingTranscript = it } },
                     onListen = ::requestVoiceRecognition,
                     onStop = voiceController::stop,
                     onCancel = {

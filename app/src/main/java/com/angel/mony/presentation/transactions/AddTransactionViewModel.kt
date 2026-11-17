@@ -13,6 +13,10 @@ import com.angel.mony.domain.model.DateRange
 import com.angel.mony.domain.model.ExpenseCreationResult
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
+import com.angel.mony.domain.model.NaturalLanguageTransactionEngine
+import com.angel.mony.domain.model.NaturalLanguageInterpretation
+import com.angel.mony.domain.model.VoiceTransactionDraft
+import com.angel.mony.domain.model.LocalLanguageModelManager
 import com.angel.mony.domain.model.activeBudgetPeriod
 import com.angel.mony.domain.repository.TransactionRepository
 import com.angel.mony.widget.updateAllFinanceWidgets
@@ -39,6 +43,8 @@ class AddTransactionViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     dataCache: FinanceDataCache,
     private val voiceRecognitionPreferences: VoiceRecognitionPreferences,
+    private val naturalLanguageEngine: NaturalLanguageTransactionEngine,
+    private val localModelManager: LocalLanguageModelManager,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val skipConventionalNotice: StateFlow<Boolean> = voiceRecognitionPreferences.skipConventionalNotice
@@ -57,6 +63,10 @@ class AddTransactionViewModel @Inject constructor(
     val error = MutableStateFlow<String?>(null)
     val fieldErrors = MutableStateFlow<Map<TransactionField, String>>(emptyMap())
     val saving = MutableStateFlow(false)
+    val voiceModelInstalled = MutableStateFlow(localModelManager.isModelInstalled)
+    val voiceModelCompatible = localModelManager.canRunModel
+    val voiceModelDownloadProgress = MutableStateFlow<Int?>(null)
+    val voiceModelError = MutableStateFlow<String?>(null)
     val editingTransaction = MutableStateFlow<FinanceTransaction?>(null)
     private val transactionId = savedStateHandle.get<Long>("transactionId") ?: 0L
     val isEditing: Boolean = transactionId != 0L
@@ -102,6 +112,28 @@ class AddTransactionViewModel @Inject constructor(
 
     fun setSkipConventionalNotice(skip: Boolean) {
         voiceRecognitionPreferences.setSkipConventionalNotice(skip)
+    }
+
+    suspend fun interpretVoice(
+        transcript: String,
+        categories: List<Category>,
+        draft: VoiceTransactionDraft,
+    ): NaturalLanguageInterpretation = naturalLanguageEngine.interpret(transcript, categories, draft)
+
+    fun downloadVoiceModel() {
+        if (!voiceModelCompatible || voiceModelDownloadProgress.value != null) return
+        viewModelScope.launch {
+            voiceModelError.value = null
+            voiceModelDownloadProgress.value = 0
+            try {
+                localModelManager.downloadModel { progress -> voiceModelDownloadProgress.value = progress }
+                voiceModelInstalled.value = localModelManager.isModelInstalled
+            } catch (_: Exception) {
+                voiceModelError.value = "No se pudo instalar el modelo local. Puedes seguir usando el registro por voz disponible."
+            } finally {
+                voiceModelDownloadProgress.value = null
+            }
+        }
     }
 
     fun updateWidgetVoiceExample(openingId: String, categories: List<Category>) {
