@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +30,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -49,6 +52,32 @@ import androidx.compose.ui.unit.sp
 import com.angel.mony.ui.theme.LocalAppShapes
 import com.angel.mony.ui.iconography.MonyIcon
 import com.angel.mony.ui.iconography.MonyIconRole
+
+/** Encabezado común de módulo: título uniforme, acciones agrupadas y margen final constante. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FinanceModuleTopAppBar(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    actions: @Composable () -> Unit = {},
+) {
+    TopAppBar(
+        title = { ModuleTitle(title) },
+        actions = {
+            if (onBack != null) {
+                GlobalOutlinedIconButton(MonyIcon.Back, "Volver", onBack, size = 48.dp)
+                Spacer(Modifier.width(8.dp))
+            }
+            actions()
+            Spacer(Modifier.width(14.dp))
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background,
+            titleContentColor = MaterialTheme.colorScheme.primary,
+            actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+        ),
+    )
+}
 
 @Composable
 fun PrimaryButton(

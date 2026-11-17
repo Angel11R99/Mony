@@ -5,11 +5,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -20,8 +18,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,11 +43,9 @@ import com.angel.mony.data.nlp.LanguageModelDownloadWorker
 import com.angel.mony.domain.model.LocalLanguageModel
 import com.angel.mony.domain.model.LocalLanguageModelManager
 import com.angel.mony.presentation.components.FinanceCard
-import com.angel.mony.presentation.components.GlobalOutlinedIconButton
-import com.angel.mony.presentation.components.ModuleTitle
+import com.angel.mony.presentation.components.FinanceModuleTopAppBar
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
-import com.angel.mony.ui.iconography.MonyIcon
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -192,14 +186,7 @@ fun LanguageModelsSettingsScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { ModuleTitle("Modelos de IA") },
-                actions = {
-                    GlobalOutlinedIconButton(MonyIcon.Back, "Volver", onBack)
-                    Spacer(Modifier.width(14.dp))
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
+            FinanceModuleTopAppBar(title = "Modelos de IA", onBack = onBack)
         },
     ) { padding ->
         LazyColumn(

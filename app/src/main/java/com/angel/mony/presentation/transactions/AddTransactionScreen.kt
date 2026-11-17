@@ -37,8 +37,6 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,7 +69,7 @@ import com.angel.mony.presentation.components.AmountVisualTransformation
 import com.angel.mony.presentation.components.FinanceTextField
 import com.angel.mony.presentation.components.GlobalSaveButton
 import com.angel.mony.presentation.components.GlobalSettingsButton
-import com.angel.mony.presentation.components.ModuleTitle
+import com.angel.mony.presentation.components.FinanceModuleTopAppBar
 import com.angel.mony.presentation.components.ExpenseFundingDialog
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
@@ -480,9 +478,8 @@ fun AddTransactionScreen(
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-        TopAppBar(
-            title = {
-                ModuleTitle(
+        FinanceModuleTopAppBar(
+            title =
                     if (editing == null) {
                         when (transactionType) {
                             TransactionType.EXPENSE -> "Registrar gasto"
@@ -490,9 +487,7 @@ fun AddTransactionScreen(
                             null -> "Registrar por voz"
                         }
                     } else "Editar movimiento",
-                )
-            },
-            navigationIcon = { IconButton(onClick = ::requestExit) { MonyIcon(MonyIcon.Back, "Volver") } },
+            onBack = ::requestExit,
             actions = {
                 GlobalSaveButton(
                     onClick = {
@@ -511,12 +506,6 @@ fun AddTransactionScreen(
                 Spacer(Modifier.width(8.dp))
                 GlobalSettingsButton(onClick = onSettings, size = 48.dp)
             },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.background,
-                titleContentColor = MaterialTheme.colorScheme.primary,
-                navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                actionIconContentColor = MaterialTheme.colorScheme.onBackground,
-            ),
         )
         },
     ) { padding ->
