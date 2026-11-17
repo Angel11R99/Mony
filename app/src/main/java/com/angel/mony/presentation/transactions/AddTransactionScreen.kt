@@ -522,7 +522,7 @@ fun AddTransactionScreen(
                     )
                 }
             }
-            item {
+            if (voiceEntry) item {
                 VoiceDraftPanel(
                     status = voiceStatus,
                     example = if (voiceEntry) {
