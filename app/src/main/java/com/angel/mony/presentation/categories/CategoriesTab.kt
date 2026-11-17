@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
@@ -78,20 +79,20 @@ fun CategoriesTab(
     }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.widthIn(max = 760.dp).fillMaxSize(),
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
-                    "CATEGORÍAS",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
+                    "Organiza tus categorías",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    "Elige un tipo para administrar sus categorías. Las inactivas conservan todo su historial.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    "Separa gastos e ingresos, define límites por ciclo y activa solo las opciones que quieras usar. Las categorías inactivas conservan su historial.",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
