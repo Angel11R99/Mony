@@ -164,6 +164,7 @@ fun AddTransactionScreen(
         when (event) {
             VoiceRecognitionEvent.Listening -> voiceStatus = "Escuchando…"
             VoiceRecognitionEvent.Processing -> voiceStatus = "Procesando voz…"
+            is VoiceRecognitionEvent.Partial -> voiceTextInput = event.transcript
             is VoiceRecognitionEvent.Result -> {
                 voiceTextInput = event.transcript
                 pendingTranscript = event.transcript
