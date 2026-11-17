@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,10 +88,8 @@ internal fun VoiceDraftPanel(
     listening: Boolean,
     saving: Boolean,
     modelInstalled: Boolean,
-    modelCompatible: Boolean,
-    modelDownloadProgress: Int?,
-    modelError: String?,
-    onDownloadModel: () -> Unit,
+    interpreting: Boolean,
+    onManageModels: () -> Unit,
     textInput: String,
     onTextInputChange: (String) -> Unit,
     onInterpretText: () -> Unit,
@@ -136,26 +135,28 @@ internal fun VoiceDraftPanel(
                 onValueChange = onTextInputChange,
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Describe el movimiento") },
-                supportingText = { Text("El texto usa el mismo intérprete local que el dictado.") },
+                supportingText = { Text("El texto escrito y el dictado usan la misma comprensión del movimiento.") },
                 minLines = 2,
             )
-            SecondaryButton("Interpretar texto", onClick = onInterpretText, enabled = textInput.isNotBlank() && !saving)
-            when {
-                modelDownloadProgress != null -> Text("Descargando el modelo local… $modelDownloadProgress%", style = MaterialTheme.typography.bodySmall)
-                modelInstalled -> Text("Comprensión local con IA disponible sin conexión.", style = MaterialTheme.typography.bodySmall)
-                modelError != null -> Text(modelError, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                modelCompatible -> {
-                    Text("Puedes instalar un modelo local de unos 329 MB. La transcripción se procesa en el teléfono.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    SecondaryButton("Instalar comprensión local", onClick = onDownloadModel, enabled = !saving)
-                }
-                else -> Text("La comprensión avanzada local no es compatible con la memoria de este dispositivo.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            SecondaryButton(
+                if (interpreting) "Interpretando…" else if (modelInstalled) "Interpretar con IA" else "Interpretar texto",
+                onClick = onInterpretText,
+                enabled = textInput.isNotBlank() && !saving && !interpreting,
+            )
+            if (interpreting) CircularProgressIndicator()
+            Text(
+                if (modelInstalled) "Modelo de comprensión local listo para usar sin conexión."
+                else "No hay un modelo instalado. El registro manual sigue disponible.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!modelInstalled) SecondaryButton("Ver modelos en Ajustes", onClick = onManageModels, enabled = !saving)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SecondaryButton(
-                    text = "Repetir",
+                    text = "Micrófono",
                     onClick = onListen,
                     enabled = !listening && !saving,
                     modifier = Modifier.weight(1f),

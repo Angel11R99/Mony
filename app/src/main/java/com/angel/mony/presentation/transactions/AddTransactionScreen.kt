@@ -58,6 +58,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.VoiceDraftField
@@ -87,6 +90,7 @@ import java.util.Locale
 fun AddTransactionScreen(
     onBack: () -> Unit,
     onSettings: () -> Unit,
+    onManageModels: () -> Unit = onSettings,
     voiceEntry: Boolean = false,
     voiceOpeningId: String? = null,
     viewModel: AddTransactionViewModel = hiltViewModel(),
@@ -100,15 +104,23 @@ fun AddTransactionScreen(
     val suggestedDate by viewModel.suggestedDate.collectAsStateWithLifecycle()
     val activePeriod by viewModel.activePeriod.collectAsStateWithLifecycle()
     val fundingRequest by viewModel.showFundingDialog.collectAsStateWithLifecycle()
+    val possibleDuplicate by viewModel.possibleDuplicate.collectAsStateWithLifecycle()
     val skipConventionalNotice by viewModel.skipConventionalNotice.collectAsStateWithLifecycle()
     val widgetVoiceExample by viewModel.widgetVoiceExample.collectAsStateWithLifecycle()
     val voiceModelInstalled by viewModel.voiceModelInstalled.collectAsStateWithLifecycle()
-    val voiceModelDownloadProgress by viewModel.voiceModelDownloadProgress.collectAsStateWithLifecycle()
-    val voiceModelError by viewModel.voiceModelError.collectAsStateWithLifecycle()
     val periodDateFormatter = remember {
         DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-DO"))
     }
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshVoiceModelState()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        viewModel.refreshVoiceModelState()
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     var amount by rememberSaveable { mutableStateOf("") }
     var note by rememberSaveable { mutableStateOf("") }
     var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
@@ -125,6 +137,7 @@ fun AddTransactionScreen(
     var voicePanelVisible by rememberSaveable { mutableStateOf(voiceEntry) }
     var lastTranscript by rememberSaveable { mutableStateOf("") }
     var pendingTranscript by remember { mutableStateOf<String?>(null) }
+    var interpretingText by remember { mutableStateOf(false) }
     var voiceTextInput by rememberSaveable { mutableStateOf("") }
     var saveRequested by rememberSaveable { mutableStateOf(false) }
     var saveDispatched by rememberSaveable { mutableStateOf(false) }
@@ -158,7 +171,7 @@ fun AddTransactionScreen(
             }
             is VoiceRecognitionEvent.Error -> voiceStatus = event.message
             VoiceRecognitionEvent.ConventionalRecognitionRequired -> {
-                voiceStatus = "El modelo local no incluye español. Puedes usar el servicio convencional o continuar manualmente."
+                voiceStatus = "El reconocimiento de voz local en español no está disponible. Puedes usar el servicio convencional o escribir y usar la comprensión del movimiento."
                 if (skipConventionalNotice) {
                     startConventionalRecognitionToken++
                 } else {
@@ -184,7 +197,7 @@ fun AddTransactionScreen(
         if (granted && voicePanelVisible) {
             startRecognitionToken++
         } else if (!granted) {
-            voiceStatus = "Permiso de micrófono denegado. Puedes continuar manualmente."
+            voiceStatus = "Permiso de micrófono denegado. Puedes escribir la descripción y usar la comprensión local disponible."
         }
     }
 
@@ -201,7 +214,7 @@ fun AddTransactionScreen(
                 skipConventionalNoticeChoice = false
                 showRemoteConsent = true
             }
-            VoiceRecognitionMode.UNAVAILABLE -> voiceStatus = "No hay un servicio de reconocimiento de voz disponible. Puedes continuar manualmente."
+            VoiceRecognitionMode.UNAVAILABLE -> voiceStatus = "El reconocimiento de voz no está disponible. Puedes escribir la descripción y usar la comprensión local disponible."
         }
     }
 
@@ -349,11 +362,27 @@ fun AddTransactionScreen(
     LaunchedEffect(pendingTranscript) {
         val transcript = pendingTranscript ?: return@LaunchedEffect
         pendingTranscript = null
+        if (!voiceModelInstalled) {
+            voiceTextInput = transcript
+            voiceStatus = "Instala el modelo de comprensión en Ajustes para interpretar esta descripción."
+            onManageModels()
+            return@LaunchedEffect
+        }
         val draftAtStart = currentDraft()
+        val isTextInput = transcript == voiceTextInput.trim()
+        interpretingText = isTextInput
         voiceStatus = "Comprendiendo el movimiento…"
-        val interpretation = viewModel.interpretVoice(transcript, allCategories, draftAtStart)
-        if (currentDraft() != draftAtStart) {
-            voiceStatus = "El formulario cambió mientras se interpretaba. Revisa el dictado antes de aplicarlo."
+        val interpretation = try {
+            viewModel.interpretVoice(transcript, allCategories, draftAtStart)
+        } catch (_: Exception) {
+            voiceStatus = "No se pudo comprender el movimiento. El texto y el formulario se conservaron; puedes corregirlos manualmente."
+            interpretingText = false
+            return@LaunchedEffect
+        } finally {
+            interpretingText = false
+        }
+        if (currentDraft() != draftAtStart || (isTextInput && voiceTextInput.trim() != transcript)) {
+            voiceStatus = "El formulario cambió mientras se interpretaba. Revisa la descripción antes de aplicar el resultado."
             return@LaunchedEffect
         }
         when (val command = interpretation.command) {
@@ -397,7 +426,7 @@ fun AddTransactionScreen(
         }
         val engineLabel = when (interpretation.engine) {
             com.angel.mony.domain.model.InterpretationEngine.ON_DEVICE_LLM -> "Interpretación local completada. "
-            com.angel.mony.domain.model.InterpretationEngine.LOCAL_FALLBACK -> "Comprensión básica local. "
+            com.angel.mony.domain.model.InterpretationEngine.LOCAL_FALLBACK -> "Interpretación local por reglas (sin modelo de IA). "
         }
         if (voiceStatus.isNotBlank() && !voiceStatus.startsWith(engineLabel)) voiceStatus = engineLabel + voiceStatus
     }
@@ -521,13 +550,15 @@ fun AddTransactionScreen(
                     listening = voiceStatus == "Escuchando…",
                     saving = saving,
                     modelInstalled = voiceModelInstalled,
-                    modelCompatible = viewModel.voiceModelCompatible,
-                    modelDownloadProgress = voiceModelDownloadProgress,
-                    modelError = voiceModelError,
-                    onDownloadModel = viewModel::downloadVoiceModel,
+                    interpreting = interpretingText,
+                    onManageModels = onManageModels,
                     textInput = voiceTextInput,
                     onTextInputChange = { voiceTextInput = it },
-                    onInterpretText = { voiceTextInput.trim().takeIf(String::isNotBlank)?.let { pendingTranscript = it } },
+                    onInterpretText = {
+                        if (!interpretingText) voiceTextInput.trim().takeIf(String::isNotBlank)?.let {
+                            if (voiceModelInstalled) pendingTranscript = it else onManageModels()
+                        }
+                    },
                     onListen = ::requestVoiceRecognition,
                     onStop = voiceController::stop,
                     onCancel = {
@@ -697,7 +728,7 @@ fun AddTransactionScreen(
             title = { Text("Reconocimiento convencional") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Este dispositivo no ofrece reconocimiento local en español. El servicio convencional puede enviar el audio a un proveedor remoto y requerir internet. Puedes aceptarlo o continuar manualmente.")
+                    Text("Solo no está disponible el reconocimiento de voz local en español. El servicio convencional puede enviar el audio a un proveedor remoto y requerir internet. También puedes escribir la descripción y usar la comprensión local disponible.")
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -720,7 +751,18 @@ fun AddTransactionScreen(
                     voiceController.start(VoiceRecognitionMode.CONVENTIONAL)
                 }) { Text("Aceptar y escuchar") }
             },
-            dismissButton = { TextButton(onClick = { showRemoteConsent = false }) { Text("Continuar manualmente") } },
+            dismissButton = {
+                TextButton(onClick = {
+                    showRemoteConsent = false
+                    if (voiceModelInstalled) {
+                        voicePanelVisible = true
+                        voiceStatus = "Escribe la descripción y procésala con el modelo local."
+                    } else {
+                        voiceStatus = "Descarga el modelo de IA desde Ajustes para interpretar la descripción."
+                        onManageModels()
+                    }
+                }) { Text(if (voiceModelInstalled) "Escribir y usar IA" else "Descargar IA") }
+            },
         )
     }
 
@@ -741,6 +783,24 @@ fun AddTransactionScreen(
             },
             confirmButton = {},
             dismissButton = { TextButton(onClick = { categoryOptionIds = emptyList() }) { Text("Cancelar") } },
+        )
+    }
+
+    possibleDuplicate?.let { duplicate ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissPossibleDuplicate,
+            title = { Text("Posible movimiento duplicado") },
+            text = {
+                Text(
+                    "Ya existe un movimiento similar: ${MoneyFormatter.format(duplicate.amountInCents)} el ${duplicate.date}, en ${allCategories.firstOrNull { it.id == duplicate.categoryId }?.name ?: "la misma categoría"}. ¿Quieres registrar otro de todos modos?",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmPossibleDuplicate) { Text("Registrar de todos modos") }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissPossibleDuplicate) { Text("Revisar") }
+            },
         )
     }
 

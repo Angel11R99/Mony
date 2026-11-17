@@ -17,6 +17,7 @@ import com.angel.mony.domain.model.NaturalLanguageTransactionEngine
 import com.angel.mony.domain.model.NaturalLanguageInterpretation
 import com.angel.mony.domain.model.VoiceTransactionDraft
 import com.angel.mony.domain.model.LocalLanguageModelManager
+import com.angel.mony.domain.model.findPossibleDuplicate
 import com.angel.mony.domain.model.activeBudgetPeriod
 import com.angel.mony.domain.repository.TransactionRepository
 import com.angel.mony.widget.updateAllFinanceWidgets
@@ -41,7 +42,7 @@ enum class TransactionField { AMOUNT, CATEGORY, DATE }
 class AddTransactionViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val transactionRepository: TransactionRepository,
-    dataCache: FinanceDataCache,
+    private val dataCache: FinanceDataCache,
     private val voiceRecognitionPreferences: VoiceRecognitionPreferences,
     private val naturalLanguageEngine: NaturalLanguageTransactionEngine,
     private val localModelManager: LocalLanguageModelManager,
@@ -63,10 +64,10 @@ class AddTransactionViewModel @Inject constructor(
     val error = MutableStateFlow<String?>(null)
     val fieldErrors = MutableStateFlow<Map<TransactionField, String>>(emptyMap())
     val saving = MutableStateFlow(false)
-    val voiceModelInstalled = MutableStateFlow(localModelManager.isModelInstalled)
-    val voiceModelCompatible = localModelManager.canRunModel
-    val voiceModelDownloadProgress = MutableStateFlow<Int?>(null)
-    val voiceModelError = MutableStateFlow<String?>(null)
+    val voiceModelInstalled = MutableStateFlow(localModelManager.isModelInstalled(localModelManager.activeModelId))
+    fun refreshVoiceModelState() {
+        voiceModelInstalled.value = localModelManager.isModelInstalled(localModelManager.activeModelId)
+    }
     val editingTransaction = MutableStateFlow<FinanceTransaction?>(null)
     private val transactionId = savedStateHandle.get<Long>("transactionId") ?: 0L
     val isEditing: Boolean = transactionId != 0L
@@ -99,6 +100,10 @@ class AddTransactionViewModel @Inject constructor(
     val showFundingDialog: StateFlow<ExpenseCreationResult.RequiresFundingSource?> = _showFundingDialog
     private var pendingTransaction: FinanceTransaction? = null
     private var pendingOnSaved: (() -> Unit)? = null
+    private var pendingDuplicateTransaction: FinanceTransaction? = null
+    private var pendingDuplicateOnSaved: (() -> Unit)? = null
+    private val _possibleDuplicate = MutableStateFlow<FinanceTransaction?>(null)
+    val possibleDuplicate: StateFlow<FinanceTransaction?> = _possibleDuplicate
 
     init {
         if (transactionId != 0L) viewModelScope.launch {
@@ -119,22 +124,6 @@ class AddTransactionViewModel @Inject constructor(
         categories: List<Category>,
         draft: VoiceTransactionDraft,
     ): NaturalLanguageInterpretation = naturalLanguageEngine.interpret(transcript, categories, draft)
-
-    fun downloadVoiceModel() {
-        if (!voiceModelCompatible || voiceModelDownloadProgress.value != null) return
-        viewModelScope.launch {
-            voiceModelError.value = null
-            voiceModelDownloadProgress.value = 0
-            try {
-                localModelManager.downloadModel { progress -> voiceModelDownloadProgress.value = progress }
-                voiceModelInstalled.value = localModelManager.isModelInstalled
-            } catch (_: Exception) {
-                voiceModelError.value = "No se pudo instalar el modelo local. Puedes seguir usando el registro por voz disponible."
-            } finally {
-                voiceModelDownloadProgress.value = null
-            }
-        }
-    }
 
     fun updateWidgetVoiceExample(openingId: String, categories: List<Category>) {
         val catalog = VoiceExampleCatalog.build(categories)
@@ -209,8 +198,30 @@ class AddTransactionViewModel @Inject constructor(
         if (isEditing) {
             saveExistingTransaction(transaction, onSaved)
         } else {
+            val duplicate = findPossibleDuplicate(transaction, dataCache.transactions.value)
+            if (duplicate != null) {
+                pendingDuplicateTransaction = transaction
+                pendingDuplicateOnSaved = onSaved
+                _possibleDuplicate.value = duplicate
+                return
+            }
             saveNewTransaction(transaction, onSaved)
         }
+    }
+
+    fun confirmPossibleDuplicate() {
+        val transaction = pendingDuplicateTransaction ?: return
+        val onSaved = pendingDuplicateOnSaved ?: return
+        pendingDuplicateTransaction = null
+        pendingDuplicateOnSaved = null
+        _possibleDuplicate.value = null
+        saveNewTransaction(transaction, onSaved)
+    }
+
+    fun dismissPossibleDuplicate() {
+        pendingDuplicateTransaction = null
+        pendingDuplicateOnSaved = null
+        _possibleDuplicate.value = null
     }
 
     private fun saveNewTransaction(transaction: FinanceTransaction, onSaved: () -> Unit) {

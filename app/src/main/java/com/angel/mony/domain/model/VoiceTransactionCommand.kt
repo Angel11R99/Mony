@@ -334,6 +334,7 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         )
         private val SEMANTIC_CATEGORY_ALIASES = mapOf(
             "pizza" to setOf("alimentacion", "comida"), "almuerzo" to setOf("alimentacion", "comida"),
+            "alimentos" to setOf("alimentacion", "comida"),
             "comer" to setOf("alimentacion", "comida"), "comida" to setOf("alimentacion", "comida"),
             "alimentacion" to setOf("alimentacion"), "trabajo" to setOf("salario", "ingresos laborales"),
         )

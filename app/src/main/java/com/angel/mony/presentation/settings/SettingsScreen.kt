@@ -23,6 +23,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.runtime.DisposableEffect
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.domain.model.BudgetPeriod
 import com.angel.mony.navigation.FloatingModuleBarConfig
@@ -39,8 +43,9 @@ object SettingsRoutes {
     const val NAVIGATION = "settings/navigation"
     const val FINANCE = "settings/finance"
     const val CATEGORIES = "settings/categories"
+    const val LANGUAGE_MODELS = "settings/language-models"
 
-    val destinations = setOf(PERSONALIZATION, NAVIGATION, FINANCE, CATEGORIES)
+    val destinations = setOf(PERSONALIZATION, NAVIGATION, FINANCE, CATEGORIES, LANGUAGE_MODELS)
 
     fun parentOf(route: String): String? = if (route in destinations) ROOT else null
 }
@@ -55,6 +60,15 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val budget by viewModel.budget.collectAsStateWithLifecycle()
+    val activeLanguageModelName by viewModel.activeLanguageModelName.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshActiveLanguageModel()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -145,6 +159,14 @@ fun SettingsScreen(
                                     title = "Categorías",
                                     description = "Organiza ingresos y gastos",
                                     onClick = { onNavigate(SettingsRoutes.CATEGORIES) },
+                                )
+                                HorizontalDivider()
+                                SettingsGroupRow(
+                                    icon = MonyIcon.Download,
+                                    title = "Modelos de IA",
+                                    description = "Instala y revisa la comprensión local",
+                                    summary = activeLanguageModelName,
+                                    onClick = { onNavigate(SettingsRoutes.LANGUAGE_MODELS) },
                                 )
                             }
                         }

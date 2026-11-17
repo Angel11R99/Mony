@@ -47,6 +47,7 @@ import com.angel.mony.presentation.settings.AppearanceSettingsRoute
 import com.angel.mony.presentation.settings.NavigationSettingsScreen
 import com.angel.mony.presentation.settings.FinanceSettingsRoute
 import com.angel.mony.presentation.settings.CategoriesSettingsScreen
+import com.angel.mony.presentation.settings.LanguageModelsSettingsScreen
 import com.angel.mony.presentation.background.DecorativeBackground
 import com.angel.mony.ui.theme.AppAppearance
 import com.angel.mony.ui.theme.BackgroundDecoration
@@ -190,6 +191,7 @@ fun FinanceApp(
                 AddTransactionScreen(
                     onBack = { if (!navController.popBackStack()) navigateToModule("home") },
                     onSettings = { navController.navigate("settings") },
+                    onManageModels = { navController.navigate(SettingsRoutes.LANGUAGE_MODELS) },
                 )
             }
             composable(
@@ -202,6 +204,7 @@ fun FinanceApp(
                 AddTransactionScreen(
                     onBack = { if (!navController.popBackStack()) navigateToModule("history") },
                     onSettings = { navController.navigate("settings") },
+                    onManageModels = { navController.navigate(SettingsRoutes.LANGUAGE_MODELS) },
                 )
             }
             composable("history") {
@@ -315,6 +318,9 @@ fun FinanceApp(
             }
             composable(SettingsRoutes.CATEGORIES) {
                 CategoriesSettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(SettingsRoutes.LANGUAGE_MODELS) {
+                LanguageModelsSettingsScreen(onBack = { navController.popBackStack() })
             }
             composable("savings") {
                 SavingsScreen(

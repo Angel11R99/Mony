@@ -146,7 +146,7 @@ fun HomeScreen(
                 ) {
                     add {
                         Row(
-                            Modifier.fillMaxWidth(),
+                            Modifier.fillMaxWidth().padding(top = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             RegisterActionButton(

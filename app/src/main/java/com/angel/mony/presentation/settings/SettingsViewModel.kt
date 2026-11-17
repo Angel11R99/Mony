@@ -9,6 +9,7 @@ import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.core.VoiceRecognitionPreferences
 import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.BudgetPeriod
+import com.angel.mony.domain.model.LocalLanguageModelManager
 import com.angel.mony.domain.repository.BudgetRepository
 import com.angel.mony.domain.usecase.SaveBudget
 import com.angel.mony.widget.updateAllFinanceWidgets
@@ -26,6 +27,7 @@ class SettingsViewModel @Inject constructor(
     private val saveBudgetUseCase: SaveBudget,
     dataCache: FinanceDataCache,
     private val voiceRecognitionPreferences: VoiceRecognitionPreferences,
+    private val languageModelManager: LocalLanguageModelManager,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val alertPreferences = BudgetAlertPreferences(context)
@@ -36,6 +38,19 @@ class SettingsViewModel @Inject constructor(
     val isSavingBudget = MutableStateFlow(false)
     val alertsEnabled: StateFlow<Boolean> = alertPreferences.alertsEnabled
     val skipConventionalVoiceNotice: StateFlow<Boolean> = voiceRecognitionPreferences.skipConventionalNotice
+    private val _activeLanguageModelName = MutableStateFlow(currentActiveLanguageModelName())
+    val activeLanguageModelName: StateFlow<String> = _activeLanguageModelName
+
+    fun refreshActiveLanguageModel() {
+        _activeLanguageModelName.value = currentActiveLanguageModelName()
+    }
+
+    private fun currentActiveLanguageModelName(): String =
+        languageModelManager.models
+            .firstOrNull { it.id == languageModelManager.activeModelId }
+            ?.takeIf { languageModelManager.isModelInstalled(it.id) }
+            ?.name
+            ?: "Ningún modelo seleccionado"
 
     fun consumeMessage() {
         message.value = null

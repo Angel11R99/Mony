@@ -1,7 +1,6 @@
 package com.angel.mony.ui.iconography
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
@@ -191,7 +190,9 @@ object MonyIconResolver {
         MonyIcon.Add -> Icons.Outlined.Add
         MonyIcon.Edit -> Icons.Outlined.Edit
         MonyIcon.Delete -> Icons.Outlined.Delete
-        MonyIcon.Back -> Icons.AutoMirrored.Outlined.ArrowBack
+        // Back always points toward the physical left on app bars, even when the
+        // Android system layout direction is RTL.
+        MonyIcon.Back -> Icons.Outlined.ArrowBack
         MonyIcon.Search -> Icons.Outlined.Search
         MonyIcon.More, MonyIcon.Other -> Icons.Outlined.MoreHoriz
         MonyIcon.Check -> Icons.Outlined.Check
@@ -251,7 +252,7 @@ object MonyIconResolver {
     }
 
     private fun resolveLucide(icon: MonyIcon): ImageVector? = when (icon) {
-        MonyIcon.Back -> null // Material fallback preserves Android's RTL auto-mirroring.
+        MonyIcon.Back -> null // Keep the fixed left-pointing Material app-bar arrow.
         MonyIcon.Home -> Lucide.Wallet
         MonyIcon.Fixed -> Lucide.Repeat2
         MonyIcon.Pending -> Lucide.Bell
@@ -315,7 +316,7 @@ object MonyIconResolver {
     }
 
     private fun resolvePhosphor(icon: MonyIcon): ImageVector? = when (icon) {
-        MonyIcon.Back -> null // Material fallback preserves Android's RTL auto-mirroring.
+        MonyIcon.Back -> null // Keep the fixed left-pointing Material app-bar arrow.
         MonyIcon.Home, MonyIcon.Finance -> PhosphorIcons.Regular.Wallet
         MonyIcon.Fixed -> PhosphorIcons.Regular.Repeat
         MonyIcon.Pending -> PhosphorIcons.Regular.Bell
