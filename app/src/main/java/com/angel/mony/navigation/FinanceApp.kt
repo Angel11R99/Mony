@@ -106,8 +106,7 @@ fun FinanceApp(
     }
 
     LaunchedEffect(initialDestination, voiceOpeningId) {
-        if (isValidInitialDestination(initialDestination) &&
-            (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED || initialDestination != "voice")) {
+        if (isValidInitialDestination(initialDestination)) {
             navigateToModule(initialDestination!!)
         }
     }
@@ -193,7 +192,6 @@ fun FinanceApp(
                 AddTransactionScreen(
                     onBack = { if (!navController.popBackStack()) navigateToModule("home") },
                     onSettings = { navController.navigate("settings") },
-                    onManageModels = { navController.navigate(SettingsRoutes.LANGUAGE_MODELS) },
                 )
             }
             composable(
@@ -206,7 +204,6 @@ fun FinanceApp(
                 AddTransactionScreen(
                     onBack = { if (!navController.popBackStack()) navigateToModule("history") },
                     onSettings = { navController.navigate("settings") },
-                    onManageModels = { navController.navigate(SettingsRoutes.LANGUAGE_MODELS) },
                 )
             }
             composable("history") {
@@ -273,7 +270,6 @@ fun FinanceApp(
                     onNavigate = navController::navigate,
                 )
             }
-            if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
             composable("voice") {
                 AddTransactionScreen(
                     onBack = { if (!navController.popBackStack()) navigateToModule("home") },
@@ -281,7 +277,6 @@ fun FinanceApp(
                     voiceEntry = true,
                     voiceOpeningId = voiceOpeningId,
                 )
-            }
             }
             composable(SettingsRoutes.PERSONALIZATION) {
                 AppearanceSettingsRoute(

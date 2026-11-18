@@ -14,8 +14,10 @@ import com.angel.mony.domain.model.ExpenseCreationResult
 import com.angel.mony.domain.model.FinanceTransaction
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.NaturalLanguageTransactionEngine
-import com.angel.mony.domain.model.NaturalLanguageInterpretation
 import com.angel.mony.domain.model.VoiceTransactionDraft
+import com.angel.mony.domain.model.VoiceTransactionInterpreter
+import com.angel.mony.domain.model.InterpretationEngine
+import com.angel.mony.domain.model.NaturalLanguageInterpretation
 import com.angel.mony.domain.model.LocalLanguageModelManager
 import com.angel.mony.domain.model.LocalModelFailure
 import com.angel.mony.domain.model.LocalModelPreparation
@@ -38,6 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.Instant
+import java.time.Clock
 import javax.inject.Inject
 
 enum class TransactionField { AMOUNT, CATEGORY, DATE }
@@ -171,7 +174,14 @@ class AddTransactionViewModel @Inject constructor(
         transcript: String,
         categories: List<Category>,
         draft: VoiceTransactionDraft,
-    ): NaturalLanguageInterpretation = naturalLanguageEngine.interpret(transcript, categories, draft)
+    ): NaturalLanguageInterpretation = if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
+        naturalLanguageEngine.interpret(transcript, categories, draft)
+    } else {
+        NaturalLanguageInterpretation(
+            command = VoiceTransactionInterpreter(Clock.systemDefaultZone()).interpret(transcript, categories, draft),
+            engine = InterpretationEngine.LOCAL_FALLBACK,
+        )
+    }
 
     fun updateWidgetVoiceExample(openingId: String, categories: List<Category>) {
         val catalog = VoiceExampleCatalog.build(categories)

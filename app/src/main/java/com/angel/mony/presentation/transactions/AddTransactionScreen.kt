@@ -40,6 +40,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberUpdatedState
@@ -90,7 +91,6 @@ import java.util.Locale
 fun AddTransactionScreen(
     onBack: () -> Unit,
     onSettings: () -> Unit,
-    onManageModels: () -> Unit = onSettings,
     voiceEntry: Boolean = false,
     voiceOpeningId: String? = null,
     viewModel: AddTransactionViewModel = hiltViewModel(),
@@ -111,14 +111,16 @@ fun AddTransactionScreen(
     val periodDateFormatter = remember {
         DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-DO"))
     }
-    var voicePanelVisible by rememberSaveable { mutableStateOf(voiceEntry && com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) }
+    var voicePanelVisible by rememberSaveable { mutableStateOf(false) }
+    val voiceReadiness = if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) localAiReadiness
+        else LocalAiReadiness(LocalAiPhase.READY)
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner, viewModel, voicePanelVisible) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> if (voicePanelVisible) viewModel.refreshVoiceModelState()
-                Lifecycle.Event.ON_PAUSE -> if (voicePanelVisible) viewModel.releaseVoiceModel()
+                Lifecycle.Event.ON_RESUME -> if (voicePanelVisible && com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) viewModel.refreshVoiceModelState()
+                Lifecycle.Event.ON_PAUSE -> if (voicePanelVisible && com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) viewModel.releaseVoiceModel()
                 else -> Unit
             }
         }
@@ -138,12 +140,13 @@ fun AddTransactionScreen(
     val transactionType = transactionTypeName?.let(TransactionType::valueOf)
     val categories = allCategories.filter { it.type == transactionType }
     LaunchedEffect(voicePanelVisible) {
-        if (voicePanelVisible) viewModel.refreshVoiceModelState()
+        if (voicePanelVisible && com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) viewModel.refreshVoiceModelState()
     }
     var voiceStatus by rememberSaveable { mutableStateOf(if (voiceEntry) "Pulsa el micrófono y di el movimiento." else "") }
     var pendingTranscript by remember { mutableStateOf<String?>(null) }
     var interpretingText by remember { mutableStateOf(false) }
     var voiceTextInput by rememberSaveable { mutableStateOf("") }
+    var voiceLevel by remember { mutableFloatStateOf(0f) }
     var saveRequested by rememberSaveable { mutableStateOf(false) }
     var saveDispatched by rememberSaveable { mutableStateOf(false) }
     var fundingSource by rememberSaveable { mutableStateOf("") }
@@ -155,7 +158,6 @@ fun AddTransactionScreen(
     var pendingTypeChange by remember { mutableStateOf<TransactionType?>(null) }
     var pendingTypeCommand by remember { mutableStateOf<VoiceTransactionCommand.Apply?>(null) }
     var handledVoiceOpeningId by rememberSaveable { mutableStateOf<String?>(null) }
-    var autoStartedVoiceOpeningId by rememberSaveable { mutableStateOf<String?>(null) }
     var startRecognitionToken by remember { mutableStateOf(0) }
     var startConventionalRecognitionToken by remember { mutableStateOf(0) }
     var undoAmount by rememberSaveable { mutableStateOf<String?>(null) }
@@ -168,14 +170,16 @@ fun AddTransactionScreen(
 
     val eventHandler by rememberUpdatedState<(VoiceRecognitionEvent) -> Unit> { event ->
         when (event) {
-            VoiceRecognitionEvent.Listening -> voiceStatus = "Escuchando…"
+            VoiceRecognitionEvent.Listening -> { voiceLevel = 0f; voiceStatus = "Escuchando…" }
             VoiceRecognitionEvent.Processing -> voiceStatus = "Procesando voz…"
+            is VoiceRecognitionEvent.AudioLevel -> voiceLevel = event.level
             is VoiceRecognitionEvent.Partial -> voiceTextInput = event.transcript
             is VoiceRecognitionEvent.Result -> {
+                voiceLevel = 0f
                 voiceTextInput = event.transcript
                 pendingTranscript = event.transcript
             }
-            is VoiceRecognitionEvent.Error -> voiceStatus = event.message
+            is VoiceRecognitionEvent.Error -> { voiceLevel = 0f; voiceStatus = event.message }
             VoiceRecognitionEvent.ConventionalRecognitionRequired -> {
                 voiceStatus = "El dictado local no está disponible."
                 if (skipConventionalNotice) {
@@ -185,7 +189,10 @@ fun AddTransactionScreen(
                     showRemoteConsent = true
                 }
             }
-            VoiceRecognitionEvent.Stopped -> if (voiceStatus == "Escuchando…") voiceStatus = "Escucha detenida."
+            VoiceRecognitionEvent.Stopped -> {
+                voiceLevel = 0f
+                if (voiceStatus == "Escuchando…") voiceStatus = "Escucha detenida."
+            }
         }
     }
     val voiceController = remember(context) {
@@ -346,10 +353,7 @@ fun AddTransactionScreen(
             voiceStatus = ""
         }
         handledVoiceOpeningId = currentOpeningId
-        if (autoStartedVoiceOpeningId != currentOpeningId) {
-            autoStartedVoiceOpeningId = currentOpeningId
-            requestVoiceRecognition()
-        }
+        voiceStatus = "Pulsa el micrófono para dictar o escribe el movimiento."
     }
     LaunchedEffect(voiceEntry, voiceOpeningId, allCategories) {
         if (voiceEntry && voiceOpeningId != null) {
@@ -362,9 +366,11 @@ fun AddTransactionScreen(
         if (!voicePanelVisible) return@LaunchedEffect
         val transcript = pendingTranscript ?: return@LaunchedEffect
         try {
-        val readiness = withTimeoutOrNull(60_000L) {
-            snapshotFlow { localAiReadiness }.first { it.phase != LocalAiPhase.PREPARING }
-        }
+        val readiness = if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
+            withTimeoutOrNull(60_000L) {
+                snapshotFlow { localAiReadiness }.first { it.phase != LocalAiPhase.PREPARING }
+            }
+        } else LocalAiReadiness(LocalAiPhase.READY)
         if (readiness == null) {
             voiceStatus = "La preparación del modelo tardó demasiado. Revisa el modelo en Ajustes."
             return@LaunchedEffect
@@ -412,10 +418,12 @@ fun AddTransactionScreen(
             }
             return@LaunchedEffect
         }
+        var closeVoicePanelAfterInterpretation = false
         when (val command = interpretation.command) {
             is VoiceTransactionCommand.Apply -> {
                 applyVoiceDraft(command)
                 voiceStatus = command.messages.firstOrNull() ?: "Movimiento interpretado. Revisa los campos."
+                closeVoicePanelAfterInterpretation = command.mentioned.isNotEmpty() && command.categoryOptions.isEmpty()
             }
             VoiceTransactionCommand.Save -> {
                 if (typeNeedsConfirmation) {
@@ -425,6 +433,7 @@ fun AddTransactionScreen(
                     saveRequested = true
                     saveDispatched = false
                     voiceStatus = missingFields()
+                    closeVoicePanelAfterInterpretation = true
                 }
             }
             VoiceTransactionCommand.Review -> voiceStatus = voiceDraftSummary(transactionType, amount, categoryId, date, note, allCategories)
@@ -453,6 +462,10 @@ fun AddTransactionScreen(
             }
             is VoiceTransactionCommand.Invalid -> voiceStatus =
                 if (voiceEntry && transactionType == null) "¿Gasto o ingreso?" else command.message
+        }
+        if (closeVoicePanelAfterInterpretation) {
+            pendingTranscript = null
+            voicePanelVisible = false
         }
         } finally {
             // Clear only AFTER the inference and draft application have finished.
@@ -536,61 +549,24 @@ fun AddTransactionScreen(
             contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            if (voiceEntry && com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
+            if (voiceEntry) {
                 item {
                     VoiceTypeBadge(
                         state = voiceTypeBadgeState(transactionType, typeNeedsConfirmation),
                     )
                 }
             }
-            if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED && !voiceEntry && !viewModel.isEditing) {
+            if (!viewModel.isEditing) {
                 item {
-                    Row(
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                    androidx.compose.material3.OutlinedButton(
+                    VoiceMicButton(
                         onClick = {
-                            voicePanelVisible = !voicePanelVisible
-                            if (!voicePanelVisible) {
-                                voiceController.cancel()
-                                pendingTranscript = null
-                                voiceStatus = ""
-                            } else {
-                                voiceStatus = "Pulsa Hablar para comenzar."
-                            }
+                            voicePanelVisible = true
+                            voiceStatus = "Escuchando…"
+                            requestVoiceRecognition()
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        com.angel.mony.ui.iconography.MonyIcon(
-                            icon = com.angel.mony.ui.iconography.MonyIcon.Voice,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (voicePanelVisible) "Ocultar asistente IA" else "Usar asistente IA")
-                    }
-                    }
+                        enabled = !saving,
+                    )
                 }
-            }
-            if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED && voicePanelVisible) item {
-                VoiceDraftPanel(
-                    status = voiceStatus,
-                    example = if (voiceEntry) {
-                        widgetVoiceExample.takeIf(String::isNotBlank)
-                            ?: "Di cuánto fue, en qué lo usaste y cuándo"
-                    } else when (transactionType) {
-                        TransactionType.INCOME -> "Recibí 15,000 pesos por un trabajo"
-                        else -> "Gasté 850 pesos comprando comida para la casa"
-                    },
-                    listening = voiceStatus in setOf("Escuchando…", "Procesando voz…"),
-                    saving = saving,
-                    readiness = localAiReadiness,
-                    interpreting = interpretingText,
-                    onManageModels = onManageModels,
-                    textInput = voiceTextInput,
-                    onListen = ::requestVoiceRecognition,
-                    onStop = voiceController::stop,
-                )
             }
             item {
                 val amountError = TransactionField.AMOUNT in fieldErrors
@@ -687,6 +663,33 @@ fun AddTransactionScreen(
                 )
             }
         }
+    }
+
+    if (voicePanelVisible) {
+        VoiceDraftPanel(
+            status = voiceStatus,
+            example = if (voiceEntry) {
+                widgetVoiceExample.takeIf(String::isNotBlank) ?: "Gasté 850 pesos en comida hoy"
+            } else when (transactionType) {
+                TransactionType.INCOME -> "Recibí 15,000 pesos por un trabajo ayer"
+                else -> "Gasté 850 pesos en una cena anoche"
+            },
+            listening = voiceStatus in setOf("Escuchando…", "Procesando voz…"),
+            voiceLevel = voiceLevel,
+            saving = saving,
+            readiness = voiceReadiness,
+            interpreting = interpretingText,
+            textInput = voiceTextInput,
+            onTextInputChange = { voiceTextInput = it },
+            onInterpretText = { pendingTranscript = voiceTextInput.trim().takeIf(String::isNotBlank) },
+            onDismiss = {
+                voicePanelVisible = false
+                voiceController.cancel()
+                pendingTranscript = null
+            },
+            onListen = ::requestVoiceRecognition,
+            onStop = voiceController::stop,
+        )
     }
 
     if (showDatePicker) {
