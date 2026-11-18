@@ -59,6 +59,11 @@ class VoiceFieldReconciliationTest {
         assertNull(check("Una compra por 500 pesos", TransactionType.INCOME, 50_000L,
             "Compras antiguas").categoryId.takeIf { it == 5L })
     }
+    @Test fun conflictingRelativeDatesDoNotOverrideContextualModelDate() {
+        val got = check("Me pagaron hoy por un trabajo de ayer", TransactionType.INCOME,
+            20_000L, "Trabajo", modelDate = today)
+        assertEquals(today, got.date)
+    }
     @Test fun amountWithNoMonetaryMarkerPreservesModelInference() {
         assertEquals(23_500L, check("Compré 3 botellas", TransactionType.EXPENSE,
             23_500L, null).amountInCents)
