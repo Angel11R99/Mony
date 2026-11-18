@@ -218,6 +218,34 @@ fun StatisticsScreen(
         report.expenseInCents
     }
 
+    fun startRecommendation(forceNew: Boolean) {
+        if (isGeneratingRecommendation) return
+        if (report.transactionCount == 0 || (categoryId != null && selectedStatistic == null)) return
+        val scope = "$periodLabel · ${selectedCategory?.name ?: "Todas las categorías"}"
+        val alreadyGeneratedForScope = recommendationState.text != null && recommendationState.scope == scope
+        if (!forceNew && alreadyGeneratedForScope) return
+        val moduleContext = if (selectedCategory == null) buildList {
+            state.budget?.let { add("Presupuesto configurado: ${MoneyFormatter.format(it.amountInCents)}.") }
+            state.fixedEntries.filter { it.isActive }.takeIf { it.isNotEmpty() }?.let { entries ->
+                add("Fijos activos: ${entries.size}; total registrado como referencia ${MoneyFormatter.format(entries.sumOf { it.amountInCents })}.")
+            }
+            state.pendingEntries.filterNot { it.isDone }.takeIf { it.isNotEmpty() }?.let { entries ->
+                add("Pendientes abiertos: ${entries.size}; monto ${MoneyFormatter.format(entries.sumOf { it.amountInCents })}.")
+            }
+            state.savingsGoals.filter { it.isActive }.takeIf { it.isNotEmpty() }?.let { goals ->
+                add("Metas de ahorro activas: ${goals.size}; ${goals.joinToString { "${it.goal.name} (${it.percent}%)" }}.")
+            }
+            state.shoppingLists.filter { it.status != ShoppingListStatus.COMPLETED }.takeIf { it.isNotEmpty() }?.let { lists ->
+                add("Listas de compra sin completar: ${lists.size}; presupuestos disponibles ${MoneyFormatter.format(lists.mapNotNull { it.budgetInCents }.sum())}.")
+            }
+            state.fortnightPlans.filter { !it.plan.isClosed }.takeIf { it.isNotEmpty() }?.let { plans ->
+                add("Planes de ciclo abiertos: ${plans.size}; pendiente planificado ${MoneyFormatter.format(plans.sumOf { it.totalPendingInCents })}.")
+            }
+        } else emptyList()
+        val prompt = statisticsRecommendationPrompt(periodLabel, report, selectedCategory, previousReport, moduleContext)
+        viewModel.generateRecommendation(prompt, scope)
+    }
+
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -229,33 +257,10 @@ fun StatisticsScreen(
                         contentDescription = if (isGeneratingRecommendation) "Recomendaciones con IA; analizando" else "Recomendaciones con IA",
                         loading = isGeneratingRecommendation,
                         onClick = {
-                        showRecommendations = true
-                        val scope = "$periodLabel · ${selectedCategory?.name ?: "Todas las categorías"}"
-                        val hasVisibleData = report.transactionCount > 0 && (categoryId == null || selectedStatistic != null)
-                        val resultMatchesCurrentScope = recommendationState.text != null && recommendationState.scope == scope
-                        if (!isGeneratingRecommendation && !resultMatchesCurrentScope && hasVisibleData) {
-                            val moduleContext = if (selectedCategory == null) buildList {
-                                state.budget?.let { add("Presupuesto configurado: ${MoneyFormatter.format(it.amountInCents)}.") }
-                                state.fixedEntries.filter { it.isActive }.takeIf { it.isNotEmpty() }?.let { entries ->
-                                    add("Fijos activos: ${entries.size}; total registrado como referencia ${MoneyFormatter.format(entries.sumOf { it.amountInCents })}.")
-                                }
-                                state.pendingEntries.filterNot { it.isDone }.takeIf { it.isNotEmpty() }?.let { entries ->
-                                    add("Pendientes abiertos: ${entries.size}; monto ${MoneyFormatter.format(entries.sumOf { it.amountInCents })}.")
-                                }
-                                state.savingsGoals.filter { it.isActive }.takeIf { it.isNotEmpty() }?.let { goals ->
-                                    add("Metas de ahorro activas: ${goals.size}; ${goals.joinToString { "${it.goal.name} (${it.percent}%)" }}.")
-                                }
-                                state.shoppingLists.filter { it.status != ShoppingListStatus.COMPLETED }.takeIf { it.isNotEmpty() }?.let { lists ->
-                                    add("Listas de compra sin completar: ${lists.size}; presupuestos disponibles ${MoneyFormatter.format(lists.mapNotNull { it.budgetInCents }.sum())}.")
-                                }
-                                state.fortnightPlans.filter { !it.plan.isClosed }.takeIf { it.isNotEmpty() }?.let { plans ->
-                                    add("Planes de ciclo abiertos: ${plans.size}; pendiente planificado ${MoneyFormatter.format(plans.sumOf { it.totalPendingInCents })}.")
-                                }
-                            } else emptyList()
-                            val prompt = statisticsRecommendationPrompt(periodLabel, report, selectedCategory, previousReport, moduleContext)
-                            viewModel.generateRecommendation(prompt, scope)
-                        }
-                    },
+                            showRecommendationHistory = false
+                            showRecommendations = true
+                            startRecommendation(forceNew = false)
+                        },
                         size = 54.dp,
                     )
                     Spacer(Modifier.width(8.dp))
@@ -398,7 +403,10 @@ fun StatisticsScreen(
                         GlobalOutlinedIconButton(
                             semanticIcon = MonyIcon.Back,
                             contentDescription = "Volver a recomendaciones",
-                            onClick = { showRecommendationHistory = false },
+                            onClick = {
+                                showRecommendationHistory = false
+                                startRecommendation(forceNew = false)
+                            },
                             size = 42.dp,
                         )
                     } else {
@@ -409,15 +417,22 @@ fun StatisticsScreen(
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f),
                     )
-                    if (!showRecommendationHistory) GlobalOutlinedIconButton(
-                        semanticIcon = MonyIcon.History,
-                        contentDescription = "Historial de recomendaciones",
-                        onClick = {
-                            viewModel.stopRecommendationForHistory()
-                            showRecommendationHistory = true
-                        },
-                        size = 42.dp,
-                    )
+                    if (!showRecommendationHistory) {
+                        GlobalOutlinedIconButton(
+                            semanticIcon = MonyIcon.Add,
+                            contentDescription = "Nueva recomendación",
+                            onClick = { startRecommendation(forceNew = true) },
+                            enabled = !isGeneratingRecommendation && report.transactionCount > 0 &&
+                                (selectedCategory == null || selectedStatistic != null),
+                            size = 42.dp,
+                        )
+                        GlobalOutlinedIconButton(
+                            semanticIcon = MonyIcon.History,
+                            contentDescription = "Historial de recomendaciones",
+                            onClick = { showRecommendationHistory = true },
+                            size = 42.dp,
+                        )
+                    }
                 }
                 if (showRecommendationHistory) {
                     if (recommendationHistory.isEmpty()) {
@@ -497,11 +512,6 @@ fun StatisticsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     recommendationState.text != null -> RecommendationText(recommendationState.text!!)
-                    recommendationState.status != null -> Text(
-                        recommendationState.status!!,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
                 }
                 }

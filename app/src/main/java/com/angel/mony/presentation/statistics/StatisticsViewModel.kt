@@ -34,7 +34,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -63,7 +62,6 @@ data class RecommendationUiState(
     val text: String? = null,
     val error: String? = null,
     val scope: String? = null,
-    val status: String? = null,
     val requestId: Long? = null,
 )
 
@@ -195,7 +193,7 @@ Gastos por categoría visibles:
 $categorySummary
 Datos relevantes de otros módulos:
 $modules
-Da como máximo 3 recomendaciones concretas, priorizando las que conecten resultados entre módulos. Usa solo los datos entregados y cita la cifra o estado que justifica cada recomendación. No inventes causas, hábitos, objetivos ni datos. Solo recomienda sobre un módulo si tiene datos relevantes; no sugieras gastos cuando no hay gastos registrados. Si hay pocos datos, explica brevemente qué falta. Evita consejos genéricos y listas de módulos sin hallazgos. Sin Markdown, sin introducciones largas."""
+Da como máximo 3 recomendaciones concretas, priorizando las que conecten resultados entre módulos. Usa solo los datos entregados y cita la cifra o estado que justifica cada recomendación. No inventes causas, hábitos, objetivos ni datos. Solo recomienda sobre un módulo si tiene datos relevantes; no sugieras gastos cuando no hay gastos registrados. Evita consejos genéricos y listas de módulos sin hallazgos. Sin Markdown, sin introducciones largas."""
 }
 
 @HiltViewModel
@@ -207,9 +205,11 @@ class StatisticsViewModel @Inject constructor(
     private val historyPreferences = context.getSharedPreferences("statistics_recommendations", Context.MODE_PRIVATE)
     private val _recommendationHistory = MutableStateFlow(readRecommendationHistory())
     val recommendationHistory: StateFlow<List<RecommendationHistoryEntry>> = _recommendationHistory
-    private val _recommendationState = MutableStateFlow(RecommendationUiState())
+    private val _recommendationState = MutableStateFlow(
+        _recommendationHistory.value.firstOrNull()?.let { RecommendationUiState(text = it.response, scope = it.scope) }
+            ?: RecommendationUiState(),
+    )
     val recommendationState: StateFlow<RecommendationUiState> = _recommendationState
-    private var recommendationJob: Job? = null
     private var recommendationGenerationId = 0L
 
     fun generateRecommendation(prompt: String, scope: String) {
@@ -220,7 +220,7 @@ class StatisticsViewModel @Inject constructor(
         }
         val requestId = ++recommendationGenerationId
         _recommendationState.value = RecommendationUiState(isGenerating = true, scope = scope, requestId = requestId)
-        recommendationJob = viewModelScope.launch {
+        viewModelScope.launch {
             try {
                 val result = languageModels.generateText(prompt).trim()
                 if (result.isNotBlank()) {
@@ -248,18 +248,6 @@ class StatisticsViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    fun stopRecommendationForHistory() {
-        if (!_recommendationState.value.isGenerating) return
-        val job = recommendationJob
-        recommendationJob = null
-        _recommendationState.value = RecommendationUiState(
-            status = "El análisis se detuvo al abrir el historial. Puedes generarlo de nuevo desde Recomendaciones.",
-            scope = _recommendationState.value.scope,
-            requestId = _recommendationState.value.requestId,
-        )
-        job?.cancel()
     }
 
     private fun readRecommendationHistory(): List<RecommendationHistoryEntry> = try {
