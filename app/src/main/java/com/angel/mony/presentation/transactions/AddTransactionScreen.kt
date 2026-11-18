@@ -725,7 +725,7 @@ fun AddTransactionScreen(
             expenseAmountInCents = request.expenseAmountInCents,
             sourceDescription = fundingSource,
             onSourceDescriptionChange = { fundingSource = it; saveDispatched = false },
-            onVoice = ::requestVoiceRecognition,
+            onVoice = if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) ::requestVoiceRecognition else null,
             onConfirm = {
                 fundingSource = it
                 saveDispatched = true
