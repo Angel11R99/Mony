@@ -11,7 +11,7 @@
 
 <!-- APP_VERSION_START -->
 <p align="center">
-  <a href="https://github.com/Angel11R99/Mony/releases/tag/v2.1.2"><img src="https://img.shields.io/badge/versi%C3%B3n-v2.1.2-6750A4" alt="Versión de Mony" /></a>
+  <a href="https://github.com/Angel11R99/Mony/releases/tag/v2.1.3"><img src="https://img.shields.io/badge/versi%C3%B3n-v2.1.3-6750A4" alt="Versión de Mony" /></a>
   <a href="https://github.com/Angel11R99/Mony/releases/latest"><img src="https://img.shields.io/badge/descargar-%C3%BAltima_versi%C3%B3n-6750A4" alt="Descargar última versión" /></a>
 </p>
 <!-- APP_VERSION_END -->
@@ -47,7 +47,7 @@
 La consulta externa de productos por código de barras es opcional. Más detalles en la [política de privacidad](docs/PRIVACY_POLICY.md).
 
 <!-- APP_DOWNLOAD_START -->
-Descarga **Mony v2.1.2** desde su [release en GitHub](https://github.com/Angel11R99/Mony/releases/tag/v2.1.2) o consulta [todas las versiones disponibles](https://github.com/Angel11R99/Mony/releases).
+Descarga **Mony v2.1.3** desde su [release en GitHub](https://github.com/Angel11R99/Mony/releases/tag/v2.1.3) o consulta [todas las versiones disponibles](https://github.com/Angel11R99/Mony/releases).
 <!-- APP_DOWNLOAD_END -->
 
 ## `03` — Por dentro
