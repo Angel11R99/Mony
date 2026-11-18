@@ -61,6 +61,7 @@ data class RecommendationUiState(
     val isGenerating: Boolean = false,
     val text: String? = null,
     val error: String? = null,
+    val scope: String? = null,
 )
 
 data class CategoryStatistic(
@@ -212,17 +213,20 @@ class StatisticsViewModel @Inject constructor(
             _recommendationState.value = RecommendationUiState()
             return
         }
-        _recommendationState.value = RecommendationUiState(isGenerating = true)
+        _recommendationState.value = RecommendationUiState(isGenerating = true, scope = scope)
         viewModelScope.launch {
             try {
                 val result = languageModels.generateText(prompt).trim()
                 if (result.isNotBlank()) {
                     _recommendationHistory.value = (listOf(RecommendationHistoryEntry(System.currentTimeMillis(), scope, result)) + _recommendationHistory.value).take(30)
                     writeRecommendationHistory(_recommendationHistory.value)
-                    _recommendationState.value = RecommendationUiState(text = result)
+                    _recommendationState.value = RecommendationUiState(text = result, scope = scope)
                     context.showToast("La recomendación terminó correctamente. Puedes verla en el historial.")
                 } else {
-                    _recommendationState.value = RecommendationUiState(error = "El modelo no generó una recomendación. Inténtalo otra vez.")
+                    _recommendationState.value = RecommendationUiState(
+                        error = "El modelo no generó una recomendación. Inténtalo otra vez.",
+                        scope = scope,
+                    )
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -230,7 +234,7 @@ class StatisticsViewModel @Inject constructor(
                 val message = failure.message
                     ?.takeIf { it.startsWith("Descarga") || it.startsWith("Gemini") || it.startsWith("No hay") }
                     ?: "No se pudieron generar recomendaciones. Comprueba que haya un modelo local disponible e inténtalo de nuevo."
-                _recommendationState.value = RecommendationUiState(error = message)
+                _recommendationState.value = RecommendationUiState(error = message, scope = scope)
             } finally {
                 if (_recommendationState.value.isGenerating) _recommendationState.value = RecommendationUiState()
             }

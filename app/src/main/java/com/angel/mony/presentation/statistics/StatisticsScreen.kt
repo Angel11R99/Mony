@@ -230,7 +230,10 @@ fun StatisticsScreen(
                         loading = isGeneratingRecommendation,
                         onClick = {
                         showRecommendations = true
-                        if (!isGeneratingRecommendation && report.transactionCount > 0 && (categoryId == null || selectedStatistic != null)) {
+                        val scope = "$periodLabel · ${selectedCategory?.name ?: "Todas las categorías"}"
+                        val hasVisibleData = report.transactionCount > 0 && (categoryId == null || selectedStatistic != null)
+                        val resultMatchesCurrentScope = recommendationState.text != null && recommendationState.scope == scope
+                        if (!isGeneratingRecommendation && !resultMatchesCurrentScope && hasVisibleData) {
                             val moduleContext = if (selectedCategory == null) buildList {
                                 state.budget?.let { add("Presupuesto configurado: ${MoneyFormatter.format(it.amountInCents)}.") }
                                 state.fixedEntries.filter { it.isActive }.takeIf { it.isNotEmpty() }?.let { entries ->
@@ -250,9 +253,7 @@ fun StatisticsScreen(
                                 }
                             } else emptyList()
                             val prompt = statisticsRecommendationPrompt(periodLabel, report, selectedCategory, previousReport, moduleContext)
-                            viewModel.generateRecommendation(prompt, "$periodLabel · ${selectedCategory?.name ?: "Todas las categorías"}")
-                        } else {
-                            viewModel.generateRecommendation("", "")
+                            viewModel.generateRecommendation(prompt, scope)
                         }
                     },
                         size = 54.dp,
@@ -485,14 +486,14 @@ fun StatisticsScreen(
                         CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
                         Text("Analizando tus estadísticas…", Modifier.padding(start = 12.dp))
                     }
+                    report.transactionCount == 0 || (selectedCategory != null && selectedStatistic == null) -> Text("No hay movimientos en este filtro para analizar. Registra uno y vuelve a intentarlo.",
+                        style = MaterialTheme.typography.bodyMedium)
                     recommendationState.error != null -> Text(
                         recommendationState.error!!,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     recommendationState.text != null -> RecommendationText(recommendationState.text!!)
-                    report.transactionCount == 0 || (selectedCategory != null && selectedStatistic == null) -> Text("No hay movimientos en este filtro para analizar. Registra uno y vuelve a intentarlo.",
-                        style = MaterialTheme.typography.bodyMedium)
                 }
                 }
                 }
