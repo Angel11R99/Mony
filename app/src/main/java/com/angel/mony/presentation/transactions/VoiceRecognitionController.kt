@@ -17,6 +17,7 @@ sealed interface VoiceRecognitionEvent {
     data object Processing : VoiceRecognitionEvent
     data class Result(val transcript: String) : VoiceRecognitionEvent
     data class Partial(val transcript: String) : VoiceRecognitionEvent
+    data class AudioLevel(val level: Float) : VoiceRecognitionEvent
     data class Error(val message: String) : VoiceRecognitionEvent
     data object ConventionalRecognitionRequired : VoiceRecognitionEvent
     data object Stopped : VoiceRecognitionEvent
@@ -153,7 +154,11 @@ class VoiceRecognitionController(
             if (isCurrent(sessionId, speechRecognizer)) onEvent(VoiceRecognitionEvent.Listening)
         }
         override fun onBeginningOfSpeech() = Unit
-        override fun onRmsChanged(rmsdB: Float) = Unit
+        override fun onRmsChanged(rmsdB: Float) {
+            if (isCurrent(sessionId, speechRecognizer)) {
+                onEvent(VoiceRecognitionEvent.AudioLevel(((rmsdB + 2f) / 12f).coerceIn(0f, 1f)))
+            }
+        }
         override fun onBufferReceived(buffer: ByteArray?) = Unit
         override fun onEndOfSpeech() {
             if (isCurrent(sessionId, speechRecognizer)) onEvent(VoiceRecognitionEvent.Processing)

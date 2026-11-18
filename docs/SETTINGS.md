@@ -8,7 +8,8 @@ Ajustes
 ├── Personalización  # tema, colores, iconos, formas, tipografía y fondo
 ├── Navegación       # módulos, etiquetas y transiciones
 ├── Finanzas         # presupuesto, ciclo, cierre y alertas
-└── Categorías       # administración CRUD y límites
+├── Categorías       # administración CRUD y límites
+└── Voz y dictado    # guía para configurar el reconocimiento de voz del dispositivo
 ```
 
 Cada destino es una ruta real de Navigation Compose bajo `settings/*`. Back vuelve siempre al
@@ -24,3 +25,4 @@ Cada destino es una ruta real de Navigation Compose bajo `settings/*`. Back vuel
 - El índice muestra solo título, descripción breve, icono semántico y, cuando aporta valor, resumen.
 - Las pantallas usan una sola lista desplazable, respetan insets y mantienen objetivos táctiles de 48dp.
 - Toda preferencia persistente debe ofrecer estado reactivo, feedback apropiado y conservar valores existentes.
+- Los ajustes de voz dependen del sistema y fabricante. La pantalla identifica el servicio activo y abre los ajustes del teclado, la ficha del servicio y su página de actualización cuando existen; conserva las instrucciones dentro de la app.

@@ -47,6 +47,7 @@ import com.angel.mony.presentation.settings.AppearanceSettingsRoute
 import com.angel.mony.presentation.settings.NavigationSettingsScreen
 import com.angel.mony.presentation.settings.FinanceSettingsRoute
 import com.angel.mony.presentation.settings.CategoriesSettingsScreen
+import com.angel.mony.presentation.settings.VoiceRecognitionSettingsScreen
 import com.angel.mony.presentation.settings.LanguageModelsSettingsScreen
 import com.angel.mony.presentation.background.DecorativeBackground
 import com.angel.mony.ui.theme.AppAppearance
@@ -106,8 +107,7 @@ fun FinanceApp(
     }
 
     LaunchedEffect(initialDestination, voiceOpeningId) {
-        if (isValidInitialDestination(initialDestination) &&
-            (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED || initialDestination != "voice")) {
+        if (isValidInitialDestination(initialDestination)) {
             navigateToModule(initialDestination!!)
         }
     }
@@ -193,7 +193,7 @@ fun FinanceApp(
                 AddTransactionScreen(
                     onBack = { if (!navController.popBackStack()) navigateToModule("home") },
                     onSettings = { navController.navigate("settings") },
-                    onManageModels = { navController.navigate(SettingsRoutes.LANGUAGE_MODELS) },
+                    onVoiceHelp = { navController.navigate(SettingsRoutes.VOICE) },
                 )
             }
             composable(
@@ -206,7 +206,7 @@ fun FinanceApp(
                 AddTransactionScreen(
                     onBack = { if (!navController.popBackStack()) navigateToModule("history") },
                     onSettings = { navController.navigate("settings") },
-                    onManageModels = { navController.navigate(SettingsRoutes.LANGUAGE_MODELS) },
+                    onVoiceHelp = { navController.navigate(SettingsRoutes.VOICE) },
                 )
             }
             composable("history") {
@@ -273,15 +273,14 @@ fun FinanceApp(
                     onNavigate = navController::navigate,
                 )
             }
-            if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
             composable("voice") {
                 AddTransactionScreen(
                     onBack = { if (!navController.popBackStack()) navigateToModule("home") },
                     onSettings = { navController.navigate("settings") },
+                    onVoiceHelp = { navController.navigate(SettingsRoutes.VOICE) },
                     voiceEntry = true,
                     voiceOpeningId = voiceOpeningId,
                 )
-            }
             }
             composable(SettingsRoutes.PERSONALIZATION) {
                 AppearanceSettingsRoute(
@@ -322,6 +321,9 @@ fun FinanceApp(
             }
             composable(SettingsRoutes.CATEGORIES) {
                 CategoriesSettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(SettingsRoutes.VOICE) {
+                VoiceRecognitionSettingsScreen(onBack = { navController.popBackStack() })
             }
             if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
                 composable(SettingsRoutes.LANGUAGE_MODELS) {

@@ -43,9 +43,10 @@ object SettingsRoutes {
     const val NAVIGATION = "settings/navigation"
     const val FINANCE = "settings/finance"
     const val CATEGORIES = "settings/categories"
+    const val VOICE = "settings/voice"
     const val LANGUAGE_MODELS = "settings/language-models"
 
-    val destinations = setOf(PERSONALIZATION, NAVIGATION, FINANCE, CATEGORIES, LANGUAGE_MODELS)
+    val destinations = setOf(PERSONALIZATION, NAVIGATION, FINANCE, CATEGORIES, VOICE, LANGUAGE_MODELS)
 
     fun parentOf(route: String): String? = if (route in destinations) ROOT else null
 }
@@ -146,7 +147,7 @@ fun SettingsScreen(
                                 val financeSummary = buildList {
                                     periodLabel?.let(::add)
                                     budget?.amountInCents?.let { add(MoneyFormatter.format(it)) }
-                                }.joinToString(" · ").ifEmpty { null }
+                                }.ifEmpty { listOf("Sin presupuesto") }.joinToString(" · ")
                                 SettingsGroupRow(
                                     icon = MonyIcon.Finance,
                                     title = "Finanzas",
@@ -158,8 +159,17 @@ fun SettingsScreen(
                                 SettingsGroupRow(
                                     icon = MonyIcon.Category,
                                     title = "Categorías",
-                                    description = "Organiza ingresos y gastos",
+                                    description = "Crea, edita y organiza tus categorías",
+                                    summary = "Ingresos y gastos",
                                     onClick = { onNavigate(SettingsRoutes.CATEGORIES) },
+                                )
+                                HorizontalDivider()
+                                SettingsGroupRow(
+                                    icon = MonyIcon.Voice,
+                                    title = "Voz y dictado",
+                                    description = "Configura idiomas y opciones del dictado",
+                                    summary = "Español y dictado",
+                                    onClick = { onNavigate(SettingsRoutes.VOICE) },
                                 )
                                 if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
                                 HorizontalDivider()
