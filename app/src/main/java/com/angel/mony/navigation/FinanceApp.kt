@@ -325,10 +325,8 @@ fun FinanceApp(
             composable(SettingsRoutes.VOICE) {
                 VoiceRecognitionSettingsScreen(onBack = { navController.popBackStack() })
             }
-            if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
-                composable(SettingsRoutes.LANGUAGE_MODELS) {
-                    LanguageModelsSettingsScreen(onBack = { navController.popBackStack() })
-                }
+            composable(SettingsRoutes.LANGUAGE_MODELS) {
+                LanguageModelsSettingsScreen(onBack = { navController.popBackStack() })
             }
             composable("savings") {
                 SavingsScreen(

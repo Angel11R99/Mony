@@ -8,22 +8,29 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
 import androidx.work.WorkInfo
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -39,7 +46,10 @@ import com.angel.mony.data.nlp.LanguageModelDownloadWorker
 import com.angel.mony.domain.model.*
 import com.angel.mony.presentation.components.FinanceModuleTopAppBar
 import com.angel.mony.presentation.components.FinanceCard
-import com.angel.mony.presentation.components.PrimaryButton
+import com.angel.mony.presentation.components.GlobalOutlinedIconButton
+import com.angel.mony.ui.iconography.MonyIcon
+import com.angel.mony.ui.iconography.MonyIconRole
+import com.angel.mony.ui.iconography.MonyIcon as MonyIconView
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,28 +57,39 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withTimeout
-import java.time.LocalDate
 import javax.inject.Inject
+
+private enum class ModelListFilter(val label: String) {
+    ALL("Todos"), INSTALLED("Instalados"), DOWNLOADABLE("Descargables")
+}
 
 @HiltViewModel
 class LanguageModelsSettingsViewModel @Inject constructor(
     private val manager: LocalLanguageModelManager,
-    private val interpreter: NaturalLanguageTransactionEngine,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
-    val models = manager.models
+    val models = MutableStateFlow(manager.models)
     val selection = MutableStateFlow(manager.activeModelId)
     val status = MutableStateFlow("Verificando IA...")
     val busy = MutableStateFlow(false)
     val diagnostic = MutableStateFlow<Map<String, String>>(emptyMap())
+    val errorAlert = MutableStateFlow<Pair<String, String>?>(null)
+    val catalogRefreshing = MutableStateFlow(false)
     val jobs = MutableStateFlow<Map<String, WorkInfo>>(emptyMap())
+    val requestedDownloads = MutableStateFlow<Set<String>>(emptySet())
     val pauses = MutableStateFlow<Set<String>>(emptySet())
-    val installedIds = MutableStateFlow(models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet())
+    val installedIds = MutableStateFlow(models.value.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet())
     val googleId = "gemini-nano-aicore"
+    private val observedDownloadIds = mutableSetOf<String>()
 
     init {
-        models.filter { it.id != googleId }.forEach { model ->
+        observeDownloads(models.value)
+        refresh()
+        refreshCatalog()
+    }
+
+    private fun observeDownloads(modelList: List<LocalLanguageModel>) {
+        modelList.filter { it.id != googleId && observedDownloadIds.add(it.id) }.forEach { model ->
             viewModelScope.launch {
                 WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(
                     LanguageModelDownloadWorker.uniqueWorkName(model.id)
@@ -76,18 +97,54 @@ class LanguageModelsSettingsViewModel @Inject constructor(
                     val current = infos.firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }
                         ?: infos.lastOrNull()
                     if (current != null) jobs.value = jobs.value + (model.id to current)
+                    if (current?.state in listOf(WorkInfo.State.SUCCEEDED, WorkInfo.State.FAILED, WorkInfo.State.CANCELLED)) {
+                        requestedDownloads.value = requestedDownloads.value - model.id
+                    }
+                    if (current?.state == WorkInfo.State.FAILED) {
+                        val reason = current.outputData.getString(LanguageModelDownloadWorker.KEY_ERROR)
+                            ?: "La descarga terminó inesperadamente. Comprueba tu conexión y el espacio disponible."
+                        errorAlert.value = model.name to reason
+                    }
                     if (current?.state == WorkInfo.State.SUCCEEDED) refresh()
                 }
             }
         }
-        refresh()
+    }
+
+    fun refreshCatalog() {
+        if (catalogRefreshing.value) return
+        viewModelScope.launch {
+            catalogRefreshing.value = true
+            status.value = "Actualizando catálogo de AI Edge Gallery…"
+            try {
+                val updated = withContext(Dispatchers.IO) { manager.refreshModelCatalog() }
+                models.value = manager.models
+                observeDownloads(models.value)
+                refresh()
+                status.value = if (updated) {
+                    "Catálogo actualizado · ${models.value.count { it.catalogSource == "AI Edge Gallery" }} modelos compatibles con texto."
+                } else {
+                    "No se pudo actualizar el catálogo. Se muestran los modelos guardados en el teléfono."
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                models.value = manager.models
+                observeDownloads(models.value)
+                refresh()
+                status.value = "No se pudo actualizar el catálogo. Se muestran los modelos guardados en el teléfono."
+            } finally {
+                catalogRefreshing.value = false
+            }
+        }
     }
 
     fun refresh() {
-        installedIds.value = models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet()
+        models.value = manager.models
+        installedIds.value = models.value.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet()
         selection.value = manager.activeModelId
         // Browsing settings should not load a gigabyte-sized LLM.
-        status.value = if (models.any { it.id != googleId && it.id in installedIds.value }) {
+        status.value = if (models.value.any { it.id != googleId && it.id in installedIds.value }) {
             "Modelos locales instalados. Selecciona uno para registrar por voz."
         } else {
             "Elige un modelo descargable. Gemini Nano requiere AICore."
@@ -101,42 +158,40 @@ class LanguageModelsSettingsViewModel @Inject constructor(
         refresh()
     }
 
-    fun testModel(modelId: String) {
+    fun checkAvailability(modelId: String) {
         if (busy.value) return
         viewModelScope.launch {
             busy.value = true
-            diagnostic.value = diagnostic.value + (modelId to "Probando inferencia real…")
+            diagnostic.value = diagnostic.value + (modelId to "Comprobando disponibilidad…")
             try {
-                manager.setActiveModel(modelId)
-                val ready = withContext(Dispatchers.IO) { manager.prepareActiveModel() }
-                if (ready !is LocalModelPreparation.Ready || ready.modelId != modelId) {
-                    diagnostic.value = diagnostic.value + (modelId to "El motor seleccionado no pudo iniciarse. Elige otro modelo.")
-                    return@launch
+                val feedback = if (modelId == googleId || !manager.isModelInstalled(modelId)) {
+                    withContext(Dispatchers.IO) { manager.checkDownloadAvailability(modelId) }
+                } else {
+                    val result = withContext(Dispatchers.IO) { manager.prepareActiveModel() }
+                    when {
+                        result is LocalModelPreparation.Ready && result.modelId == modelId ->
+                            "Modelo disponible y listo para usar sin conexión."
+                        result is LocalModelPreparation.Ready ->
+                            "Este modelo no está activo ahora. Se preparó ${manager.models.firstOrNull { it.id == result.modelId }?.name ?: "otro modelo local"}."
+                        result is LocalModelPreparation.NoInstalledModel ->
+                            "El modelo todavía no está descargado."
+                        result is LocalModelPreparation.Failed && result.reason == LocalModelFailure.INCOMPATIBLE ->
+                            "El modelo está instalado, pero este dispositivo no pudo iniciarlo."
+                        result is LocalModelPreparation.Failed && result.reason == LocalModelFailure.INSUFFICIENT_MEMORY ->
+                            "El modelo está instalado, pero no hay memoria suficiente para iniciarlo ahora."
+                        result is LocalModelPreparation.Failed ->
+                            "El modelo está instalado, pero no se pudo iniciar en este dispositivo."
+                        else -> "No se pudo comprobar la disponibilidad del modelo."
+                    }
                 }
-                val sample = listOf(
-                    Category(1L, "Alimentación", TransactionType.EXPENSE, "restaurant", true),
-                    Category(2L, "Trabajo", TransactionType.INCOME, "briefcase", true)
-                )
-                val result = withTimeout(120_000L) {
-                    interpreter.interpret(
-                        "Ayer gasté 500 pesos en comida",
-                        sample, VoiceTransactionDraft(date = LocalDate.now())
-                    )
-                }
-                val draft = (result.command as? VoiceTransactionCommand.Apply)?.draft
-                val succeeded = result.modelFailure == null &&
-                    draft?.type == TransactionType.EXPENSE &&
-                    draft?.amountInCents == 50_000L &&
-                    draft?.date == LocalDate.now().minusDays(1)
-                diagnostic.value = diagnostic.value + (
-                    modelId to if (succeeded) "Prueba correcta: gasto RD\$500 de ayer."
-                        else "La IA respondió, pero no reconoció todos los campos. Prueba otro modelo."
-                )
+                diagnostic.value = diagnostic.value + (modelId to feedback)
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                android.util.Log.e("MonyAI", "selftest stage=failed model=$modelId cause=${failure.javaClass.simpleName}")
-                diagnostic.value = diagnostic.value + (modelId to "No se pudo ejecutar la prueba. Revisa Logcat MonyAI.")
+                val reason = failure.message?.takeIf { it.isNotBlank() }
+                    ?: "No se pudo comprobar el modelo. Comprueba la conexión e inténtalo de nuevo."
+                diagnostic.value = diagnostic.value + (modelId to reason)
+                errorAlert.value = manager.models.firstOrNull { it.id == modelId }?.name.orEmpty() to reason
             } finally {
                 busy.value = false
                 refresh()
@@ -154,14 +209,18 @@ class LanguageModelsSettingsViewModel @Inject constructor(
                 try {
                     manager.downloadModel(modelId) {}
                     manager.setActiveModel(modelId)
-                } catch (_: Exception) {
-                    status.value = "Gemini Nano no está disponible en este dispositivo."
+                } catch (failure: Exception) {
+                    val reason = failure.message?.takeIf { it.isNotBlank() }
+                        ?: "Este dispositivo no admite Gemini Nano mediante AICore."
+                    diagnostic.value = diagnostic.value + (modelId to reason)
+                    errorAlert.value = (models.value.firstOrNull { it.id == modelId }?.name ?: "Gemini Nano") to reason
                 } finally {
                     busy.value = false
                     refresh()
                 }
             }
         } else {
+            requestedDownloads.value = requestedDownloads.value + modelId
             val request = OneTimeWorkRequestBuilder<LanguageModelDownloadWorker>()
                 .setInputData(Data.Builder().putString(LanguageModelDownloadWorker.KEY_MODEL_ID, modelId).build())
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -186,6 +245,7 @@ class LanguageModelsSettingsViewModel @Inject constructor(
                 ).result.get()
             }
             pauses.value = pauses.value + modelId
+            requestedDownloads.value = requestedDownloads.value - modelId
             status.value = "Descarga pausada. Puedes reanudarla."
         }
     }
@@ -206,6 +266,10 @@ class LanguageModelsSettingsViewModel @Inject constructor(
         }
     }
 
+    fun dismissError() {
+        errorAlert.value = null
+    }
+
 }
 
 @Composable
@@ -218,25 +282,100 @@ fun LanguageModelsSettingsScreen(
     val status by viewModel.status.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val jobs by viewModel.jobs.collectAsStateWithLifecycle()
+    val requestedDownloads by viewModel.requestedDownloads.collectAsStateWithLifecycle()
     val diagnostic by viewModel.diagnostic.collectAsStateWithLifecycle()
-    Scaffold(topBar = { FinanceModuleTopAppBar(title = "Modelos de IA", onBack = onBack) }) { padding ->
+    val errorAlert by viewModel.errorAlert.collectAsStateWithLifecycle()
+    val models by viewModel.models.collectAsStateWithLifecycle()
+    val catalogRefreshing by viewModel.catalogRefreshing.collectAsStateWithLifecycle()
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var listFilter by rememberSaveable { mutableStateOf(ModelListFilter.ALL) }
+    val visibleModels = remember(models, installed, searchQuery, listFilter) {
+        val query = searchQuery.trim()
+        models.filter { model ->
+            val matchesQuery = query.isBlank() || model.name.contains(query, ignoreCase = true) ||
+                model.description.contains(query, ignoreCase = true) ||
+                (model.catalogSource?.contains(query, ignoreCase = true) == true)
+            val matchesFilter = when (listFilter) {
+                ModelListFilter.ALL -> true
+                ModelListFilter.INSTALLED -> model.id in installed
+                ModelListFilter.DOWNLOADABLE -> model.id !in installed && model.id != viewModel.googleId
+            }
+            matchesQuery && matchesFilter
+        }
+    }
+    Scaffold(topBar = {
+        FinanceModuleTopAppBar(title = "Modelos de IA", onBack = onBack, actions = {
+            GlobalOutlinedIconButton(
+                semanticIcon = MonyIcon.Reopen,
+                contentDescription = "Actualizar catálogo de modelos",
+                onClick = viewModel::refreshCatalog,
+                enabled = !catalogRefreshing,
+                size = 44.dp,
+            )
+        })
+    }) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
                 Text(
-                    "Selecciona una IA para registrar movimientos por voz.",
+                    "Elige un modelo local para interpretar movimientos por voz y generar recomendaciones.",
                     modifier = Modifier.padding(top = 12.dp),
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                Text(status, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (status.startsWith("Catálogo actualizado")) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+                if (catalogRefreshing) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
+                }
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    label = { Text("Buscar modelos") },
+                    placeholder = { Text("Nombre o descripción") },
+                    leadingIcon = { MonyIconView(MonyIcon.Search, contentDescription = null) },
+                    singleLine = true,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ModelListFilter.entries.forEach { filter ->
+                        FilterChip(
+                            selected = listFilter == filter,
+                            onClick = { listFilter = filter },
+                            label = { Text(filter.label) },
+                        )
+                    }
+                }
             }
-            items(viewModel.models, key = { it.id }) { model ->
+            if (visibleModels.isEmpty()) {
+                item {
+                    Text(
+                        if (listFilter == ModelListFilter.INSTALLED) "No hay modelos instalados que coincidan."
+                        else "No se encontraron modelos. Prueba con otro nombre o filtro.",
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            items(visibleModels, key = { it.id }) { model ->
                 val isGoogle = model.id == viewModel.googleId
                 val available = model.id in installed
+                val memoryRequirement = model.minimumDeviceMemoryInGb
                 val job = jobs[model.id]
                 val downloading = job?.state in listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)
+                val downloadPending = model.id in requestedDownloads
                 val progress = job?.progress?.getInt(LanguageModelDownloadWorker.KEY_PROGRESS, 0) ?: 0
                 val transferred = viewModel.partialBytes(model.id)
                 val percent = if (progress > 0) progress else if (model.sizeBytes > 0) ((transferred * 100L) / model.sizeBytes).toInt().coerceIn(0, 100) else 0
@@ -251,15 +390,34 @@ fun LanguageModelsSettingsScreen(
                     ) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(model.name, style = MaterialTheme.typography.titleMedium)
-                            if (selected == model.id) Text("Seleccionado", style = MaterialTheme.typography.labelSmall)
+                            if (selected == model.id) {
+                                MonyIconView(
+                                    icon = MonyIcon.Check,
+                                    contentDescription = "Modelo seleccionado",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    role = MonyIconRole.STATE,
+                                    size = 24.dp,
+                                )
+                            }
                         }
                         Text(model.description, style = MaterialTheme.typography.bodySmall)
-                        if (downloading || partial && !available) {
-                            if (percent > 0) LinearProgressIndicator(
-                                progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
-                            else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        model.catalogSource?.let {
+                            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                        if (memoryRequirement != null) {
                             Text(
-                                (if (downloading) "Descargando" else "Descarga pausada") +
+                                "Advertencia: se recomiendan ${memoryRequirement} GB de RAM. Puedes descargarlo; en este dispositivo podría no iniciar o funcionar lentamente.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.tertiary,
+                            )
+                        }
+                        if (downloading || downloadPending || partial && !available) {
+                            LinearProgressIndicator(
+                                progress = { percent / 100f },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Text(
+                                (if (downloading || downloadPending) "Descargando" else "Descarga pausada") +
                                     " · $percent% · ${transferred / 1048576L} MB de ${model.sizeBytes / 1048576L} MB",
                                 style = MaterialTheme.typography.bodySmall)
                         }
@@ -269,48 +427,72 @@ fun LanguageModelsSettingsScreen(
                         }
                         downloadError?.let { Text(it, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error) }
-                        if (available || isGoogle) {
-                            PrimaryButton(
-                                if (selected == model.id) "Comprobar disponibilidad" else "Elegir modelo",
-                                onClick = {
-                                    if (selected == model.id) viewModel.refresh() else viewModel.select(model.id)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !busy,
-                            )
+                        diagnostic[model.id]?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall,
+                                color = if (it.startsWith("No se pudo")) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        if ((available || isGoogle) && selected == model.id && !downloading) {
-                            TextButton(
-                                onClick = { viewModel.testModel(model.id) },
-                                enabled = !busy, modifier = Modifier.fillMaxWidth(),
-                            ) { Text("Probar interpretación real") }
-                            diagnostic[model.id]?.let {
-                                Text(it, style = MaterialTheme.typography.bodySmall)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+                            if (!available && !downloading) {
+                                GlobalOutlinedIconButton(
+                                    semanticIcon = MonyIcon.Search,
+                                    contentDescription = "Comprobar disponibilidad de ${model.name} antes de descargar",
+                                    onClick = { viewModel.checkAvailability(model.id) },
+                                    enabled = !busy,
+                                    size = 44.dp,
+                                )
                             }
-                        }
-                        if (!available && !downloading) {
-                            PrimaryButton(
-                                if (isGoogle) "Preparar con AICore" else if (partial) "Reanudar descarga" else "Descargar modelo",
-                                onClick = { viewModel.download(model.id) },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !busy,
-                            )
-                        }
-                        if (!isGoogle && (available || partial) && !downloading) {
-                            TextButton(onClick = { viewModel.remove(model.id) },
-                                modifier = Modifier.fillMaxWidth()) { Text("Eliminar archivos del modelo") }
+                            if ((available || isGoogle) && selected != model.id) {
+                                GlobalOutlinedIconButton(
+                                    semanticIcon = MonyIcon.Check,
+                                    contentDescription = "Seleccionar ${model.name}",
+                                    onClick = { viewModel.select(model.id) }, enabled = !busy, size = 44.dp,
+                                )
+                            }
+                            if (selected == model.id && !downloading) {
+                                GlobalOutlinedIconButton(
+                                    semanticIcon = MonyIcon.Reopen,
+                                    contentDescription = "Comprobar disponibilidad de ${model.name}",
+                                    onClick = { viewModel.checkAvailability(model.id) }, enabled = !busy, size = 44.dp,
+                                )
+                            }
+                            if (!available && !downloading) {
+                                GlobalOutlinedIconButton(
+                                    semanticIcon = MonyIcon.Download,
+                                    contentDescription = if (isGoogle) "Preparar ${model.name} con AICore" else if (partial) "Reanudar descarga de ${model.name}" else "Descargar ${model.name}",
+                                    onClick = { viewModel.download(model.id) }, enabled = !busy, size = 44.dp,
+                                )
+                            }
+                            if (!isGoogle && (available || partial) && !downloading) {
+                                GlobalOutlinedIconButton(
+                                    semanticIcon = MonyIcon.Delete,
+                                    contentDescription = "Eliminar ${model.name}",
+                                    onClick = { viewModel.remove(model.id) }, enabled = !busy, size = 44.dp,
+                                )
+                            }
                         }
                     }
                 }
             }
             item {
                 Text(
-                    "Gemini Nano depende de AICore. Los modelos Qwen se descargan para ejecutarse localmente " +
-                        "con LiteRT-LM. El registro manual sigue disponible en todos los dispositivos.",
+                    "El catálogo de AI Edge Gallery incluye modelos de texto preparados para LiteRT-LM. " +
+                        "Actualizar la lista y descargar requieren Internet; los modelos descargados se ejecutan " +
+                        "localmente. Gemini Nano depende de AICore y del dispositivo.",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
             }
         }
+    }
+    errorAlert?.let { (modelName, reason) ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissError,
+            title = { Text("No se pudo usar $modelName") },
+            text = { Text(reason) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissError) { Text("Entendido") }
+            },
+        )
     }
 }
