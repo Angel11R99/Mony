@@ -263,27 +263,19 @@ fun AddTransactionScreen(
             return
         }
         rememberUndo()
-        if (VoiceDraftField.TYPE in command.mentioned) {
-            transactionTypeName = incomingType?.name
-            typeNeedsConfirmation = false
-            if (VoiceDraftField.CATEGORY !in command.mentioned) {
-                categoryId = validCategoryIdForType(categoryId, incomingType, allCategories)
-            }
-        }
-        if (VoiceDraftField.AMOUNT in command.mentioned) amount = command.draft.amountInCents?.let(MoneyFormatter::formatToInput).orEmpty()
-        if (VoiceDraftField.CATEGORY in command.mentioned) {
-            categoryId = validCategoryIdForType(
-                command.draft.categoryId,
-                incomingType ?: transactionType,
-                allCategories,
-            )
-        }
-        if (VoiceDraftField.DATE in command.mentioned) {
-            date = command.draft.date?.toString().orEmpty()
-            dateSuggestionApplied = true
-        }
-        if (VoiceDraftField.NOTE in command.mentioned) note = command.draft.note.orEmpty()
-        if (VoiceDraftField.FUNDING_SOURCE in command.mentioned) fundingSource = command.draft.fundingSource.orEmpty()
+        val patched = applyVoiceFields(
+            VoiceFormFields(transactionType, amount, categoryId, date, note, fundingSource),
+            command,
+            allCategories,
+        )
+        if (VoiceDraftField.TYPE in command.mentioned) typeNeedsConfirmation = false
+        if (VoiceDraftField.DATE in command.mentioned) dateSuggestionApplied = true
+        transactionTypeName = patched.type?.name
+        amount = patched.amount
+        categoryId = patched.categoryId
+        date = patched.date
+        note = patched.note
+        fundingSource = patched.fundingSource
         saveRequested = command.draft.saveRequested
         saveDispatched = false
         categoryOptionIds = command.categoryOptions.map(Category::id)
