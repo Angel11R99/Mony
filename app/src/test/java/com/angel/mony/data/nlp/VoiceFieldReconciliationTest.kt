@@ -82,6 +82,14 @@ class VoiceFieldReconciliationTest {
         assertEquals(2_000_000L, check("Me pagaron veinte mil pesos por un trabajo",
             TransactionType.INCOME, 20_000L, "Trabajo").amountInCents)
     }
+    @Test fun itemQuantityIsNotMistakenForSpokenMoney() {
+        assertEquals(50_000L,
+            check("Compramos 2 productos por quinientos pesos",
+                TransactionType.EXPENSE, 200L, "Compras").amountInCents)
+        assertEquals(2_000_000L,
+            check("Un ingreso de 20 mil pesos",
+                TransactionType.INCOME, 20_000L, "Trabajo").amountInCents)
+    }
     @Test fun amountWithNoMonetaryMarkerPreservesModelInference() {
         assertEquals(23_500L, check("Compré 3 botellas", TransactionType.EXPENSE,
             23_500L, null).amountInCents)
