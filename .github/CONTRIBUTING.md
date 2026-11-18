@@ -31,7 +31,7 @@ Las convenciones completas están en [AGENTS.md](../AGENTS.md).
 
 ## `03` — Envía tu PR
 
-Vincula un **issue abierto de este repositorio, creado antes que la PR**, mediante `Closes #123`, `Fixes #123` o `Resolves #123`. No debe existir otra PR abierta para el mismo issue. La comprobación automática valida estos requisitos y rechaza referencias a otras PR.
+Vincular un issue es opcional. Si tu cambio está relacionado con uno, puedes mencionarlo en la descripción de la PR. Usa `Closes #123`, `Fixes #123` o `Resolves #123` cuando quieras que GitHub lo cierre automáticamente al fusionar; para una referencia informativa, usa `Relacionado con #123`.
 
 Usa la [plantilla de PR](PULL_REQUEST_TEMPLATE.md): problema, solución, pasos de verificación, pruebas ejecutadas, evidencia visual y migraciones cuando correspondan. El titular revisa y decide la incorporación.
 

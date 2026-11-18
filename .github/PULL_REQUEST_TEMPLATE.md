@@ -1,12 +1,12 @@
-## Issue relacionado
+## Issue relacionado (opcional)
 
 <!--
-Toda pull request debe resolver al menos un issue abierto y creado antes que la PR.
-Reemplaza #000 por el número correcto. Conserva una palabra de cierre para que
-GitHub cierre el issue automáticamente al fusionar la PR.
+Si esta pull request está relacionada con un issue, enlázalo aquí. Puedes usar
+"Closes #123" para que GitHub lo cierre al fusionar, o una referencia normal
+como "Relacionado con #123" si no debe cerrarse automáticamente.
 -->
 
-Closes #000
+<!-- Relacionado con #123 -->
 
 ## Problema
 
