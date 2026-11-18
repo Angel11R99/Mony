@@ -147,7 +147,7 @@ fun SettingsScreen(
                                 val financeSummary = buildList {
                                     periodLabel?.let(::add)
                                     budget?.amountInCents?.let { add(MoneyFormatter.format(it)) }
-                                }.joinToString(" · ").ifEmpty { null }
+                                }.ifEmpty { listOf("Sin presupuesto") }.joinToString(" · ")
                                 SettingsGroupRow(
                                     icon = MonyIcon.Finance,
                                     title = "Finanzas",
@@ -159,14 +159,16 @@ fun SettingsScreen(
                                 SettingsGroupRow(
                                     icon = MonyIcon.Category,
                                     title = "Categorías",
-                                    description = "Organiza ingresos y gastos",
+                                    description = "Crea, edita y organiza tus categorías",
+                                    summary = "Ingresos y gastos",
                                     onClick = { onNavigate(SettingsRoutes.CATEGORIES) },
                                 )
                                 HorizontalDivider()
                                 SettingsGroupRow(
                                     icon = MonyIcon.Voice,
                                     title = "Voz y dictado",
-                                    description = "Activa español y administra el servicio de voz",
+                                    description = "Configura idiomas y opciones del dictado",
+                                    summary = "Español y dictado",
                                     onClick = { onNavigate(SettingsRoutes.VOICE) },
                                 )
                                 if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
