@@ -16,6 +16,7 @@ sealed interface VoiceRecognitionEvent {
     data object Listening : VoiceRecognitionEvent
     data object Processing : VoiceRecognitionEvent
     data class Result(val transcript: String) : VoiceRecognitionEvent
+    data class Partial(val transcript: String) : VoiceRecognitionEvent
     data class Error(val message: String) : VoiceRecognitionEvent
     data object ConventionalRecognitionRequired : VoiceRecognitionEvent
     data object Stopped : VoiceRecognitionEvent
@@ -112,7 +113,7 @@ class VoiceRecognitionController(
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         if (mode == VoiceRecognitionMode.ON_DEVICE) putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
     }
 
@@ -157,7 +158,12 @@ class VoiceRecognitionController(
         override fun onEndOfSpeech() {
             if (isCurrent(sessionId, speechRecognizer)) onEvent(VoiceRecognitionEvent.Processing)
         }
-        override fun onPartialResults(partialResults: Bundle?) = Unit
+        override fun onPartialResults(partialResults: Bundle?) {
+            if (!isCurrent(sessionId, speechRecognizer) || deliveredFinalResult) return
+            val partial = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                ?.firstOrNull()?.trim().orEmpty()
+            if (partial.isNotBlank()) onEvent(VoiceRecognitionEvent.Partial(partial))
+        }
         override fun onEvent(eventType: Int, params: Bundle?) = Unit
 
         override fun onResults(results: Bundle?) {

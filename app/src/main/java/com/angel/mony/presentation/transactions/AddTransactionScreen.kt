@@ -164,6 +164,7 @@ fun AddTransactionScreen(
         when (event) {
             VoiceRecognitionEvent.Listening -> voiceStatus = "Escuchando…"
             VoiceRecognitionEvent.Processing -> voiceStatus = "Procesando voz…"
+            is VoiceRecognitionEvent.Partial -> voiceTextInput = event.transcript
             is VoiceRecognitionEvent.Result -> {
                 voiceTextInput = event.transcript
                 pendingTranscript = event.transcript
@@ -522,7 +523,7 @@ fun AddTransactionScreen(
                     )
                 }
             }
-            item {
+            if (voiceEntry) item {
                 VoiceDraftPanel(
                     status = voiceStatus,
                     example = if (voiceEntry) {
@@ -538,16 +539,6 @@ fun AddTransactionScreen(
                     interpreting = interpretingText,
                     onManageModels = onManageModels,
                     textInput = voiceTextInput,
-                    onTextInputChange = { voiceTextInput = it; voiceStatus = "" },
-                    onInterpretText = {
-                        if (!interpretingText) voiceTextInput.trim().takeIf(String::isNotBlank)?.let {
-                            when (localAiReadiness.phase) {
-                                LocalAiPhase.READY -> pendingTranscript = it
-                                LocalAiPhase.NOT_INSTALLED, LocalAiPhase.ERROR -> onManageModels()
-                                LocalAiPhase.PREPARING -> Unit
-                            }
-                        }
-                    },
                     onListen = ::requestVoiceRecognition,
                     onStop = voiceController::stop,
                 )

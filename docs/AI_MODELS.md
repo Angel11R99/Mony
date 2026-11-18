@@ -1,30 +1,13 @@
-# Modelos locales de comprensión
+# IA por voz — Gemini Nano
 
-## Selección
+Mony utiliza Gemini Nano mediante Google ML Kit GenAI Prompt y Android AICore para interpretar las transcripciones de voz localmente. No utiliza API remota de Gemini.
 
-Mony conserva el identificador elegido en `language_model_preferences`. Al abrir un formulario,
-primero intenta preparar ese modelo si el archivo está instalado. Si falta o no puede inicializarse,
-prueba los demás archivos instalados y guarda el primer modelo compatible. El orden predeterminado,
-cuando no existe una selección utilizable, es Qwen3 0.6B y luego Qwen3 1.7B para preferir el uso
-menor de memoria. Mony nunca descarga un modelo automáticamente.
+La preparación consulta `Generation.getClient().checkStatus()` y permite descargar el modelo mediante AICore cuando Android indica que es descargable. No se usan los modelos Qwen3 de LiteRT-LM ni su intérprete de respaldo.
 
-## Estados del archivo y del motor
+**Compatibilidad:** Android 8 (API 26) o superior y un dispositivo con AICore y Gemini Nano habilitados. La compatibilidad no está garantizada en todos los teléfonos. Los dispositivos con bootloader desbloqueado pueden no tener acceso a esta API.
 
-Los archivos se guardan en `filesDir/language_models/`. El catálogo comprueba su tamaño esperado.
-Antes de declarar un modelo listo para el formulario, Mony verifica el SHA-256 y llama a
-`Engine.initialize()` con LiteRT-LM en CPU. Una inicialización fallida no se presenta como ausencia
-de archivo: se conserva como error de integridad, compatibilidad o memoria. La primera inferencia
-también se maneja por separado y muestra un error recuperable si el motor no logra procesar el texto.
+El modelo genera una propuesta JSON. Kotlin verifica tipo, monto, fecha y las categorías activas existentes. El usuario revisa el resultado antes de guardar. Si Gemini Nano no está disponible se conserva el registro manual, sin simular inferencia.
 
-La selección activa, la presencia del archivo y la preparación del motor son estados distintos.
-El motor se libera cuando el formulario pasa a segundo plano y se prepara de nuevo al regresar.
+La voz puede depender del proveedor convencional de reconocimiento de Android y requerir consentimiento. La inferencia de Gemini Nano, cuando funciona, es local.
 
-## Catálogo actual y verificación
-
-El catálogo contiene Qwen3 0.6B y Qwen3 1.7B. La prueba instrumentada ejecuta una inferencia real
-del Qwen3 0.6B instalado en un Pixel 9 Pro AVD y comprueba el monto y la categoría para un gasto y
-un ingreso. La compatibilidad y el rendimiento de Qwen3 1.7B deben confirmarse en el dispositivo
-en el que se descargue; su tamaño y uso de memoria son mayores.
-
-El reconocimiento de voz solamente transcribe. La transcripción y el texto escrito pasan por el
-mismo motor semántico; la entrada escrita no solicita permiso de micrófono.
+**Verificación pendiente:** compilación y pruebas instrumentadas en dispositivo compatible; no hay pruebas reales disponibles sin el teléfono conectado.
