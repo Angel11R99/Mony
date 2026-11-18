@@ -126,8 +126,8 @@ class LanguageModelsSettingsViewModel @Inject constructor(
                 val draft = (result.command as? VoiceTransactionCommand.Apply)?.draft
                 val succeeded = result.modelFailure == null &&
                     draft?.type == TransactionType.EXPENSE &&
-                    draft.amountInCents == 50_000L &&
-                    draft.date == LocalDate.now().minusDays(1)
+                    draft?.amountInCents == 50_000L &&
+                    draft?.date == LocalDate.now().minusDays(1)
                 diagnostic.value = diagnostic.value + (
                     modelId to if (succeeded) "Prueba correcta: gasto RD\$500 de ayer."
                         else "La IA respondió, pero no reconoció todos los campos. Prueba otro modelo."
