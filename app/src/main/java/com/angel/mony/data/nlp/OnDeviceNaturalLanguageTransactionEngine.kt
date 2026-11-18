@@ -63,6 +63,9 @@ class OnDeviceNaturalLanguageTransactionEngine @Inject constructor(
         ModelConfig(MODEL_QWEN_LARGE, "Qwen3 1.7B", "Modelo más grande; puede comprender mejor, pero descarga y consume más memoria.", QWEN_LARGE_BYTES,
             "Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm", QWEN_LARGE_SHA256,
             "https://huggingface.co/litert-community/Qwen3-1.7B/resolve/d6678881da6181864bbc893c80e10aa1ee0d3731/Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm"),
+        ModelConfig(MODEL_QWEN_25, "Qwen2.5 1.5B Instruct", "Otra alternativa local para comprender movimientos en español. Requiere memoria y espacio.", QWEN_25_BYTES,
+            "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm", QWEN_25_SHA256,
+            "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/5e6e7a5/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm"),
     )
     override val models get() = modelConfigs.map { it.info }
     init {
@@ -332,16 +335,19 @@ class OnDeviceNaturalLanguageTransactionEngine @Inject constructor(
     companion object {
         const val MODEL_QWEN_SMALL = "qwen3_0_6b"
         const val MODEL_QWEN_LARGE = "qwen3_1_7b"
+        const val MODEL_QWEN_25 = "qwen2_5_1_5b"
         private const val MODEL_DIRECTORY = "language_models"
         private const val MODEL_PREFERENCES = "language_model_preferences"
         private const val ACTIVE_MODEL_KEY = "active_model_id"
-        private val MODEL_SELECTION_PRIORITY = listOf(MODEL_QWEN_SMALL, MODEL_QWEN_LARGE)
+        private val MODEL_SELECTION_PRIORITY = listOf(MODEL_QWEN_SMALL, MODEL_QWEN_LARGE, MODEL_QWEN_25)
         private const val MIN_DOWNLOAD_RESERVE = 50L * 1024L * 1024L
         private const val QWEN_SMALL_BYTES = 347_251_840L
         private const val QWEN_LARGE_BYTES = 977_184_032L
+        private const val QWEN_25_BYTES = 1_597_922_856L
         private const val MAX_AMOUNT_CENTS = 100_000_000_000_000L
         private const val MODEL_SHA256 = "2df6821ec12702dafd33915e7a1a1adc7c4b053f3672fd9555dfaf3a114c4139"
         private const val QWEN_LARGE_SHA256 = "2a72330b504a6596d53a2c00923c57173b10f1b83e6a541213ffec08d1fc5de8"
+        private const val QWEN_25_SHA256 = "c4a9b7289365ab80fe599b844b77ad253eb3c53fb0e5d963d699146a6f01255e"
     }
 
     private data class ModelConfig(
