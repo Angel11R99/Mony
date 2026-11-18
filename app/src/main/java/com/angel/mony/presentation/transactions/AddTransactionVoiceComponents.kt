@@ -106,25 +106,12 @@ internal fun VoiceDraftPanel(
             Text("Describe tu movimiento", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
                 value = textInput,
-                onValueChange = onTextInputChange,
+                onValueChange = {},
+                readOnly = true,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { if (example != null) Text(example, style = MaterialTheme.typography.bodyMedium) },
+                placeholder = { Text("Di qué ocurrió con tu dinero") },
                 minLines = 2,
                 maxLines = 4,
-                trailingIcon = {
-                    IconButton(
-                        onClick = if (listening) onStop else onListen,
-                        enabled = !saving && !interpreting,
-                        modifier = Modifier.size(48.dp),
-                    ) {
-                        MonyIcon(
-                            MonyIcon.Voice,
-                            contentDescription = if (listening) "Detener dictado" else "Dictar descripción",
-                            tint = if (listening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                            role = MonyIconRole.STATE,
-                        )
-                    }
-                },
             )
             if (status.isNotBlank()) {
                 Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -135,12 +122,28 @@ internal fun VoiceDraftPanel(
                 }
             }
             when (readiness.phase) {
-                LocalAiPhase.READY -> PrimaryButton(
-                    text = if (interpreting) "Interpretando…" else "Interpretar",
-                    onClick = onInterpretText,
-                    enabled = textInput.isNotBlank() && !saving && !interpreting,
+                LocalAiPhase.READY -> androidx.compose.material3.Button(
+                    onClick = if (listening) onStop else onListen,
+                    enabled = !saving && !interpreting,
                     modifier = Modifier.fillMaxWidth(),
-                )
+                ) {
+                    if (interpreting) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        MonyIcon(
+                            MonyIcon.Voice,
+                            contentDescription = null,
+                            role = MonyIconRole.STATE,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+                    Text(when {
+                        interpreting -> "Interpretando..."
+                        listening -> "Terminar dictado"
+                        else -> "Hablar con Mony"
+                    })
+                }
                 LocalAiPhase.PREPARING -> Unit
                 LocalAiPhase.NOT_INSTALLED -> SecondaryButton(
                     "Configurar IA",
