@@ -66,9 +66,9 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         val explicitNote = NOTE_PATTERN.find(original)?.groupValues?.get(1)?.trim()
         // Split narrative clauses before extracting transaction fields. This makes later amounts,
         // dates and verbs in an explanation (for example a debt someone promises to repay) inert.
-        val inferredNote = explicitNote ?: narrativeTail(original)
-        val semanticText = if (explicitNote != null) original.substringBefore(explicitNote)
-            else inferredNote?.let { original.substringBefore(it) } ?: original
+        val narrativeNote = explicitNote ?: narrativeTail(original)
+        val inferredNote = narrativeNote ?: inferredDescriptionNote(original, categories)
+        val semanticText = narrativeNote?.let { original.substringBefore(it) } ?: original
         val commandCore = commandText
             .substringBefore(" con nota ")
             .substringBefore(" nota ")
@@ -138,7 +138,18 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
                     mentioned += VoiceDraftField.CATEGORY
                 }
                 matches.size > 1 -> messages += "Hay varias categorías con ese nombre. Elige una opción."
-                categoryWasRequested(commandCore) -> messages += "No encontré una categoría activa válida para ese movimiento."
+                else -> {
+                    val fallback = active.firstOrNull {
+                        it.name.voiceNormalized() in setOf("otros", "otros ingresos")
+                    }
+                    if (fallback != null) {
+                        result = result.copy(categoryId = fallback.id)
+                        mentioned += VoiceDraftField.CATEGORY
+                        if (categoryWasRequested(commandCore)) messages += "No reconocí la categoría; seleccioné Otros. Puedes cambiarla antes de guardar."
+                    } else if (categoryWasRequested(commandCore)) {
+                        messages += "No encontré una categoría activa válida para ese movimiento."
+                    }
+                }
             }
             if (matches.size > 1) {
                 return VoiceTransactionCommand.Apply(result, mentioned, matches, messages)
@@ -173,6 +184,22 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         val rawTail = text.substring(originalIndex.coerceAtMost(text.length))
             .trim().trimStart(',', ':', ';')
         return rawTail.takeIf(String::isNotBlank)
+    }
+
+    /** Captures a short item description after the amount while leaving field parsing intact. */
+    private fun inferredDescriptionNote(text: String, categories: List<Category>): String? {
+        val normalized = text.voiceNormalized()
+        val amounts = MONEY_TOKEN.findAll(normalized).toList()
+        if (amounts.size != 1) return null
+        val dateSuffix = Regex("\\s+(?:hoy|ayer|anoche|anteayer|el\\s+(?:$WEEKDAY_NAMES)|$WEEKDAY_NAMES)$")
+        val afterAmount = normalized.substring(amounts.single().range.last + 1).replace(dateSuffix, "").trim()
+        val description = afterAmount.replace(
+            Regex("^(?:(?:en|por|para|comprando|fue)\\s+)?(?:(?:un|una|unos|unas|el|la|los|las)\\s+)?"),
+            "",
+        ).trim().trim(',', '.', ';', ':')
+        if (description.isBlank() || description.length > 80) return null
+        val isExactCategory = categories.any { it.name.voiceNormalized() == description }
+        return description.takeUnless { isExactCategory }
     }
 
     private fun simpleCommand(text: String): VoiceTransactionCommand? = when (text) {
@@ -256,6 +283,7 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         INCOMPLETE_DATE.containsMatchIn(text) -> ParsedDate(null, "Indica también el año para evitar una fecha ambigua.")
         else -> when {
             text.containsWord("anteayer") -> ParsedDate(today.minusDays(2))
+            text.containsWord("anoche") -> ParsedDate(today.minusDays(1))
             text.containsWord("ayer") -> ParsedDate(today.minusDays(1))
             text.containsWord("hoy") -> ParsedDate(today)
             DAYS_AGO.find(text) != null -> {
@@ -326,6 +354,11 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         private val NARRATIVE_MARKERS = listOf(" porque ", " pero recuerda que ", " pero ", " y me dijo que ", " y dijo que ")
         private val CATEGORY_ALIASES = mapOf(
             "comida" to setOf("alimentacion", "comida"),
+            "medicamento" to setOf("salud"),
+            "medicamentos" to setOf("salud"),
+            "medicina" to setOf("salud"),
+            "farmacia" to setOf("salud"),
+            "pastillas" to setOf("salud"),
             "carro" to setOf("transporte"),
             "trasporte" to setOf("transporte"),
             "casa" to setOf("vivienda", "hogar"),
@@ -334,6 +367,12 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         )
         private val SEMANTIC_CATEGORY_ALIASES = mapOf(
             "pizza" to setOf("alimentacion", "comida"), "almuerzo" to setOf("alimentacion", "comida"),
+            "cena" to setOf("alimentacion", "comida"), "desayuno" to setOf("alimentacion", "comida"),
+            "merienda" to setOf("alimentacion", "comida"), "restaurante" to setOf("alimentacion", "comida"),
+            "restaurant" to setOf("alimentacion", "comida"),
+            "medicamento" to setOf("salud"), "medicamentos" to setOf("salud"),
+            "medicina" to setOf("salud"), "farmacia" to setOf("salud"),
+            "pastillas" to setOf("salud"),
             "alimentos" to setOf("alimentacion", "comida"),
             "comer" to setOf("alimentacion", "comida"), "comida" to setOf("alimentacion", "comida"),
             "alimentacion" to setOf("alimentacion"), "trabajo" to setOf("salario", "ingresos laborales"),

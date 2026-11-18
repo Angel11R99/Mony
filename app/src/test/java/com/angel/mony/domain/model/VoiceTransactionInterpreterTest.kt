@@ -41,6 +41,34 @@ class VoiceTransactionInterpreterTest {
         assertEquals("2026-10-04", result.draft.date.toString())
     }
 
+    @Test fun `infers dinner category date and note from a natural expense phrase`() {
+        val foodCategories = categories + Category(4, "Alimentación", TransactionType.EXPENSE, "restaurant", true)
+        val result = interpreter.interpret("Gaste 2500 en una cena anoche", foodCategories)
+            as VoiceTransactionCommand.Apply
+
+        assertEquals(TransactionType.EXPENSE, result.draft.type)
+        assertEquals(250_000L, result.draft.amountInCents)
+        assertEquals(4L, result.draft.categoryId)
+        assertEquals(LocalDate.of(2026, 10, 4), result.draft.date)
+        assertEquals("cena", result.draft.note)
+    }
+
+    @Test fun `maps medicine to health and uses other when category is unknown`() {
+        val extended = categories + listOf(
+            Category(4, "Salud", TransactionType.EXPENSE, "health", true),
+            Category(5, "Otros", TransactionType.EXPENSE, "more", true),
+        )
+        val medicine = interpreter.interpret("Gaste como 1500 en medicamento el lunes", extended)
+            as VoiceTransactionCommand.Apply
+        assertEquals(4L, medicine.draft.categoryId)
+        assertEquals(LocalDate.of(2026, 10, 5), medicine.draft.date)
+        assertEquals("medicamento", medicine.draft.note)
+
+        val unknown = interpreter.interpret("Gaste 100 pesos en cosas raras", extended)
+            as VoiceTransactionCommand.Apply
+        assertEquals(5L, unknown.draft.categoryId)
+    }
+
     @Test fun `does not save when guardar is literal note text`() {
         val result = interpreter.interpret("Anota un gasto de 500 pesos en Transporte con nota recordar guardar el recibo", categories)
             as VoiceTransactionCommand.Apply
