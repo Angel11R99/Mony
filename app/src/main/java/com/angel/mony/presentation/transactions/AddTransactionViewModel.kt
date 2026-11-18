@@ -153,7 +153,7 @@ class AddTransactionViewModel @Inject constructor(
     val possibleDuplicate: StateFlow<FinanceTransaction?> = _possibleDuplicate
 
     init {
-        refreshVoiceModelState()
+        // Local AI is prepared only when the assistant is opened, never on every manual form.
         if (transactionId != 0L) viewModelScope.launch {
             editingTransaction.value = transactionRepository.get(transactionId)
         }
