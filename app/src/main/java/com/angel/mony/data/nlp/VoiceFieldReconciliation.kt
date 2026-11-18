@@ -66,8 +66,20 @@ internal object VoiceFieldReconciliation {
         val pattern = Regex("""(?<![a-z0-9])(?:rd\$\s*)?(\d[\d.,]*\s*(?:mil|millones?)?\s*pesos?|\d[\d.,]*\s*(?:mil|millones?)\b|rd\$\s*\d[\d.,]*)(?![a-z])""")
         val values = pattern.findAll(text).mapNotNull { match ->
             (SpanishMoneyParser.parse(match.value.trim()) as? SpokenMoney.Valid)?.cents
-        }.distinct().toList()
-        return values.singleOrNull()
+        }.toMutableList()
+        // SpeechRecognizer may write amounts as words ("quinientos pesos",
+        // "veinte mil pesos"). Reuse the existing monetary parser rather than
+        // asking the language model to convert a number it may miscalculate.
+        val words = text.split(Regex("""\s+"""))
+        for (index in words.indices) {
+            if (words[index] != "pesos" && words[index] != "peso") continue
+            val candidates = (1..minOf(index, 6)).mapNotNull { length ->
+                val token = words.subList(index - length, index).joinToString(" ") + " pesos"
+                (SpanishMoneyParser.parse(token) as? SpokenMoney.Valid)?.let { length to it.cents }
+            }
+            candidates.maxByOrNull { it.first }?.let { values += it.second }
+        }
+        return values.distinct().singleOrNull()
     }
 
     private fun normalized(s: String) = s.voiceNormalized()
