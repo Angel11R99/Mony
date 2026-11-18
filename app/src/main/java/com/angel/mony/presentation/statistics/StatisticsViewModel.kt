@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -62,6 +63,8 @@ data class RecommendationUiState(
     val text: String? = null,
     val error: String? = null,
     val scope: String? = null,
+    val status: String? = null,
+    val requestId: Long? = null,
 )
 
 data class CategoryStatistic(
@@ -206,6 +209,8 @@ class StatisticsViewModel @Inject constructor(
     val recommendationHistory: StateFlow<List<RecommendationHistoryEntry>> = _recommendationHistory
     private val _recommendationState = MutableStateFlow(RecommendationUiState())
     val recommendationState: StateFlow<RecommendationUiState> = _recommendationState
+    private var recommendationJob: Job? = null
+    private var recommendationGenerationId = 0L
 
     fun generateRecommendation(prompt: String, scope: String) {
         if (_recommendationState.value.isGenerating) return
@@ -213,19 +218,21 @@ class StatisticsViewModel @Inject constructor(
             _recommendationState.value = RecommendationUiState()
             return
         }
-        _recommendationState.value = RecommendationUiState(isGenerating = true, scope = scope)
-        viewModelScope.launch {
+        val requestId = ++recommendationGenerationId
+        _recommendationState.value = RecommendationUiState(isGenerating = true, scope = scope, requestId = requestId)
+        recommendationJob = viewModelScope.launch {
             try {
                 val result = languageModels.generateText(prompt).trim()
                 if (result.isNotBlank()) {
                     _recommendationHistory.value = (listOf(RecommendationHistoryEntry(System.currentTimeMillis(), scope, result)) + _recommendationHistory.value).take(30)
                     writeRecommendationHistory(_recommendationHistory.value)
-                    _recommendationState.value = RecommendationUiState(text = result, scope = scope)
+                    _recommendationState.value = RecommendationUiState(text = result, scope = scope, requestId = requestId)
                     context.showToast("La recomendación terminó correctamente. Puedes verla en el historial.")
                 } else {
                     _recommendationState.value = RecommendationUiState(
                         error = "El modelo no generó una recomendación. Inténtalo otra vez.",
                         scope = scope,
+                        requestId = requestId,
                     )
                 }
             } catch (cancelled: CancellationException) {
@@ -234,11 +241,25 @@ class StatisticsViewModel @Inject constructor(
                 val message = failure.message
                     ?.takeIf { it.startsWith("Descarga") || it.startsWith("Gemini") || it.startsWith("No hay") }
                     ?: "No se pudieron generar recomendaciones. Comprueba que haya un modelo local disponible e inténtalo de nuevo."
-                _recommendationState.value = RecommendationUiState(error = message, scope = scope)
+                _recommendationState.value = RecommendationUiState(error = message, scope = scope, requestId = requestId)
             } finally {
-                if (_recommendationState.value.isGenerating) _recommendationState.value = RecommendationUiState()
+                if (_recommendationState.value.requestId == requestId && _recommendationState.value.isGenerating) {
+                    _recommendationState.value = RecommendationUiState()
+                }
             }
         }
+    }
+
+    fun stopRecommendationForHistory() {
+        if (!_recommendationState.value.isGenerating) return
+        val job = recommendationJob
+        recommendationJob = null
+        _recommendationState.value = RecommendationUiState(
+            status = "El análisis se detuvo al abrir el historial. Puedes generarlo de nuevo desde Recomendaciones.",
+            scope = _recommendationState.value.scope,
+            requestId = _recommendationState.value.requestId,
+        )
+        job?.cancel()
     }
 
     private fun readRecommendationHistory(): List<RecommendationHistoryEntry> = try {

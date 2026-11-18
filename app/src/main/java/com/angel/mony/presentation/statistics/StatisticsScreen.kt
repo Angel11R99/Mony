@@ -412,7 +412,10 @@ fun StatisticsScreen(
                     if (!showRecommendationHistory) GlobalOutlinedIconButton(
                         semanticIcon = MonyIcon.History,
                         contentDescription = "Historial de recomendaciones",
-                        onClick = { showRecommendationHistory = true },
+                        onClick = {
+                            viewModel.stopRecommendationForHistory()
+                            showRecommendationHistory = true
+                        },
                         size = 42.dp,
                     )
                 }
@@ -494,6 +497,11 @@ fun StatisticsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     recommendationState.text != null -> RecommendationText(recommendationState.text!!)
+                    recommendationState.status != null -> Text(
+                        recommendationState.status!!,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 }
                 }

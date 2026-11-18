@@ -195,6 +195,9 @@ class OnDeviceNaturalLanguageTransactionEngine @Inject constructor(
                 chunks.joinToString("") { message ->
                     message.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
                 }.trim().also { check(it.isNotBlank()) { "El modelo no generó recomendaciones." } }
+            } catch (cancelled: CancellationException) {
+                conversation.cancelProcess()
+                throw cancelled
             } finally {
                 conversation.close()
             }
