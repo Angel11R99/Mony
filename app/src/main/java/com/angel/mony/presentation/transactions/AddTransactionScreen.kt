@@ -302,15 +302,15 @@ fun AddTransactionScreen(
             categoryId = it.categoryId
         }
     }
-    LaunchedEffect(suggestedCategoryId, categories, voiceEntry) {
-        if (!voiceEntry && !viewModel.isEditing && categoryId == null) {
+    LaunchedEffect(suggestedCategoryId, categories, voiceEntry, voicePanelVisible) {
+        if (!voiceEntry && !voicePanelVisible && !viewModel.isEditing && categoryId == null) {
             categoryId = suggestedCategoryId?.takeIf { suggested ->
                 categories.any { it.id == suggested }
             }
         }
     }
-    LaunchedEffect(suggestedDate, voiceEntry) {
-        if (!voiceEntry && !viewModel.isEditing && !dateSuggestionApplied && suggestedDate != null) {
+    LaunchedEffect(suggestedDate, voiceEntry, voicePanelVisible) {
+        if (!voiceEntry && !voicePanelVisible && !viewModel.isEditing && !dateSuggestionApplied && suggestedDate != null) {
             date = suggestedDate.toString()
             dateSuggestionApplied = true
         }
