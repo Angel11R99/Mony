@@ -44,6 +44,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.util.concurrent.Executors
 import org.json.JSONObject
+import org.json.JSONArray
 
 @Singleton
 class OnDeviceNaturalLanguageTransactionEngine @Inject constructor(
@@ -259,11 +260,14 @@ class OnDeviceNaturalLanguageTransactionEngine @Inject constructor(
             put("type", current.type?.name ?: JSONObject.NULL)
             put("amountInCents", current.amountInCents ?: JSONObject.NULL)
             put("categoryId", current.categoryId ?: JSONObject.NULL)
+            put("categoryName", active.firstOrNull { it.id == current.categoryId }?.name ?: JSONObject.NULL)
             put("date", current.date?.toString() ?: JSONObject.NULL)
             put("note", current.note ?: JSONObject.NULL)
         }
         val categoryJson = JSONObject().apply {
-            TransactionType.entries.forEach { type -> put(type.name, active.filter { it.type == type }.map(Category::name)) }
+            TransactionType.entries.forEach { type ->
+                put(type.name, JSONArray(active.filter { it.type == type }.map(Category::name)))
+            }
         }
         val prompt = """/no_think
 Eres el intérprete financiero local de Mony. A partir de una frase natural en español,
