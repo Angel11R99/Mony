@@ -164,17 +164,19 @@ fun HomeScreen(
                     }
 
                     add {
-                        Button(
-                            onClick = onVoice,
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
                         ) {
-                            com.angel.mony.ui.iconography.MonyIcon(
-                                icon = com.angel.mony.ui.iconography.MonyIcon.Voice,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Text("Registrar con voz")
+                            Button(onClick = onVoice) {
+                                com.angel.mony.ui.iconography.MonyIcon(
+                                    icon = com.angel.mony.ui.iconography.MonyIcon.Voice,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("Registrar con IA")
+                            }
                         }
                     }
 
