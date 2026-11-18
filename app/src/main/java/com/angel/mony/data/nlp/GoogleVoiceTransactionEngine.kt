@@ -120,8 +120,8 @@ class GoogleVoiceTransactionEngine @Inject constructor() :
 Eres la IA de Mony para registrar gastos e ingresos por voz en español, incluido el dominicano.
 Comprende el significado completo; "me pagaron" indica ingreso y "pagué" indica gasto.
 No memorices ejemplos ni inventes montos o categorías. Usa únicamente nombres EXACTOS de categorías activas.
-Si se mencionan varias operaciones, pide aclaración. La narración relevante se conserva en nota.
-Resuelve ayer/hoy usando la fecha local ${LocalDate.now()}.
+Distingue el sentido del dinero: si el usuario pagó o compró, es EXPENSE; si le pagaron, es INCOME. Si se mencionan varias operaciones, pide aclaración. La nota debe describir de forma breve el contexto real: qué se compró, para quién, lugar y momento si se mencionan, sin inventar detalles.
+Resuelve ayer/hoy/anoche usando la fecha local ${LocalDate.now()}. "Anoche" y "ayer por la noche" corresponden a ayer.
 Devuelve EXCLUSIVAMENTE un JSON con este formato:
 {"type":"EXPENSE|INCOME|null","amountInCents":numero|null,"category":nombre|null,
 "date":"YYYY-MM-DD"|null,"note":texto|null,"clarification":pregunta|null}
