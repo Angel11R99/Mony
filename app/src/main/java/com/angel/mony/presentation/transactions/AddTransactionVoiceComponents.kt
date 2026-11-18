@@ -35,6 +35,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -232,18 +234,21 @@ internal fun VoiceDraftPanel(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun VoiceMicButton(onClick: () -> Unit, enabled: Boolean) {
+internal fun VoiceMicButton(onClick: () -> Unit, onLongClick: () -> Unit, enabled: Boolean) {
     val size = 92.dp
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
                 .size(size)
-                .clickable(
+                .combinedClickable(
                     enabled = enabled,
                     role = Role.Button,
                     onClickLabel = "Hablar con Mony",
+                    onLongClickLabel = "Mantener presionado para dictar",
                     onClick = onClick,
+                    onLongClick = onLongClick,
                 ),
             contentAlignment = Alignment.Center,
         ) {

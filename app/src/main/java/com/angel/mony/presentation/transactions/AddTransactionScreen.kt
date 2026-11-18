@@ -113,6 +113,7 @@ fun AddTransactionScreen(
         DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-DO"))
     }
     var voicePanelVisible by rememberSaveable { mutableStateOf(false) }
+    var silentVoiceMode by remember { mutableStateOf(false) }
     val voiceReadiness = if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) localAiReadiness
         else LocalAiReadiness(LocalAiPhase.READY)
     val context = LocalContext.current
@@ -142,6 +143,9 @@ fun AddTransactionScreen(
     val categories = allCategories.filter { it.type == transactionType }
     LaunchedEffect(voicePanelVisible) {
         if (voicePanelVisible && com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) viewModel.refreshVoiceModelState()
+    }
+    LaunchedEffect(silentVoiceMode) {
+        if (silentVoiceMode && com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) viewModel.refreshVoiceModelState()
     }
     var voiceStatus by rememberSaveable { mutableStateOf(if (voiceEntry) "Pulsa el micrófono y di el movimiento." else "") }
     var pendingTranscript by remember { mutableStateOf<String?>(null) }
@@ -203,14 +207,15 @@ fun AddTransactionScreen(
         onDispose { voiceController.release() }
     }
     LaunchedEffect(startConventionalRecognitionToken) {
-        if (startConventionalRecognitionToken > 0 && voicePanelVisible) {
+        if (startConventionalRecognitionToken > 0 && (voicePanelVisible || silentVoiceMode)) {
             voiceController.start(VoiceRecognitionMode.CONVENTIONAL)
         }
     }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted && voicePanelVisible) {
+        if (granted && (voicePanelVisible || silentVoiceMode)) {
             startRecognitionToken++
         } else if (!granted) {
+            silentVoiceMode = false
             voiceStatus = "Sin permiso de micrófono. Puedes escribir la descripción."
         }
     }
@@ -331,7 +336,7 @@ fun AddTransactionScreen(
         }
     }
     LaunchedEffect(startRecognitionToken) {
-        if (startRecognitionToken > 0 && voicePanelVisible) requestVoiceRecognition()
+        if (startRecognitionToken > 0 && (voicePanelVisible || silentVoiceMode)) requestVoiceRecognition()
     }
     LaunchedEffect(voiceEntry, voiceOpeningId) {
         if (!voiceEntry) return@LaunchedEffect
@@ -363,8 +368,8 @@ fun AddTransactionScreen(
     }
     // A request's lifetime must not depend on model-readiness recompositions.
     // In particular, changing pendingTranscript while running cancels LaunchedEffect.
-    LaunchedEffect(pendingTranscript, voicePanelVisible) {
-        if (!voicePanelVisible) return@LaunchedEffect
+    LaunchedEffect(pendingTranscript, voicePanelVisible, silentVoiceMode) {
+        if (!voicePanelVisible && !silentVoiceMode) return@LaunchedEffect
         val transcript = pendingTranscript ?: return@LaunchedEffect
         try {
         val readiness = if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
@@ -403,7 +408,7 @@ fun AddTransactionScreen(
         } finally {
             interpretingText = false
         }
-        if (!voicePanelVisible) return@LaunchedEffect
+        if (!voicePanelVisible && !silentVoiceMode) return@LaunchedEffect
         if (currentDraft() != draftAtStart || (isTextInput && voiceTextInput.trim() != transcript)) {
             voiceStatus = "El formulario cambió. Vuelve a interpretar la descripción."
             return@LaunchedEffect
@@ -466,12 +471,14 @@ fun AddTransactionScreen(
         }
         if (closeVoicePanelAfterInterpretation) {
             pendingTranscript = null
-            voicePanelVisible = false
+            if (!silentVoiceMode) voicePanelVisible = false
         }
+        if (silentVoiceMode) silentVoiceMode = false
         } finally {
             // Clear only AFTER the inference and draft application have finished.
             // Clearing before the suspend call cancelled the effect itself.
             if (pendingTranscript == transcript) pendingTranscript = null
+            silentVoiceMode = false
         }
     }
     LaunchedEffect(saveRequested, typeNeedsConfirmation, transactionType, amount, categoryId, date, fundingRequest, fundingSource, saving) {
@@ -554,18 +561,6 @@ fun AddTransactionScreen(
                 item {
                     VoiceTypeBadge(
                         state = voiceTypeBadgeState(transactionType, typeNeedsConfirmation),
-                    )
-                }
-            }
-            if (!viewModel.isEditing) {
-                item {
-                    VoiceMicButton(
-                        onClick = {
-                            voicePanelVisible = true
-                            voiceStatus = "Escuchando…"
-                            requestVoiceRecognition()
-                        },
-                        enabled = !saving,
                     )
                 }
             }
@@ -662,6 +657,25 @@ fun AddTransactionScreen(
                     label = "Nota",
                     placeholder = "Añade un detalle opcional",
                 )
+            }
+            if (!viewModel.isEditing) {
+                item {
+                    VoiceMicButton(
+                        onClick = {
+                            silentVoiceMode = false
+                            voicePanelVisible = true
+                            voiceStatus = "Escuchando…"
+                            requestVoiceRecognition()
+                        },
+                        onLongClick = {
+                            voicePanelVisible = false
+                            silentVoiceMode = true
+                            voiceStatus = "Escuchando…"
+                            requestVoiceRecognition()
+                        },
+                        enabled = !saving,
+                    )
+                }
             }
         }
     }
