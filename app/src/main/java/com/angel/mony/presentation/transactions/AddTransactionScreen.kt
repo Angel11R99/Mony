@@ -107,18 +107,19 @@ fun AddTransactionScreen(
     val periodDateFormatter = remember {
         DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-DO"))
     }
+    var voicePanelVisible by rememberSaveable { mutableStateOf(voiceEntry) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> viewModel.refreshVoiceModelState()
-                Lifecycle.Event.ON_PAUSE -> viewModel.releaseVoiceModel()
+                Lifecycle.Event.ON_RESUME -> if (voicePanelVisible) viewModel.refreshVoiceModelState()
+                Lifecycle.Event.ON_PAUSE -> if (voicePanelVisible) viewModel.releaseVoiceModel()
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        viewModel.refreshVoiceModelState()
+        if (voicePanelVisible) viewModel.refreshVoiceModelState()
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     var amount by rememberSaveable { mutableStateOf("") }
@@ -133,8 +134,10 @@ fun AddTransactionScreen(
     var typeNeedsConfirmation by rememberSaveable { mutableStateOf(false) }
     val transactionType = transactionTypeName?.let(TransactionType::valueOf)
     val categories = allCategories.filter { it.type == transactionType }
+    LaunchedEffect(voicePanelVisible) {
+        if (voicePanelVisible) viewModel.refreshVoiceModelState()
+    }
     var voiceStatus by rememberSaveable { mutableStateOf(if (voiceEntry) "Pulsa el micrófono y di el movimiento." else "") }
-    var voicePanelVisible by rememberSaveable { mutableStateOf(voiceEntry) }
     var pendingTranscript by remember { mutableStateOf<String?>(null) }
     var interpretingText by remember { mutableStateOf(false) }
     var voiceTextInput by rememberSaveable { mutableStateOf("") }
