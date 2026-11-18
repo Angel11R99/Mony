@@ -180,6 +180,7 @@ fun FinanceApp(
                     automaticCycleClose = automaticCycleClose,
                     automaticCloseTime = automaticCloseTime,
                     onAdd = { navigateToModule("add/${it.name}") },
+                    onVoice = { navController.navigate("voice") },
                     onHistory = { navigateToModule("history") },
                     onSettings = { navController.navigate("settings") },
                 )
