@@ -382,8 +382,9 @@ fun AddTransactionScreen(
         voiceStatus = "Comprendiendo el movimiento…"
         val interpretation = try {
             viewModel.interpretVoice(transcript, allCategories, draftAtStart)
-        } catch (_: Exception) {
-            voiceStatus = "No se pudo interpretar. Revisa el texto o completa los campos manualmente."
+        } catch (failure: Exception) {
+            android.util.Log.e("MonyAI", "ui stage=interpretation-exception error=${failure.javaClass.simpleName}")
+            voiceStatus = "La IA se interrumpió. Reintenta el dictado o cambia de modelo en Ajustes."
             interpretingText = false
             return@LaunchedEffect
         } finally {
@@ -398,7 +399,10 @@ fun AddTransactionScreen(
             voiceStatus = when (interpretation.modelFailure) {
                 com.angel.mony.domain.model.LocalModelFailure.INSUFFICIENT_MEMORY -> "El teléfono no tiene memoria suficiente para usar este modelo."
                 com.angel.mony.domain.model.LocalModelFailure.INCOMPATIBLE -> "No se pudo cargar este modelo en el teléfono."
-                else -> "La IA no pudo procesar la descripción. Revisa el formulario manualmente."
+                com.angel.mony.domain.model.LocalModelFailure.NOT_AVAILABLE -> "El modelo no está listo. Comprueba que esté seleccionado e instalado en Ajustes."
+                com.angel.mony.domain.model.LocalModelFailure.INVALID_FILE -> "El archivo del modelo no pasó la verificación. Descárgalo nuevamente."
+                com.angel.mony.domain.model.LocalModelFailure.INFERENCE -> "El modelo no consiguió generar un resultado válido. Vuelve a intentarlo o prueba otro modelo."
+                else -> "No se pudo iniciar la IA. Revisa el modelo en Ajustes."
             }
             return@LaunchedEffect
         }
