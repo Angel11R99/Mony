@@ -92,8 +92,6 @@ internal fun VoiceDraftPanel(
     interpreting: Boolean,
     onManageModels: () -> Unit,
     textInput: String,
-    onTextInputChange: (String) -> Unit,
-    onInterpretText: () -> Unit,
     onListen: () -> Unit,
     onStop: () -> Unit,
 ) {
