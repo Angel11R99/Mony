@@ -1,10 +1,15 @@
 package com.angel.mony.presentation.settings
 
+import android.content.Context
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -17,11 +22,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import com.angel.mony.domain.model.LocalLanguageModelManager
-import com.angel.mony.domain.model.LocalModelPreparation
+import androidx.work.Constraints
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.angel.mony.data.nlp.LanguageModelDownloadWorker
+import com.angel.mony.domain.model.*
 import com.angel.mony.presentation.components.FinanceModuleTopAppBar
+import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.PrimaryButton
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -29,71 +42,132 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LanguageModelsSettingsViewModel @Inject constructor(
-    private val manager: LocalLanguageModelManager
+    private val manager: LocalLanguageModelManager,
+    @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
-    private val _state = MutableStateFlow<String>("Comprobando disponibilidad...")
-    val state: StateFlow<String> = _state
-    private val _downloadable = MutableStateFlow(false)
-    val downloadable: StateFlow<Boolean> = _downloadable
+    val models = manager.models
+    val selection = MutableStateFlow(manager.activeModelId)
+    val status = MutableStateFlow("Verificando IA...")
+    val busy = MutableStateFlow(false)
+    val installedIds = MutableStateFlow(models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet())
+    val googleId = "gemini-nano-aicore"
+
     init { refresh() }
 
     fun refresh() {
         viewModelScope.launch {
-            when (val readiness = manager.prepareActiveModel()) {
-                is LocalModelPreparation.Ready -> {
-                    _state.value = "Gemini Nano está disponible."
-                    _downloadable.value = false
-                }
-                LocalModelPreparation.NoInstalledModel -> {
-                    _state.value = "Gemini Nano necesita descargarse mediante Android AICore."
-                    _downloadable.value = true
-                }
-                is LocalModelPreparation.Failed -> {
-                    _state.value = "Gemini Nano no está disponible en este dispositivo o no pudo iniciarse."
-                    _downloadable.value = false
-                }
+            installedIds.value = models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet()
+            selection.value = manager.activeModelId
+            val preparation = manager.prepareActiveModel()
+            status.value = when (preparation) {
+                is LocalModelPreparation.Ready -> "Motor disponible: " + models.firstOrNull { it.id == preparation.modelId }?.name.orEmpty()
+                LocalModelPreparation.NoInstalledModel -> "Instala un modelo compatible para interpretar la voz."
+                is LocalModelPreparation.Failed -> "No se pudo iniciar el modelo seleccionado; puedes elegir otra alternativa."
             }
         }
     }
 
-    fun download() {
-        viewModelScope.launch {
-            _downloadable.value = false
-            _state.value = "Preparando Gemini Nano..."
-            try {
-                manager.downloadModel(manager.activeModelId) {}
-            } catch (_: Exception) {
-                _state.value = "No se pudo preparar Gemini Nano. Comprueba AICore y tu conexión."
+    fun select(modelId: String) {
+        if (modelId != googleId && !manager.isModelInstalled(modelId)) return
+        manager.setActiveModel(modelId)
+        selection.value = modelId
+        refresh()
+    }
+
+    fun download(modelId: String) {
+        if (busy.value) return
+        if (modelId == googleId) {
+            viewModelScope.launch {
+                busy.value = true
+                status.value = "Preparando Gemini Nano mediante AICore..."
+                try {
+                    manager.downloadModel(modelId) {}
+                    manager.setActiveModel(modelId)
+                } catch (_: Exception) {
+                    status.value = "Gemini Nano no está disponible en este dispositivo."
+                } finally {
+                    busy.value = false
+                    refresh()
+                }
             }
-            refresh()
+        } else {
+            val request = OneTimeWorkRequestBuilder<LanguageModelDownloadWorker>()
+                .setInputData(Data.Builder().putString(LanguageModelDownloadWorker.KEY_MODEL_ID, modelId).build())
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                LanguageModelDownloadWorker.uniqueWorkName(modelId),
+                ExistingWorkPolicy.KEEP,
+                request,
+            )
+            status.value = "Descarga iniciada. Mony te avisará cuando finalice."
         }
     }
 }
 
-/** Gemini Nano is managed by Android AICore, not by the old Qwen file manager. */
 @Composable
 fun LanguageModelsSettingsScreen(
     onBack: () -> Unit,
-    viewModel: LanguageModelsSettingsViewModel = hiltViewModel()
+    viewModel: LanguageModelsSettingsViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    val downloadable by viewModel.downloadable.collectAsStateWithLifecycle()
-    Scaffold(
-        topBar = { FinanceModuleTopAppBar(title = "IA por voz", onBack = onBack) }
-    ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+    val selected by viewModel.selection.collectAsStateWithLifecycle()
+    val installed by viewModel.installedIds.collectAsStateWithLifecycle()
+    val status by viewModel.status.collectAsStateWithLifecycle()
+    val busy by viewModel.busy.collectAsStateWithLifecycle()
+    Scaffold(topBar = { FinanceModuleTopAppBar(title = "Modelos de IA", onBack = onBack) }) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Gemini Nano", style = MaterialTheme.typography.titleLarge)
-            Text(state, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                "La interpretación financiera utiliza la IA local de Google cuando Android AICore está disponible. " +
-                    "No se envían movimientos a un servicio de IA remoto. El registro manual siempre funciona.",
-                style = MaterialTheme.typography.bodySmall
-            )
-            if (downloadable) {
-                PrimaryButton("Preparar IA", onClick = viewModel::download, modifier = Modifier.fillMaxWidth())
+            item {
+                Text(
+                    "Selecciona una IA para registrar movimientos por voz.",
+                    modifier = Modifier.padding(top = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(status, style = MaterialTheme.typography.bodySmall)
+            }
+            items(viewModel.models, key = { it.id }) { model ->
+                val isGoogle = model.id == viewModel.googleId
+                val available = model.id in installed
+                FinanceCard(Modifier.fillMaxWidth()) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(model.name, style = MaterialTheme.typography.titleMedium)
+                            if (selected == model.id) Text("Seleccionado", style = MaterialTheme.typography.labelSmall)
+                        }
+                        Text(model.description, style = MaterialTheme.typography.bodySmall)
+                        if (available || isGoogle) {
+                            PrimaryButton(
+                                if (selected == model.id) "Comprobar disponibilidad" else "Elegir modelo",
+                                onClick = {
+                                    if (selected == model.id) viewModel.refresh() else viewModel.select(model.id)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !busy,
+                            )
+                        }
+                        if (!available) {
+                            PrimaryButton(
+                                if (isGoogle) "Preparar con AICore" else "Descargar modelo",
+                                onClick = { viewModel.download(model.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !busy,
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                Text(
+                    "Gemini Nano depende de AICore. Los modelos Qwen se descargan para ejecutarse localmente " +
+                        "con LiteRT-LM. El registro manual sigue disponible en todos los dispositivos.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
             }
         }
     }
