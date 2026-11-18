@@ -11,6 +11,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.work.WorkInfo
+import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -49,10 +56,25 @@ class LanguageModelsSettingsViewModel @Inject constructor(
     val selection = MutableStateFlow(manager.activeModelId)
     val status = MutableStateFlow("Verificando IA...")
     val busy = MutableStateFlow(false)
+    val jobs = MutableStateFlow<Map<String, WorkInfo>>(emptyMap())
+    val pauses = MutableStateFlow<Set<String>>(emptySet())
     val installedIds = MutableStateFlow(models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet())
     val googleId = "gemini-nano-aicore"
 
-    init { refresh() }
+    init {
+        models.filter { it.id != googleId }.forEach { model ->
+            viewModelScope.launch {
+                WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(
+                    LanguageModelDownloadWorker.uniqueWorkName(model.id)
+                ).collectLatest { infos ->
+                    val current = infos.firstOrNull()
+                    if (current != null) jobs.value = jobs.value + (model.id to current)
+                    if (current?.state == WorkInfo.State.SUCCEEDED) refresh()
+                }
+            }
+        }
+        refresh()
+    }
 
     fun refresh() {
         viewModelScope.launch {
@@ -76,6 +98,7 @@ class LanguageModelsSettingsViewModel @Inject constructor(
 
     fun download(modelId: String) {
         if (busy.value) return
+        if (jobs.value[modelId]?.state in listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)) return
         if (modelId == googleId) {
             viewModelScope.launch {
                 busy.value = true
@@ -97,12 +120,38 @@ class LanguageModelsSettingsViewModel @Inject constructor(
                 .build()
             WorkManager.getInstance(context).enqueueUniqueWork(
                 LanguageModelDownloadWorker.uniqueWorkName(modelId),
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.REPLACE,
                 request,
             )
-            status.value = "Descarga iniciada. Mony te avisará cuando finalice."
+            pauses.value = pauses.value - modelId
+            status.value = "Descargando modelo…"
+
         }
     }
+    fun pause(modelId: String) {
+        viewModelScope.launch {
+            WorkManager.getInstance(context).cancelUniqueWork(
+                LanguageModelDownloadWorker.uniqueWorkName(modelId)
+            ).result.get()
+            pauses.value = pauses.value + modelId
+            status.value = "Descarga pausada. Puedes reanudarla."
+        }
+    }
+
+    fun remove(modelId: String) {
+        if (modelId == googleId) return
+        viewModelScope.launch {
+            WorkManager.getInstance(context).cancelUniqueWork(
+                LanguageModelDownloadWorker.uniqueWorkName(modelId)
+            ).result.get()
+            manager.resetDownload(modelId)
+            manager.removeModel(modelId)
+            jobs.value = jobs.value - modelId
+            pauses.value = pauses.value - modelId
+            refresh()
+        }
+    }
+
 }
 
 @Composable
