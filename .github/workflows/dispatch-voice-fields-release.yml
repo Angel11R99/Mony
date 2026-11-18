@@ -1,0 +1,35 @@
+name: Publicar correcciones de campos IA
+on:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/dispatch-voice-fields-release.yml
+
+permissions:
+  contents: write
+  actions: write
+  pull-requests: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Solicitar release firmado de Mony
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run release.yml --ref master -f version_bump=patch
+      - name: Eliminar rama fusionada del PR 30
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=context.repo.owner,repo=context.repo.repo;
+            const {data:pr}=await github.rest.pulls.get({owner,repo,pull_number:30});
+            if(!pr.merged_at || pr.head.ref!=='fix/voice-financial-field-reconciliation') return;
+            const {data:open}=await github.rest.pulls.list({owner,repo,state:'open',head:owner+':'+pr.head.ref});
+            if(open.length===0){
+              try{
+                await github.rest.git.deleteRef({owner,repo,ref:'heads/'+pr.head.ref});
+                core.info('Rama fusionada eliminada');
+              }catch(e){if(e.status!==404) throw e;}
+            }
