@@ -84,4 +84,38 @@ class QwenVoiceInterpretationInstrumentedTest {
         }
     }
 
+    @Test
+    fun reportedYesterdayAndCategoriesReconcileAfterRealInference() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val engine = OnDeviceNaturalLanguageTransactionEngine(context)
+        assumeTrue("Necesita un Qwen instalado para inferencia real",
+            engine.prepareActiveModel() is LocalModelPreparation.Ready)
+        val categories = listOf(
+            Category(101L, "Compras", TransactionType.EXPENSE, "shopping", true),
+            Category(102L, "Trabajo", TransactionType.INCOME, "briefcase", true),
+        )
+        val today = LocalDate.now()
+        val income = engine.interpret(
+            "Agrega 20 mil pesos de un ingreso que nos cayó ayer por un trabajo bueno",
+            categories, VoiceTransactionDraft(date = today)
+        )
+        assertNull("Fallo nativo interpretando ingreso", income.modelFailure)
+        val incomeFields = (income.command as VoiceTransactionCommand.Apply).draft
+        assertEquals(TransactionType.INCOME, incomeFields.type)
+        assertEquals(2_000_000L, incomeFields.amountInCents)
+        assertEquals(today.minusDays(1), incomeFields.date)
+        assertEquals(102L, incomeFields.categoryId)
+
+        val expense = engine.interpret(
+            "Agrega un gasto de una compra que hicimos ayer de 500 pesos",
+            categories, VoiceTransactionDraft(date = today)
+        )
+        assertNull("Fallo nativo interpretando compra", expense.modelFailure)
+        val expenseFields = (expense.command as VoiceTransactionCommand.Apply).draft
+        assertEquals(TransactionType.EXPENSE, expenseFields.type)
+        assertEquals(50_000L, expenseFields.amountInCents)
+        assertEquals(today.minusDays(1), expenseFields.date)
+        assertEquals(101L, expenseFields.categoryId)
+    }
+
 }
