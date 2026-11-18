@@ -42,6 +42,18 @@ class VoiceFieldReconciliationTest {
         assertEquals(today.minusDays(1), got.date)
         assertEquals(1L, got.categoryId)
     }
+    @Test fun purchasedItemCanMatchPurchasesCategory() {
+        val got = check("Compramos ayer 500 pesos de materiales",
+            TransactionType.EXPENSE, 50_000L, null)
+        assertEquals(1L, got.categoryId)
+        assertEquals(today.minusDays(1), got.date)
+    }
+    @Test fun unrecognizedCategoryIsExplicitlyRequestedNotSilentlyIgnored() {
+        val got = check("Me pagaron 500 pesos por un encargo",
+            TransactionType.INCOME, 50_000L, null)
+        assertNull(got.categoryId)
+        assertTrue(got.categoryUnresolved)
+    }
     @Test fun lastNightAndDayBeforeYesterday() {
         assertEquals(today.minusDays(1),
             check("Gasté 500 pesos anoche", TransactionType.EXPENSE, null, null).date)
