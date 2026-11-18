@@ -177,6 +177,7 @@ dependencies {
     implementation(libs.mlkit.text.recognition)
     implementation(libs.google.document.scanner)
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
+    implementation(libs.litertlm.android)
     implementation(platform(libs.kotlinx.serialization.bom))
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
