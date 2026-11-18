@@ -38,6 +38,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -238,6 +240,7 @@ internal fun VoiceDraftPanel(
 @Composable
 internal fun VoiceMicButton(onClick: () -> Unit, onLongClick: () -> Unit, enabled: Boolean) {
     val size = 92.dp
+    val hapticFeedback = LocalHapticFeedback.current
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
@@ -248,7 +251,10 @@ internal fun VoiceMicButton(onClick: () -> Unit, onLongClick: () -> Unit, enable
                     onClickLabel = "Hablar con Mony",
                     onLongClickLabel = "Mantener presionado para dictar",
                     onClick = onClick,
-                    onLongClick = onLongClick,
+                    onLongClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLongClick()
+                    },
                 ),
             contentAlignment = Alignment.Center,
         ) {
