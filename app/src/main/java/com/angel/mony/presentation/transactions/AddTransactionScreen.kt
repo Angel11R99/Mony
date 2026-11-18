@@ -46,6 +46,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -110,7 +114,7 @@ fun AddTransactionScreen(
     var voicePanelVisible by rememberSaveable { mutableStateOf(voiceEntry) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    androidx.compose.runtime.DisposableEffect(lifecycleOwner, viewModel) {
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner, viewModel, voicePanelVisible) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> if (voicePanelVisible) viewModel.refreshVoiceModelState()
@@ -119,7 +123,6 @@ fun AddTransactionScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        if (voicePanelVisible) viewModel.refreshVoiceModelState()
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     var amount by rememberSaveable { mutableStateOf("") }
@@ -260,27 +263,19 @@ fun AddTransactionScreen(
             return
         }
         rememberUndo()
-        if (VoiceDraftField.TYPE in command.mentioned) {
-            transactionTypeName = incomingType?.name
-            typeNeedsConfirmation = false
-            if (VoiceDraftField.CATEGORY !in command.mentioned) {
-                categoryId = validCategoryIdForType(categoryId, incomingType, allCategories)
-            }
-        }
-        if (VoiceDraftField.AMOUNT in command.mentioned) amount = command.draft.amountInCents?.let(MoneyFormatter::formatToInput).orEmpty()
-        if (VoiceDraftField.CATEGORY in command.mentioned) {
-            categoryId = validCategoryIdForType(
-                command.draft.categoryId,
-                incomingType ?: transactionType,
-                allCategories,
-            )
-        }
-        if (VoiceDraftField.DATE in command.mentioned) {
-            date = command.draft.date?.toString().orEmpty()
-            dateSuggestionApplied = true
-        }
-        if (VoiceDraftField.NOTE in command.mentioned) note = command.draft.note.orEmpty()
-        if (VoiceDraftField.FUNDING_SOURCE in command.mentioned) fundingSource = command.draft.fundingSource.orEmpty()
+        val patched = applyVoiceFields(
+            VoiceFormFields(transactionType, amount, categoryId, date, note, fundingSource),
+            command,
+            allCategories,
+        )
+        if (VoiceDraftField.TYPE in command.mentioned) typeNeedsConfirmation = false
+        if (VoiceDraftField.DATE in command.mentioned) dateSuggestionApplied = true
+        transactionTypeName = patched.type?.name
+        amount = patched.amount
+        categoryId = patched.categoryId
+        date = patched.date
+        note = patched.note
+        fundingSource = patched.fundingSource
         saveRequested = command.draft.saveRequested
         saveDispatched = false
         categoryOptionIds = command.categoryOptions.map(Category::id)
@@ -307,15 +302,15 @@ fun AddTransactionScreen(
             categoryId = it.categoryId
         }
     }
-    LaunchedEffect(suggestedCategoryId, categories, voiceEntry) {
-        if (!voiceEntry && !viewModel.isEditing && categoryId == null) {
+    LaunchedEffect(suggestedCategoryId, categories, voiceEntry, voicePanelVisible) {
+        if (!voiceEntry && !voicePanelVisible && !viewModel.isEditing && categoryId == null) {
             categoryId = suggestedCategoryId?.takeIf { suggested ->
                 categories.any { it.id == suggested }
             }
         }
     }
-    LaunchedEffect(suggestedDate, voiceEntry) {
-        if (!voiceEntry && !viewModel.isEditing && !dateSuggestionApplied && suggestedDate != null) {
+    LaunchedEffect(suggestedDate, voiceEntry, voicePanelVisible) {
+        if (!voiceEntry && !voicePanelVisible && !viewModel.isEditing && !dateSuggestionApplied && suggestedDate != null) {
             date = suggestedDate.toString()
             dateSuggestionApplied = true
         }
@@ -361,14 +356,22 @@ fun AddTransactionScreen(
             viewModel.updateWidgetVoiceExample(voiceOpeningId, allCategories)
         }
     }
-    LaunchedEffect(pendingTranscript, localAiReadiness, voicePanelVisible) {
+    // A request's lifetime must not depend on model-readiness recompositions.
+    // In particular, changing pendingTranscript while running cancels LaunchedEffect.
+    LaunchedEffect(pendingTranscript, voicePanelVisible) {
         if (!voicePanelVisible) return@LaunchedEffect
         val transcript = pendingTranscript ?: return@LaunchedEffect
-        if (localAiReadiness.phase == LocalAiPhase.PREPARING) return@LaunchedEffect
-        pendingTranscript = null
+        try {
+        val readiness = withTimeoutOrNull(60_000L) {
+            snapshotFlow { localAiReadiness }.first { it.phase != LocalAiPhase.PREPARING }
+        }
+        if (readiness == null) {
+            voiceStatus = "La preparación del modelo tardó demasiado. Revisa el modelo en Ajustes."
+            return@LaunchedEffect
+        }
         voiceTextInput = transcript
-        if (localAiReadiness.phase != LocalAiPhase.READY) {
-            voiceStatus = when (localAiReadiness.phase) {
+        if (readiness.phase != LocalAiPhase.READY) {
+            voiceStatus = when (readiness.phase) {
                 LocalAiPhase.NOT_INSTALLED -> "Descarga un modelo para interpretar la descripción."
                 LocalAiPhase.ERROR -> "No se pudo preparar la IA. Revisa la configuración del modelo."
                 LocalAiPhase.PREPARING -> "Preparando IA…"
@@ -382,8 +385,11 @@ fun AddTransactionScreen(
         voiceStatus = "Comprendiendo el movimiento…"
         val interpretation = try {
             viewModel.interpretVoice(transcript, allCategories, draftAtStart)
+        } catch (cancelled: CancellationException) {
+            // Navigation/closing the assistant is expected coroutine cancellation, not an AI error.
+            throw cancelled
         } catch (failure: Exception) {
-            android.util.Log.e("MonyAI", "ui stage=interpretation-exception error=${failure.javaClass.simpleName}")
+            android.util.Log.e("MonyAI", "ui stage=interpretation-exception error=${failure.javaClass.simpleName}", failure)
             voiceStatus = "La IA se interrumpió. Reintenta el dictado o cambia de modelo en Ajustes."
             interpretingText = false
             return@LaunchedEffect
@@ -447,6 +453,11 @@ fun AddTransactionScreen(
             }
             is VoiceTransactionCommand.Invalid -> voiceStatus =
                 if (voiceEntry && transactionType == null) "¿Gasto o ingreso?" else command.message
+        }
+        } finally {
+            // Clear only AFTER the inference and draft application have finished.
+            // Clearing before the suspend call cancelled the effect itself.
+            if (pendingTranscript == transcript) pendingTranscript = null
         }
     }
     LaunchedEffect(saveRequested, typeNeedsConfirmation, transactionType, amount, categoryId, date, fundingRequest, fundingSource, saving) {
