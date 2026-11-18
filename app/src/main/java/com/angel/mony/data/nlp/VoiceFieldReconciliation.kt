@@ -73,8 +73,17 @@ internal object VoiceFieldReconciliation {
         val words = text.split(Regex("""\s+"""))
         for (index in words.indices) {
             if (words[index] != "pesos" && words[index] != "peso") continue
+            // Digit amounts are already handled above. Never re-interpret
+            // the trailing word "mil" in "20 mil pesos" as a separate 1000.
+            if (index > 0 && words[index - 1].any(Char::isDigit)) continue
+            if (index > 1 && words[index - 1] == "mil" &&
+                words[index - 2].any(Char::isDigit)) continue
             val candidates = (1..minOf(index, 6)).mapNotNull { length ->
-                val token = words.subList(index - length, index).joinToString(" ") + " pesos"
+                val prefix = words.subList(index - length, index)
+                // parseDigits ignores other words; letting "2 artículos por
+                // quinientos" through would incorrectly return two pesos.
+                if (prefix.any { token -> token.any(Char::isDigit) }) return@mapNotNull null
+                val token = prefix.joinToString(" ") + " pesos"
                 (SpanishMoneyParser.parse(token) as? SpokenMoney.Valid)?.let { length to it.cents }
             }
             candidates.maxByOrNull { it.first }?.let { values += it.second }
