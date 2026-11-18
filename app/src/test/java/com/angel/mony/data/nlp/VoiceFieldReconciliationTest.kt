@@ -26,6 +26,12 @@ class VoiceFieldReconciliationTest {
     ) = VoiceFieldReconciliation.verify(speech, modelType, modelAmount,
         modelCategory, modelDate, categories, today)
 
+    @Test fun conciseNotesKeepOnlyTheConcept() {
+        assertEquals("cena", VoiceFieldReconciliation.conciseNote("de cena del"))
+        assertEquals("internet", VoiceFieldReconciliation.conciseNote("de internet del lunes"))
+        assertEquals("ropa", VoiceFieldReconciliation.conciseNote("ropa"))
+    }
+
     @Test fun yesterdayIncomeOverridesWrongModelDateAndAmount() {
         val got = check("Agrega 20 mil pesos de un ingreso que nos cayó ayer por un trabajo bueno",
             TransactionType.INCOME, 20_000L, null)

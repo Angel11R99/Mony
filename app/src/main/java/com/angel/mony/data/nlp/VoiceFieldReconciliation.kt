@@ -9,6 +9,16 @@ import java.time.LocalDate
 
 /** Verifies explicitly spoken facts; keeps uncertain fields unresolved. */
 internal object VoiceFieldReconciliation {
+    fun conciseNote(note: String?): String? {
+        if (note.isNullOrBlank()) return null
+        val cleaned = note.trim()
+            .replace(Regex("\\s+(?:(?:del?|de)\\s+)?(?:hoy|ayer|anoche|anteayer|el\\s+(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)$", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("^(?:(?:de|del|en|por|para|el|la|los|las|un|una)\\s+)+", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("\\s+(?:de|del|en|por|para|el|la|los|las|un|una)$", RegexOption.IGNORE_CASE), "")
+            .trim(' ', ',', '.', ';', ':')
+        return cleaned.takeIf(String::isNotBlank)
+    }
+
     data class Verified(
         val type: TransactionType?,
         val amountInCents: Long?,

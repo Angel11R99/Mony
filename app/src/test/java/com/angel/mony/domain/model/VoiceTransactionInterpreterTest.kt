@@ -53,6 +53,20 @@ class VoiceTransactionInterpreterTest {
         assertEquals("cena", result.draft.note)
     }
 
+    @Test fun `keeps inferred notes to the purchased concept and removes weekday tail`() {
+        val monday = interpreter.interpret("Gaste 200 pesos de cena del lunes", categories)
+            as VoiceTransactionCommand.Apply
+        assertEquals("cena", monday.draft.note)
+
+        val internet = interpreter.interpret("Pague 1500 que se pago de internet", categories)
+            as VoiceTransactionCommand.Apply
+        assertEquals("internet", internet.draft.note)
+
+        val clothes = interpreter.interpret("Gaste 400 de una ropa", categories)
+            as VoiceTransactionCommand.Apply
+        assertEquals("ropa", clothes.draft.note)
+    }
+
     @Test fun `maps medicine to health and uses other when category is unknown`() {
         val extended = categories + listOf(
             Category(4, "Salud", TransactionType.EXPENSE, "health", true),

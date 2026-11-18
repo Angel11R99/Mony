@@ -191,10 +191,10 @@ class VoiceTransactionInterpreter(private val clock: Clock) {
         val normalized = text.voiceNormalized()
         val amounts = MONEY_TOKEN.findAll(normalized).toList()
         if (amounts.size != 1) return null
-        val dateSuffix = Regex("\\s+(?:hoy|ayer|anoche|anteayer|el\\s+(?:$WEEKDAY_NAMES)|$WEEKDAY_NAMES)$")
+        val dateSuffix = Regex("\\s+(?:(?:del?|de)\\s+)?(?:hoy|ayer|anoche|anteayer|el\\s+(?:$WEEKDAY_NAMES)|$WEEKDAY_NAMES)$")
         val afterAmount = normalized.substring(amounts.single().range.last + 1).replace(dateSuffix, "").trim()
         val description = afterAmount.replace(
-            Regex("^(?:(?:en|por|para|comprando|fue)\\s+)?(?:(?:un|una|unos|unas|el|la|los|las)\\s+)?"),
+            Regex("^(?:(?:que\\s+se\\s+)?(?:pago|pag[oó]|compro|compr[oó])\\s+)?(?:(?:en|por|para|de|del|comprando|fue)\\s+)?(?:(?:un|una|unos|unas|el|la|los|las)\\s+)?"),
             "",
         ).trim().trim(',', '.', ';', ':')
         if (description.isBlank() || description.length > 80) return null
