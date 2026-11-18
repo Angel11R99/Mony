@@ -40,11 +40,15 @@ internal object VoiceFieldReconciliation {
             categoryUnresolved = chosen == null && (modelCategory?.isNotBlank() == true || mentioned.size > 1))
     }
 
-    private fun relativeDate(text: String, today: LocalDate): LocalDate? = when {
-        Regex("""\banteayer\b""").containsMatchIn(text) -> today.minusDays(2)
-        Regex("""\bayer\b|\banoche\b""").containsMatchIn(text) -> today.minusDays(1)
-        Regex("""\bhoy\b""").containsMatchIn(text) -> today
-        else -> null
+    private fun relativeDate(text: String, today: LocalDate): LocalDate? {
+        val offsets = buildSet {
+            if (Regex("""\banteayer\b""").containsMatchIn(text)) add(-2)
+            if (Regex("""\bayer\b|\banoche\b""").containsMatchIn(text)) add(-1)
+            if (Regex("""\bhoy\b""").containsMatchIn(text)) add(0)
+        }
+        // "Me pagaron hoy por trabajo de ayer" contains two dates. Do not
+        // force either date over the model's contextual interpretation.
+        return offsets.singleOrNull()?.let { today.plusDays(it.toLong()) }
     }
 
     private fun explicitType(text: String): TransactionType? {
