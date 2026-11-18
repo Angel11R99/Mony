@@ -29,7 +29,7 @@ import com.angel.mony.data.repository.RoomFortnightRepository
 import com.angel.mony.data.repository.RoomBackupRepository
 import com.angel.mony.data.repository.RoomExpenseFundingRepository
 import com.angel.mony.data.repository.OpenFoodFactsProductCatalogRepository
-import com.angel.mony.data.nlp.GoogleVoiceTransactionEngine
+import com.angel.mony.data.nlp.VoiceModelCatalog
 import com.angel.mony.domain.repository.CategoryRepository
 import com.angel.mony.domain.repository.BudgetRepository
 import com.angel.mony.domain.repository.ExpenseFundingRepository
@@ -440,8 +440,8 @@ object DatabaseModule {
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
-    @Binds abstract fun naturalLanguageTransactions(implementation: GoogleVoiceTransactionEngine): NaturalLanguageTransactionEngine
-    @Binds abstract fun localLanguageModelManager(implementation: GoogleVoiceTransactionEngine): LocalLanguageModelManager
+    @Binds abstract fun naturalLanguageTransactions(implementation: VoiceModelCatalog): NaturalLanguageTransactionEngine
+    @Binds abstract fun localLanguageModelManager(implementation: VoiceModelCatalog): LocalLanguageModelManager
     @Binds abstract fun transactions(implementation: RoomTransactionRepository): TransactionRepository
     @Binds abstract fun categories(implementation: RoomCategoryRepository): CategoryRepository
     @Binds abstract fun budget(implementation: RoomBudgetRepository): BudgetRepository
