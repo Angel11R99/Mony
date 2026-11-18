@@ -36,11 +36,11 @@ class LanguageModelDownloadWorker(
                     setForegroundAsync(foregroundInfo(model.name, percent))
                 }
             }
-            Result.success()
+            Result.success(androidx.work.workDataOf(KEY_PROGRESS to 100))
         } catch (cancelled: CancellationException) {
             throw cancelled
-        } catch (_: Exception) {
-            Result.failure()
+        } catch (failure: Exception) {
+            Result.failure(androidx.work.workDataOf(KEY_ERROR to (failure.message ?: "No se pudo descargar el modelo.")))
         }
     }
 
@@ -67,6 +67,7 @@ class LanguageModelDownloadWorker(
     companion object {
         const val KEY_MODEL_ID = "model_id"
         const val KEY_PROGRESS = "progress"
+        const val KEY_ERROR = "download_error"
         const val CHANNEL_ID = "language_model_downloads"
         const val NOTIFICATION_ID = 7142
         fun uniqueWorkName(modelId: String) = "language-model-download-$modelId"
