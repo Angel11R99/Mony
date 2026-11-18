@@ -76,6 +76,12 @@ class VoiceFieldReconciliationTest {
             20_000L, "Trabajo", modelDate = today)
         assertEquals(today, got.date)
     }
+    @Test fun wordAmountsCorrectModelCentErrors() {
+        assertEquals(50_000L, check("Gasté quinientos pesos en comida",
+            TransactionType.EXPENSE, 500L, "Alimentación").amountInCents)
+        assertEquals(2_000_000L, check("Me pagaron veinte mil pesos por un trabajo",
+            TransactionType.INCOME, 20_000L, "Trabajo").amountInCents)
+    }
     @Test fun amountWithNoMonetaryMarkerPreservesModelInference() {
         assertEquals(23_500L, check("Compré 3 botellas", TransactionType.EXPENSE,
             23_500L, null).amountInCents)
