@@ -1,0 +1,40 @@
+name: Publicar reparación de IA
+on:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/dispatch-voice-ai-recovery-release.yml
+
+permissions:
+  contents: write
+  actions: write
+  pull-requests: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Iniciar release firmado del repositorio
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run release.yml --ref master -f version_bump=patch
+      - name: Eliminar rama del PR fusionado
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=context.repo.owner, repo=context.repo.repo;
+            const pr=(await github.rest.pulls.get({owner,repo,pull_number:26})).data;
+            if (!pr.merged_at || pr.head.ref !== 'fix/voice-ai-inference-diagnostics-and-recovery') {
+              core.warning('No hay merge validado; no borrar rama.');
+              return;
+            }
+            const opened=(await github.rest.pulls.list({owner,repo,state:'open',head:owner+':'+pr.head.ref})).data;
+            if(opened.length===0){
+              try {
+                await github.rest.git.deleteRef({owner,repo,ref:'heads/'+pr.head.ref});
+                core.info('Rama eliminada');
+              } catch (e) {
+                if(e.status!==404) throw e;
+              }
+            }
