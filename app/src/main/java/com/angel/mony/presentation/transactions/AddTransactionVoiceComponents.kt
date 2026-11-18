@@ -114,6 +114,7 @@ internal fun VoiceDraftPanel(
     textInput: String,
     onTextInputChange: (String) -> Unit,
     onInterpretText: () -> Unit,
+    onVoiceHelp: () -> Unit,
     onDismiss: () -> Unit,
     onListen: () -> Unit,
     onStop: () -> Unit,
@@ -174,6 +175,13 @@ internal fun VoiceDraftPanel(
                         color = if (status.contains("no ", ignoreCase = true) || status.contains("error", ignoreCase = true))
                             MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+                if (status.contains("español", ignoreCase = true) ||
+                    status.contains("reconocimiento de voz no está disponible", ignoreCase = true)
+                ) {
+                    TextButton(onClick = onVoiceHelp, enabled = !saving && !interpreting) {
+                        Text("Ver cómo habilitar el español")
+                    }
                 }
                 if (readiness.phase == LocalAiPhase.PREPARING) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -43,9 +43,10 @@ object SettingsRoutes {
     const val NAVIGATION = "settings/navigation"
     const val FINANCE = "settings/finance"
     const val CATEGORIES = "settings/categories"
+    const val VOICE = "settings/voice"
     const val LANGUAGE_MODELS = "settings/language-models"
 
-    val destinations = setOf(PERSONALIZATION, NAVIGATION, FINANCE, CATEGORIES, LANGUAGE_MODELS)
+    val destinations = setOf(PERSONALIZATION, NAVIGATION, FINANCE, CATEGORIES, VOICE, LANGUAGE_MODELS)
 
     fun parentOf(route: String): String? = if (route in destinations) ROOT else null
 }
@@ -160,6 +161,13 @@ fun SettingsScreen(
                                     title = "Categorías",
                                     description = "Organiza ingresos y gastos",
                                     onClick = { onNavigate(SettingsRoutes.CATEGORIES) },
+                                )
+                                HorizontalDivider()
+                                SettingsGroupRow(
+                                    icon = MonyIcon.Voice,
+                                    title = "Voz y dictado",
+                                    description = "Activa español y administra el servicio de voz",
+                                    onClick = { onNavigate(SettingsRoutes.VOICE) },
                                 )
                                 if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
                                 HorizontalDivider()

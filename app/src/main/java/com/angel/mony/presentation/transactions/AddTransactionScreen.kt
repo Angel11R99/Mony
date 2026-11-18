@@ -91,6 +91,7 @@ import java.util.Locale
 fun AddTransactionScreen(
     onBack: () -> Unit,
     onSettings: () -> Unit,
+    onVoiceHelp: () -> Unit = onSettings,
     voiceEntry: Boolean = false,
     voiceOpeningId: String? = null,
     viewModel: AddTransactionViewModel = hiltViewModel(),
@@ -682,6 +683,7 @@ fun AddTransactionScreen(
             textInput = voiceTextInput,
             onTextInputChange = { voiceTextInput = it },
             onInterpretText = { pendingTranscript = voiceTextInput.trim().takeIf(String::isNotBlank) },
+            onVoiceHelp = onVoiceHelp,
             onDismiss = {
                 voicePanelVisible = false
                 voiceController.cancel()
