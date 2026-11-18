@@ -171,6 +171,7 @@
         </receiver>
         <receiver
             android:name=".widget.VoiceRegistrationWidgetReceiver"
+            android:enabled="false"
             android:exported="true"
             android:label="@string/widget_voice_name">
             <intent-filter>
