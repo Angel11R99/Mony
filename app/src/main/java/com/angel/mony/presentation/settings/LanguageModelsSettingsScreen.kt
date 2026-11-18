@@ -78,15 +78,13 @@ class LanguageModelsSettingsViewModel @Inject constructor(
     }
 
     fun refresh() {
-        viewModelScope.launch {
-            installedIds.value = models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet()
-            selection.value = manager.activeModelId
-            val preparation = manager.prepareActiveModel()
-            status.value = when (preparation) {
-                is LocalModelPreparation.Ready -> "Motor disponible: " + models.firstOrNull { it.id == preparation.modelId }?.name.orEmpty()
-                LocalModelPreparation.NoInstalledModel -> "Instala un modelo compatible para interpretar la voz."
-                is LocalModelPreparation.Failed -> "No se pudo iniciar el modelo seleccionado; puedes elegir otra alternativa."
-            }
+        installedIds.value = models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet()
+        selection.value = manager.activeModelId
+        // Browsing settings should not load a gigabyte-sized LLM.
+        status.value = if (models.any { it.id != googleId && it.id in installedIds.value }) {
+            "Modelos locales instalados. Selecciona uno para registrar por voz."
+        } else {
+            "Elige un modelo descargable. Gemini Nano requiere AICore."
         }
     }
 
