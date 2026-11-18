@@ -160,7 +160,7 @@ class OnDeviceNaturalLanguageTransactionEngine @Inject constructor(
             val downloadedBefore = if (append) initialBytes else 0L
             connection.inputStream.buffered().use { input ->
                 FileOutputStream(temporary, append).buffered().use { output ->
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    val buffer = ByteArray(64 * 1024)
                     var copied = downloadedBefore
                     while (true) {
                         kotlinx.coroutines.currentCoroutineContext().ensureActive()
