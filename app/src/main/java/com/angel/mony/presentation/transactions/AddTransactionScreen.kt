@@ -134,7 +134,7 @@ fun AddTransactionScreen(
     val transactionType = transactionTypeName?.let(TransactionType::valueOf)
     val categories = allCategories.filter { it.type == transactionType }
     var voiceStatus by rememberSaveable { mutableStateOf(if (voiceEntry) "Pulsa el micrófono y di el movimiento." else "") }
-    val voicePanelVisible = true
+    var voicePanelVisible by rememberSaveable { mutableStateOf(voiceEntry) }
     var pendingTranscript by remember { mutableStateOf<String?>(null) }
     var interpretingText by remember { mutableStateOf(false) }
     var voiceTextInput by rememberSaveable { mutableStateOf("") }
@@ -523,7 +523,32 @@ fun AddTransactionScreen(
                     )
                 }
             }
-            if (voiceEntry) item {
+            if (!voiceEntry && !viewModel.isEditing) {
+                item {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = {
+                            voicePanelVisible = !voicePanelVisible
+                            if (!voicePanelVisible) {
+                                voiceController.cancel()
+                                pendingTranscript = null
+                                voiceStatus = ""
+                            } else {
+                                voiceStatus = "Pulsa Hablar para comenzar."
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        com.angel.mony.ui.iconography.MonyIcon(
+                            icon = com.angel.mony.ui.iconography.MonyIcon.Voice,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (voicePanelVisible) "Ocultar asistente IA" else "Usar asistente IA")
+                    }
+                }
+            }
+            if (voicePanelVisible) item {
                 VoiceDraftPanel(
                     status = voiceStatus,
                     example = if (voiceEntry) {
