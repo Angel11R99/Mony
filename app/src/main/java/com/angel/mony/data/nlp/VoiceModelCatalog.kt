@@ -19,7 +19,8 @@ class VoiceModelCatalog @Inject constructor(
 ) : NaturalLanguageTransactionEngine, LocalLanguageModelManager {
     private val preferences = context.getSharedPreferences("mony_voice_ai", Context.MODE_PRIVATE)
     private val googleId = google.activeModelId
-    override val models: List<LocalLanguageModel> = google.models + qwen.models
+    override val models: List<LocalLanguageModel>
+        get() = google.models + qwen.models
     override val activeModelId: String
         get() = preferences.getString("selected_engine", null)
             ?.takeIf { id -> models.any { it.id == id } }
@@ -79,6 +80,13 @@ class VoiceModelCatalog @Inject constructor(
         qwen.unloadActiveModel()
         google.unloadActiveModel()
     }
+    override suspend fun generateText(prompt: String): String {
+        val ready = prepareActiveModel()
+        check(ready is LocalModelPreparation.Ready) { "No hay un modelo local disponible. Revisa Modelos de IA en Ajustes." }
+        return if (ready.modelId == googleId) google.generateText(prompt)
+        else qwen.generateText(prompt)
+    }
+    override suspend fun refreshModelCatalog(): Boolean = qwen.refreshModelCatalog()
     override fun hasPartialDownload(modelId: String) =
         modelId != googleId && qwen.hasPartialDownload(modelId)
     override fun partialDownloadBytes(modelId: String) =
@@ -87,6 +95,9 @@ class VoiceModelCatalog @Inject constructor(
         if (modelId == googleId) google.downloadModel(modelId, onProgress)
         else qwen.downloadModel(modelId, onProgress)
     }
+    override suspend fun checkDownloadAvailability(modelId: String): String =
+        if (modelId == googleId) google.checkDownloadAvailability(modelId)
+        else qwen.checkDownloadAvailability(modelId)
     override suspend fun resetDownload(modelId: String) {
         if (modelId != googleId) qwen.resetDownload(modelId)
     }

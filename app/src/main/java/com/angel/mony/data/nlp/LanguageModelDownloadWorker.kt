@@ -16,6 +16,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CancellationException
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 class LanguageModelDownloadWorker(
     appContext: Context,
@@ -40,7 +43,21 @@ class LanguageModelDownloadWorker(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {
-            Result.failure(androidx.work.workDataOf(KEY_ERROR to (failure.message ?: "No se pudo descargar el modelo.")))
+            Result.failure(androidx.work.workDataOf(KEY_ERROR to failure.userMessage()))
+        }
+    }
+
+    private fun Exception.userMessage(): String {
+        val detail = message.orEmpty()
+        return when {
+            detail.contains("espacio", ignoreCase = true) -> detail
+            detail.contains("incompleta", ignoreCase = true) || detail.contains("verificación", ignoreCase = true) -> detail
+            detail.contains("servidor", ignoreCase = true) || detail.contains("archivo del modelo", ignoreCase = true) -> detail
+            this is UnknownHostException -> "No se encontró el servidor de descarga. Comprueba tu conexión a Internet e inténtalo de nuevo."
+            this is SocketTimeoutException -> "La descarga tardó demasiado y se interrumpió. Comprueba tu conexión y reanúdala."
+            this is IOException -> "Se perdió la conexión durante la descarga. Comprueba Internet y reanúdala."
+            detail.startsWith("No se pudo", ignoreCase = true) || detail.startsWith("Libera", ignoreCase = true) -> detail
+            else -> "Ocurrió un error al descargar el modelo. Comprueba tu conexión y el espacio disponible; puedes reanudar la descarga."
         }
     }
 

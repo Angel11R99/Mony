@@ -1,13 +1,13 @@
 # Modelos de IA de Mony
 
-El catálogo admite cuatro opciones:
+El catálogo incluye cuatro opciones integradas y modelos de texto compatibles publicados por AI Edge Gallery:
 
 - **Gemini Nano** — acceso por Google AICore, solamente en dispositivos admitidos.
 - **Qwen3 0.6B** — compacto y descargable con LiteRT-LM.
 - **Qwen3 1.7B** — descargable con mayor uso de memoria.
 - **Qwen2.5 1.5B Instruct** — alternativa descargable y verificada mediante archivo LiteRT-LM, tamaño y SHA-256.
 
-Los modelos de Qwen se descargan mediante WorkManager. En Ajustes se muestra el estado de la descarga, porcentaje, bytes transferidos, errores y botones para pausar, reanudar o eliminar. La reanudación conserva el archivo parcial cuando el servidor admite HTTP Range. Las descargas siguen disponibles aunque cierres la pantalla.
+Los modelos LiteRT se descargan mediante WorkManager. En Ajustes se puede buscar y filtrar el catálogo, comprobar disponibilidad antes de descargar y ver el estado, porcentaje, bytes transferidos y errores; también se pueden pausar, reanudar o eliminar. La reanudación conserva el archivo parcial cuando el servidor admite HTTP Range. Las descargas siguen disponibles aunque cierres la pantalla. El requisito de RAM se muestra como advertencia y no bloquea la descarga; al preparar el modelo se comprueba si el dispositivo puede iniciarlo.
 
 No todos los teléfonos pueden ejecutar un modelo grande con fluidez. Gemini Nano depende de AICore; Qwen depende de memoria disponible, CPU y compatibilidad con LiteRT-LM. Al escoger un modelo no se garantiza su ejecución: se valida al prepararlo.
 

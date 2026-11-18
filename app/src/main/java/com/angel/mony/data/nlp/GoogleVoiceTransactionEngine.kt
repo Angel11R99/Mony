@@ -41,14 +41,33 @@ class GoogleVoiceTransactionEngine @Inject constructor() :
     override suspend fun removeModel(modelId: String) = Unit
     override suspend fun unloadActiveModel() = Unit
 
+    override suspend fun generateText(prompt: String): String {
+        check(prepareActiveModel() is LocalModelPreparation.Ready) {
+            "Gemini Nano no está disponible en este dispositivo."
+        }
+        return withTimeout(90_000L) {
+            withContext(Dispatchers.IO) {
+                client.generateContent(prompt).candidates.firstOrNull()?.text?.trim()
+                    ?.takeIf(String::isNotBlank)
+                    ?: error("Gemini Nano no generó recomendaciones.")
+            }
+        }
+    }
+
     override suspend fun downloadModel(modelId: String, onProgress: (Int) -> Unit) {
         require(modelId == this.modelId)
-        if (Build.VERSION.SDK_INT < 26) error("Android no compatible.")
+        if (Build.VERSION.SDK_INT < 26) error("Gemini Nano requiere Android 8.0 o superior y compatibilidad con AICore.")
         withContext(Dispatchers.IO) {
-            if (client.checkStatus() == FeatureStatus.DOWNLOADABLE) {
+            val status = client.checkStatus()
+            if (status == FeatureStatus.UNAVAILABLE) {
+                error("Este dispositivo no es compatible con Gemini Nano o AICore aún no lo ofrece.")
+            }
+            if (status == FeatureStatus.DOWNLOADABLE) {
                 client.download().collect { event ->
                     when (event) {
-                        is DownloadStatus.DownloadFailed -> throw event.e
+                        is DownloadStatus.DownloadFailed -> throw IllegalStateException(
+                            "AICore no pudo descargar Gemini Nano. Comprueba tu conexión e inténtalo de nuevo.", event.e
+                        )
                         DownloadStatus.DownloadCompleted -> onProgress(100)
                         else -> Unit
                     }
@@ -57,6 +76,17 @@ class GoogleVoiceTransactionEngine @Inject constructor() :
             check(client.checkStatus() == FeatureStatus.AVAILABLE) {
                 "Gemini Nano no está disponible en este teléfono."
             }
+        }
+    }
+
+    override suspend fun checkDownloadAvailability(modelId: String): String {
+        require(modelId == this.modelId)
+        if (Build.VERSION.SDK_INT < 26) return "Gemini Nano requiere Android 8.0 o superior y compatibilidad con AICore."
+        return when (withContext(Dispatchers.IO) { client.checkStatus() }) {
+            FeatureStatus.AVAILABLE -> "Gemini Nano está disponible en este dispositivo."
+            FeatureStatus.DOWNLOADABLE -> "Gemini Nano está disponible para descargar mediante AICore."
+            FeatureStatus.DOWNLOADING -> "AICore ya está descargando Gemini Nano."
+            else -> "Gemini Nano no está disponible para este dispositivo según AICore."
         }
     }
 

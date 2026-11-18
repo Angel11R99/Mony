@@ -27,8 +27,11 @@ interface LocalLanguageModelManager {
     fun hasPartialDownload(modelId: String): Boolean
     fun partialDownloadBytes(modelId: String): Long
     suspend fun downloadModel(modelId: String, onProgress: (Int) -> Unit)
+    suspend fun checkDownloadAvailability(modelId: String): String
     suspend fun resetDownload(modelId: String)
     suspend fun removeModel(modelId: String)
+    suspend fun generateText(prompt: String): String
+    suspend fun refreshModelCatalog(): Boolean = false
 }
 
 sealed interface LocalModelPreparation {
@@ -44,6 +47,9 @@ data class LocalLanguageModel(
     val name: String,
     val description: String,
     val sizeBytes: Long,
+    val minimumDeviceMemoryInGb: Int? = null,
+    val deviceMemoryInGb: Int? = null,
+    val catalogSource: String? = null,
 )
 
 /** Keeps a user's valid selection; otherwise chooses the first installed id in documented priority order. */
