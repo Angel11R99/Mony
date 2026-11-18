@@ -45,17 +45,23 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withTimeout
+import java.time.LocalDate
 import javax.inject.Inject
 
 @HiltViewModel
 class LanguageModelsSettingsViewModel @Inject constructor(
     private val manager: LocalLanguageModelManager,
+    private val interpreter: NaturalLanguageTransactionEngine,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     val models = manager.models
     val selection = MutableStateFlow(manager.activeModelId)
     val status = MutableStateFlow("Verificando IA...")
     val busy = MutableStateFlow(false)
+    val diagnostic = MutableStateFlow<Map<String, String>>(emptyMap())
     val jobs = MutableStateFlow<Map<String, WorkInfo>>(emptyMap())
     val pauses = MutableStateFlow<Set<String>>(emptySet())
     val installedIds = MutableStateFlow(models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet())
@@ -93,6 +99,49 @@ class LanguageModelsSettingsViewModel @Inject constructor(
         manager.setActiveModel(modelId)
         selection.value = modelId
         refresh()
+    }
+
+    fun testModel(modelId: String) {
+        if (busy.value) return
+        viewModelScope.launch {
+            busy.value = true
+            diagnostic.value = diagnostic.value + (modelId to "Probando inferencia real…")
+            try {
+                manager.setActiveModel(modelId)
+                val ready = withContext(Dispatchers.IO) { manager.prepareActiveModel() }
+                if (ready !is LocalModelPreparation.Ready || ready.modelId != modelId) {
+                    diagnostic.value = diagnostic.value + (modelId to "El motor seleccionado no pudo iniciarse. Elige otro modelo.")
+                    return@launch
+                }
+                val sample = listOf(
+                    Category(1L, "Alimentación", TransactionType.EXPENSE, "restaurant", true),
+                    Category(2L, "Trabajo", TransactionType.INCOME, "briefcase", true)
+                )
+                val result = withTimeout(120_000L) {
+                    interpreter.interpret(
+                        "Ayer gasté 500 pesos en comida",
+                        sample, VoiceTransactionDraft(date = LocalDate.now())
+                    )
+                }
+                val draft = (result.command as? VoiceTransactionCommand.Apply)?.draft
+                val succeeded = result.modelFailure == null &&
+                    draft?.type == TransactionType.EXPENSE &&
+                    draft.amountInCents == 50_000L &&
+                    draft.date == LocalDate.now().minusDays(1)
+                diagnostic.value = diagnostic.value + (
+                    modelId to if (succeeded) "Prueba correcta: gasto RD\$500 de ayer."
+                        else "La IA respondió, pero no reconoció todos los campos. Prueba otro modelo."
+                )
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                android.util.Log.e("MonyAI", "selftest stage=failed model=$modelId cause=${failure.javaClass.simpleName}")
+                diagnostic.value = diagnostic.value + (modelId to "No se pudo ejecutar la prueba. Revisa Logcat MonyAI.")
+            } finally {
+                busy.value = false
+                refresh()
+            }
+        }
     }
 
     fun download(modelId: String) {
@@ -169,6 +218,7 @@ fun LanguageModelsSettingsScreen(
     val status by viewModel.status.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val jobs by viewModel.jobs.collectAsStateWithLifecycle()
+    val diagnostic by viewModel.diagnostic.collectAsStateWithLifecycle()
     Scaffold(topBar = { FinanceModuleTopAppBar(title = "Modelos de IA", onBack = onBack) }) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
@@ -228,6 +278,15 @@ fun LanguageModelsSettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !busy,
                             )
+                        }
+                        if ((available || isGoogle) && selected == model.id && !downloading) {
+                            TextButton(
+                                onClick = { viewModel.testModel(model.id) },
+                                enabled = !busy, modifier = Modifier.fillMaxWidth(),
+                            ) { Text("Probar interpretación real") }
+                            diagnostic[model.id]?.let {
+                                Text(it, style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                         if (!available && !downloading) {
                             PrimaryButton(
