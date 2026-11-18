@@ -163,6 +163,7 @@ fun HomeScreen(
                         }
                     }
 
+                    if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
                     add {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -178,6 +179,8 @@ fun HomeScreen(
                                 Text("Registrar con IA")
                             }
                         }
+                    }
+
                     }
 
                     add {
