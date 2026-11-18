@@ -67,7 +67,8 @@ class LanguageModelsSettingsViewModel @Inject constructor(
                 WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(
                     LanguageModelDownloadWorker.uniqueWorkName(model.id)
                 ).collectLatest { infos ->
-                    val current = infos.firstOrNull()
+                    val current = infos.firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }
+                        ?: infos.lastOrNull()
                     if (current != null) jobs.value = jobs.value + (model.id to current)
                     if (current?.state == WorkInfo.State.SUCCEEDED) refresh()
                 }
@@ -132,9 +133,11 @@ class LanguageModelsSettingsViewModel @Inject constructor(
 
     fun pause(modelId: String) {
         viewModelScope.launch {
-            WorkManager.getInstance(context).cancelUniqueWork(
-                LanguageModelDownloadWorker.uniqueWorkName(modelId)
-            ).result.get()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                WorkManager.getInstance(context).cancelUniqueWork(
+                    LanguageModelDownloadWorker.uniqueWorkName(modelId)
+                ).result.get()
+            }
             pauses.value = pauses.value + modelId
             status.value = "Descarga pausada. Puedes reanudarla."
         }
@@ -143,11 +146,13 @@ class LanguageModelsSettingsViewModel @Inject constructor(
     fun remove(modelId: String) {
         if (modelId == googleId) return
         viewModelScope.launch {
-            WorkManager.getInstance(context).cancelUniqueWork(
-                LanguageModelDownloadWorker.uniqueWorkName(modelId)
-            ).result.get()
-            manager.resetDownload(modelId)
-            manager.removeModel(modelId)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                WorkManager.getInstance(context).cancelUniqueWork(
+                    LanguageModelDownloadWorker.uniqueWorkName(modelId)
+                ).result.get()
+                manager.resetDownload(modelId)
+                manager.removeModel(modelId)
+            }
             jobs.value = jobs.value - modelId
             pauses.value = pauses.value - modelId
             refresh()
