@@ -45,10 +45,16 @@ class VoiceModelCatalog @Inject constructor(
             // If explicitly selected, preserve the preference. Offer an installed Qwen as
             // a temporary alternative rather than permanently overwriting the selection.
             val installed = qwen.models.firstOrNull { qwen.isModelInstalled(it.id) }
-            if (installed != null) return qwen.prepareActiveModel()
+            if (installed != null) {
+                val prepared = qwen.prepareActiveModel()
+                android.util.Log.i("MonyAI", "prepare fallback=${prepared.javaClass.simpleName} from=aicore to=litert")
+                return prepared
+            }
             return googleResult
         }
-        return qwen.prepareActiveModel()
+        val prepared = qwen.prepareActiveModel()
+        android.util.Log.i("MonyAI", "prepare selected=qwen result=${prepared.javaClass.simpleName}")
+        return prepared
     }
 
     override suspend fun interpret(
@@ -64,6 +70,7 @@ class VoiceModelCatalog @Inject constructor(
                 LocalModelFailure.NOT_AVAILABLE
             )
         }
+        android.util.Log.i("MonyAI", "inference selected=${activeModelId} prepared=${ready.modelId}")
         return if (ready.modelId == googleId) google.interpret(transcript, categories, current)
         else qwen.interpret(transcript, categories, current)
     }
