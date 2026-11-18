@@ -361,7 +361,8 @@ fun AddTransactionScreen(
             viewModel.updateWidgetVoiceExample(voiceOpeningId, allCategories)
         }
     }
-    LaunchedEffect(pendingTranscript, localAiReadiness) {
+    LaunchedEffect(pendingTranscript, localAiReadiness, voicePanelVisible) {
+        if (!voicePanelVisible) return@LaunchedEffect
         val transcript = pendingTranscript ?: return@LaunchedEffect
         if (localAiReadiness.phase == LocalAiPhase.PREPARING) return@LaunchedEffect
         pendingTranscript = null
@@ -388,6 +389,7 @@ fun AddTransactionScreen(
         } finally {
             interpretingText = false
         }
+        if (!voicePanelVisible) return@LaunchedEffect
         if (currentDraft() != draftAtStart || (isTextInput && voiceTextInput.trim() != transcript)) {
             voiceStatus = "El formulario cambió. Vuelve a interpretar la descripción."
             return@LaunchedEffect
