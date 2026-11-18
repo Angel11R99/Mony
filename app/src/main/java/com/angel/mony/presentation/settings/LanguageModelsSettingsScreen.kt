@@ -128,6 +128,8 @@ class LanguageModelsSettingsViewModel @Inject constructor(
 
         }
     }
+    fun partialBytes(modelId: String): Long = manager.partialDownloadBytes(modelId)
+
     fun pause(modelId: String) {
         viewModelScope.launch {
             WorkManager.getInstance(context).cancelUniqueWork(
@@ -163,6 +165,7 @@ fun LanguageModelsSettingsScreen(
     val installed by viewModel.installedIds.collectAsStateWithLifecycle()
     val status by viewModel.status.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
+    val jobs by viewModel.jobs.collectAsStateWithLifecycle()
     Scaffold(topBar = { FinanceModuleTopAppBar(title = "Modelos de IA", onBack = onBack) }) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
@@ -179,6 +182,15 @@ fun LanguageModelsSettingsScreen(
             items(viewModel.models, key = { it.id }) { model ->
                 val isGoogle = model.id == viewModel.googleId
                 val available = model.id in installed
+                val job = jobs[model.id]
+                val downloading = job?.state in listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)
+                val progress = job?.progress?.getInt(LanguageModelDownloadWorker.KEY_PROGRESS, 0) ?: 0
+                val transferred = viewModel.partialBytes(model.id)
+                val percent = if (progress > 0) progress else if (model.sizeBytes > 0) ((transferred * 100L) / model.sizeBytes).toInt().coerceIn(0, 100) else 0
+                val partial = transferred > 0L
+                val downloadError = if (job?.state == WorkInfo.State.FAILED)
+                    job.outputData.getString(LanguageModelDownloadWorker.KEY_ERROR) ?: "La descarga falló. Puedes reanudarla."
+                    else null
                 FinanceCard(Modifier.fillMaxWidth()) {
                     Column(
                         Modifier.fillMaxWidth().padding(16.dp),
@@ -189,6 +201,21 @@ fun LanguageModelsSettingsScreen(
                             if (selected == model.id) Text("Seleccionado", style = MaterialTheme.typography.labelSmall)
                         }
                         Text(model.description, style = MaterialTheme.typography.bodySmall)
+                        if (downloading || partial && !available) {
+                            if (percent > 0) LinearProgressIndicator(
+                                progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
+                            else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            Text(
+                                (if (downloading) "Descargando" else "Descarga pausada") +
+                                    " · $percent% · ${transferred / 1048576L} MB de ${model.sizeBytes / 1048576L} MB",
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (downloading) {
+                            TextButton(onClick = { viewModel.pause(model.id) },
+                                modifier = Modifier.fillMaxWidth()) { Text("Pausar descarga") }
+                        }
+                        downloadError?.let { Text(it, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error) }
                         if (available || isGoogle) {
                             PrimaryButton(
                                 if (selected == model.id) "Comprobar disponibilidad" else "Elegir modelo",
@@ -199,13 +226,17 @@ fun LanguageModelsSettingsScreen(
                                 enabled = !busy,
                             )
                         }
-                        if (!available) {
+                        if (!available && !downloading) {
                             PrimaryButton(
-                                if (isGoogle) "Preparar con AICore" else "Descargar modelo",
+                                if (isGoogle) "Preparar con AICore" else if (partial) "Reanudar descarga" else "Descargar modelo",
                                 onClick = { viewModel.download(model.id) },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !busy,
                             )
+                        }
+                        if (!isGoogle && (available || partial) && !downloading) {
+                            TextButton(onClick = { viewModel.remove(model.id) },
+                                modifier = Modifier.fillMaxWidth()) { Text("Eliminar archivos del modelo") }
                         }
                     }
                 }
