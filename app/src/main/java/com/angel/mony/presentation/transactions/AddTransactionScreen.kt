@@ -539,16 +539,6 @@ fun AddTransactionScreen(
                     interpreting = interpretingText,
                     onManageModels = onManageModels,
                     textInput = voiceTextInput,
-                    onTextInputChange = { voiceTextInput = it; voiceStatus = "" },
-                    onInterpretText = {
-                        if (!interpretingText) voiceTextInput.trim().takeIf(String::isNotBlank)?.let {
-                            when (localAiReadiness.phase) {
-                                LocalAiPhase.READY -> pendingTranscript = it
-                                LocalAiPhase.NOT_INSTALLED, LocalAiPhase.ERROR -> onManageModels()
-                                LocalAiPhase.PREPARING -> Unit
-                            }
-                        }
-                    },
                     onListen = ::requestVoiceRecognition,
                     onStop = voiceController::stop,
                 )
