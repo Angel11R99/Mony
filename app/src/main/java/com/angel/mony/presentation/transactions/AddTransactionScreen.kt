@@ -528,6 +528,9 @@ fun AddTransactionScreen(
             }
             if (!voiceEntry && !viewModel.isEditing) {
                 item {
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                    ) {
                     androidx.compose.material3.OutlinedButton(
                         onClick = {
                             voicePanelVisible = !voicePanelVisible
@@ -548,6 +551,7 @@ fun AddTransactionScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(if (voicePanelVisible) "Ocultar asistente IA" else "Usar asistente IA")
+                    }
                     }
                 }
             }
