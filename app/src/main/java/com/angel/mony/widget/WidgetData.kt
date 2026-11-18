@@ -341,7 +341,9 @@ suspend fun updateAllFinanceWidgets(context: Context) {
     QuickAccessWidget().updateAll(context)
     DailySpendingWidget().updateAll(context)
     CategoryLimitsWidget().updateAll(context)
-    VoiceRegistrationWidget().updateAll(context)
+    if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
+        VoiceRegistrationWidget().updateAll(context)
+    }
 }
 
 private const val RECENT_MOVEMENTS_LIMIT = 6
