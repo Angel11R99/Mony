@@ -1,13 +1,16 @@
-# IA por voz — Gemini Nano
+# Modelos de IA de Mony
 
-Mony utiliza Gemini Nano mediante Google ML Kit GenAI Prompt y Android AICore para interpretar las transcripciones de voz localmente. No utiliza API remota de Gemini.
+El usuario puede elegir entre:
+- **Gemini Nano**, mediante Google ML Kit GenAI Prompt y Android AICore, si el dispositivo lo admite.
+- **Qwen3 0.6B**, modelo descargable y ejecutado localmente mediante Google LiteRT-LM.
+- **Qwen3 1.7B**, modelo descargable de mayor consumo, también mediante LiteRT-LM.
 
-La preparación consulta `Generation.getClient().checkStatus()` y permite descargar el modelo mediante AICore cuando Android indica que es descargable. No se usan los modelos Qwen3 de LiteRT-LM ni su intérprete de respaldo.
+El administrador `VoiceModelCatalog` expone el catálogo y selecciona el motor disponible. Si AICore no está disponible, un modelo Qwen ya instalado puede ofrecer una alternativa. Los modelos Qwen requieren una descarga inicial, espacio libre y recursos suficientes. Ningún motor garantiza precisión perfecta; las respuestas se validan en Kotlin.
 
-**Compatibilidad:** Android 8 (API 26) o superior y un dispositivo con AICore y Gemini Nano habilitados. La compatibilidad no está garantizada en todos los teléfonos. Los dispositivos con bootloader desbloqueado pueden no tener acceso a esta API.
+La inferencia es local. La captura de voz de Android puede depender de servicios convencionales que requieran consentimiento, y debe tratarse por separado.
 
-El modelo genera una propuesta JSON. Kotlin verifica tipo, monto, fecha y las categorías activas existentes. El usuario revisa el resultado antes de guardar. Si Gemini Nano no está disponible se conserva el registro manual, sin simular inferencia.
+La IA produce un borrador de gasto o ingreso. Mony verifica importe, fecha y categoría activa antes de presentar la vista previa y requiere confirmación para guardar. Los fallos de inferencia no activan el antiguo intérprete por reglas.
 
-La voz puede depender del proveedor convencional de reconocimiento de Android y requerir consentimiento. La inferencia de Gemini Nano, cuando funciona, es local.
+## Pruebas
 
-**Verificación pendiente:** compilación y pruebas instrumentadas en dispositivo compatible; no hay pruebas reales disponibles sin el teléfono conectado.
+`./gradlew assembleDebug` y `./gradlew testDebugUnitTest`. Ejecutar pruebas reales en Android con los modelos instalados para medir precisión, latencia y memoria. Las pruebas JVM y la compilación no demuestran que Gemini Nano esté disponible en todos los teléfonos.

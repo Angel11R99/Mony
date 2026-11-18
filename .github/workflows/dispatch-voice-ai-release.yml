@@ -1,0 +1,22 @@
+name: Solicitar release de catálogo de IA
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/dispatch-voice-ai-release.yml"
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  request-signed-release:
+    name: Solicitar publicación APK firmada
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ejecutar el flujo de release existente
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run release.yml --ref master -f version_bump=patch
