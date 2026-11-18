@@ -12,7 +12,6 @@ import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.VoiceDraftField
 import com.angel.mony.domain.model.VoiceTransactionCommand
 import com.angel.mony.domain.model.VoiceTransactionDraft
-import com.angel.mony.domain.model.VoiceTransactionInterpreter
 import com.angel.mony.domain.model.resolveInstalledLanguageModel
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Contents
@@ -27,7 +26,6 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
-import java.time.Clock
 import java.time.LocalDate
 import java.util.Locale
 import javax.inject.Inject
@@ -49,7 +47,6 @@ import org.json.JSONObject
 class OnDeviceNaturalLanguageTransactionEngine @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : NaturalLanguageTransactionEngine, LocalLanguageModelManager {
-    private val fallback = VoiceTransactionInterpreter(Clock.systemDefaultZone())
     private val modelsDirectory get() = File(context.filesDir, MODEL_DIRECTORY).apply { mkdirs() }
     private val modelPreferences get() = context.getSharedPreferences(MODEL_PREFERENCES, Context.MODE_PRIVATE)
     private val mutex = Mutex()
@@ -219,42 +216,29 @@ class OnDeviceNaturalLanguageTransactionEngine @Inject constructor(
         current: VoiceTransactionDraft,
     ): NaturalLanguageInterpretation {
         if (transcript.isBlank()) return NaturalLanguageInterpretation(
-            VoiceTransactionCommand.Invalid("No se reconoció ninguna frase."), InterpretationEngine.LOCAL_FALLBACK,
+            VoiceTransactionCommand.Invalid("No se reconoció ninguna frase."),
+            InterpretationEngine.ON_DEVICE_LLM
         )
-        val controlCommand = fallback.interpret(transcript, categories, current)
-        if (controlCommand is VoiceTransactionCommand.Save || controlCommand is VoiceTransactionCommand.Review ||
-            controlCommand is VoiceTransactionCommand.MissingFields || controlCommand is VoiceTransactionCommand.ShowCategories ||
-            controlCommand is VoiceTransactionCommand.Undo || controlCommand is VoiceTransactionCommand.Cancel ||
-            controlCommand is VoiceTransactionCommand.Clear || controlCommand is VoiceTransactionCommand.Exit ||
-            controlCommand is VoiceTransactionCommand.ConfirmFunding || controlCommand is VoiceTransactionCommand.SelectCategoryOption
-        ) {
-            return NaturalLanguageInterpretation(controlCommand, InterpretationEngine.LOCAL_FALLBACK)
-        }
-        val selectedModel = activeModelId
-        if (!isModelInstalled(selectedModel)) return NaturalLanguageInterpretation(
-            fallback.interpret(transcript, categories, current),
-            InterpretationEngine.LOCAL_FALLBACK,
-            LocalModelFailure.NOT_AVAILABLE,
+        val selected = activeModelId
+        if (!isModelInstalled(selected)) return NaturalLanguageInterpretation(
+            VoiceTransactionCommand.Invalid("Instala un modelo local para interpretar."),
+            InterpretationEngine.ON_DEVICE_LLM, LocalModelFailure.NOT_AVAILABLE
         )
         return try {
-            val semantic = withContext(inferenceDispatcher) { queryModel(selectedModel, transcript, categories, current) }
-            NaturalLanguageInterpretation(validate(semantic, transcript, categories, current), InterpretationEngine.ON_DEVICE_LLM)
+            val response = withContext(inferenceDispatcher) {
+                queryModel(selected, transcript, categories, current)
+            }
+            NaturalLanguageInterpretation(validate(response, categories, current), InterpretationEngine.ON_DEVICE_LLM)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: OutOfMemoryError) {
             withContext(NonCancellable + inferenceDispatcher) { mutex.withLock { closeLoadedEngine() } }
-            NaturalLanguageInterpretation(
-                fallback.interpret(transcript, categories, current),
-                InterpretationEngine.LOCAL_FALLBACK,
-                LocalModelFailure.INSUFFICIENT_MEMORY,
-            )
+            NaturalLanguageInterpretation(VoiceTransactionCommand.Invalid("Memoria insuficiente para usar el modelo."),
+                InterpretationEngine.ON_DEVICE_LLM, LocalModelFailure.INSUFFICIENT_MEMORY)
         } catch (_: Exception) {
             withContext(NonCancellable + inferenceDispatcher) { mutex.withLock { closeLoadedEngine() } }
-            NaturalLanguageInterpretation(
-                fallback.interpret(transcript, categories, current),
-                InterpretationEngine.LOCAL_FALLBACK,
-                LocalModelFailure.INFERENCE,
-            )
+            NaturalLanguageInterpretation(VoiceTransactionCommand.Invalid("La inferencia local falló. Inténtalo de nuevo."),
+                InterpretationEngine.ON_DEVICE_LLM, LocalModelFailure.INFERENCE)
         }
     }
 
@@ -293,92 +277,56 @@ class OnDeviceNaturalLanguageTransactionEngine @Inject constructor(
         }
     }
 
+    /** Validates AI output without consulting the old regex interpreter. */
     private fun validate(
         json: JSONObject,
-        transcript: String,
         categories: List<Category>,
         current: VoiceTransactionDraft,
     ): VoiceTransactionCommand {
-        val ruleCommand = fallback.interpret(transcript, categories, current) as? VoiceTransactionCommand.Apply
-        val ruleDraft = ruleCommand?.draft ?: current
-        val ruleMentioned = ruleCommand?.mentioned.orEmpty()
-        val operation = json.optString("operation")
-        val mentionedJson = json.optJSONObject("mentions") ?: JSONObject()
-        val mentioned = linkedSetOf<VoiceDraftField>()
-        val rawType = json.optString("type").takeUnless { it == "null" || it.isBlank() }
-        val modelType = rawType?.let { runCatching { TransactionType.valueOf(it.uppercase(Locale.ROOT)) }.getOrNull() }
-        val modelMentionsType = mentionedJson.optBoolean("type") && modelType != null
-        val type = when {
-            modelMentionsType -> modelType
-            VoiceDraftField.TYPE in ruleMentioned -> ruleDraft.type
-            else -> current.type
+        val fields = linkedSetOf<VoiceDraftField>()
+        val rawType = json.optString("type").takeUnless { it.isBlank() || it == "null" }
+        val inferredType = rawType?.let {
+            runCatching { TransactionType.valueOf(it.uppercase(Locale.ROOT)) }.getOrNull()
         }
-        if (modelMentionsType || VoiceDraftField.TYPE in ruleMentioned) mentioned += VoiceDraftField.TYPE
+        val type = inferredType ?: current.type
+        if (inferredType != null) fields += VoiceDraftField.TYPE
 
-        val modelAmount = if (mentionedJson.optBoolean("amount")) json.optLong("amountInCents", Long.MIN_VALUE)
-            .takeIf { it > 0L && it < MAX_AMOUNT_CENTS } else null
-        val amount = modelAmount ?: if (VoiceDraftField.AMOUNT in ruleMentioned) ruleDraft.amountInCents else current.amountInCents
-        if (modelAmount != null || VoiceDraftField.AMOUNT in ruleMentioned) mentioned += VoiceDraftField.AMOUNT
+        val amount = json.takeIf { it.has("amountInCents") && !it.isNull("amountInCents") }
+            ?.optLong("amountInCents", -1L)?.takeIf { it in 1..99_999_999_999_999L }
+        if (amount != null) fields += VoiceDraftField.AMOUNT
 
-        val categoryName = json.optString("category").takeUnless { it == "null" || it.isBlank() }
-        val categoryMatches = categoryName?.let { name ->
-            categories.filter { it.isActive && it.type == (type ?: current.type) && it.name.equals(name, ignoreCase = true) }
-        }.orEmpty()
-        val modelCategoryRequested = mentionedJson.optBoolean("category")
-        val modelCategoryId = categoryMatches.singleOrNull()?.id
-        val categoryId = when {
-            modelCategoryRequested && modelCategoryId != null -> modelCategoryId
-            VoiceDraftField.CATEGORY in ruleMentioned -> ruleDraft.categoryId
-            else -> current.categoryId
-        }
-        if ((modelCategoryRequested && modelCategoryId != null) || VoiceDraftField.CATEGORY in ruleMentioned) {
-            mentioned += VoiceDraftField.CATEGORY
-        }
+        val date = json.optString("date").takeUnless { it.isBlank() || it == "null" }
+            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        if (date != null) fields += VoiceDraftField.DATE
 
-        val modelDate = if (mentionedJson.optBoolean("date")) {
-            runCatching { LocalDate.parse(json.optString("date")) }.getOrNull()
-        } else null
-        val date = modelDate ?: if (VoiceDraftField.DATE in ruleMentioned) ruleDraft.date else current.date
-        if (modelDate != null || VoiceDraftField.DATE in ruleMentioned) mentioned += VoiceDraftField.DATE
+        val rawCategory = json.optString("category").takeUnless { it.isBlank() || it == "null" }
+        val categoryId = categories.singleOrNull {
+            it.isActive && it.type == type && it.name.equals(rawCategory, ignoreCase = true)
+        }?.id
+        if (categoryId != null) fields += VoiceDraftField.CATEGORY
 
-        val modelNote = if (mentionedJson.optBoolean("note")) json.optString("note").takeIf(String::isNotBlank) else null
-        val note = modelNote ?: if (VoiceDraftField.NOTE in ruleMentioned) ruleDraft.note else current.note
-        if (modelNote != null || VoiceDraftField.NOTE in ruleMentioned) mentioned += VoiceDraftField.NOTE
+        val note = json.optString("note").takeUnless { it.isBlank() || it == "null" }
+        if (note != null) fields += VoiceDraftField.NOTE
 
-        val draft = current.copy(
-            type = type,
-            amountInCents = amount,
-            categoryId = categoryId,
-            date = date,
-            note = note,
+        val clarification = json.optString("clarification")
+            .takeUnless { it.isBlank() || it == "null" }
+            ?: if (rawCategory != null && categoryId == null) "Selecciona una categoría válida." else null
+
+        if (fields.isEmpty() && clarification == null)
+            return VoiceTransactionCommand.Invalid("No pude identificar un movimiento. Inténtalo de nuevo.")
+
+        return VoiceTransactionCommand.Apply(
+            current.copy(
+                type = type,
+                amountInCents = amount ?: current.amountInCents,
+                categoryId = categoryId ?: current.categoryId,
+                date = date ?: current.date,
+                note = note ?: current.note,
+                saveRequested = false
+            ),
+            fields,
+            messages = listOfNotNull(clarification)
         )
-
-        val clarification = json.optString("clarification").takeUnless { it == "null" || it.isBlank() }
-        val unresolvedCategory = modelCategoryRequested && modelCategoryId == null && categoryId == current.categoryId
-        if (operation == "CLARIFY" || clarification != null || unresolvedCategory) {
-            val message = clarification ?: if (unresolvedCategory) {
-                "No encontré una categoría adecuada. Elige una en el formulario."
-            } else "Necesito que aclares un detalle antes de completar el movimiento."
-            return VoiceTransactionCommand.Apply(draft, mentioned, messages = listOf(message))
-        }
-        if (operation !in setOf("CREATE", "CORRECT")) {
-            return ruleCommand ?: VoiceTransactionCommand.Invalid("No pude interpretar la descripción.")
-        }
-
-        if (mentionedJson.optBoolean("type") && modelType == null && VoiceDraftField.TYPE !in ruleMentioned) {
-            return VoiceTransactionCommand.Apply(draft, mentioned, messages = listOf("No pude identificar si fue un gasto o un ingreso."))
-        }
-        if (mentionedJson.optBoolean("amount") && modelAmount == null && VoiceDraftField.AMOUNT !in ruleMentioned) {
-            return VoiceTransactionCommand.Apply(draft, mentioned, messages = listOf("No pude confirmar el monto. Revísalo en el formulario."))
-        }
-
-        // Saving remains an independent explicit command, parsed by the existing safety gate.
-        val explicitSave = ruleDraft.saveRequested
-        val completeDraft = draft.copy(saveRequested = current.saveRequested || explicitSave)
-        if (completeDraft.amountInCents != null && completeDraft.amountInCents <= 0L) {
-            return VoiceTransactionCommand.Invalid("El monto debe ser mayor que cero.")
-        }
-        return VoiceTransactionCommand.Apply(completeDraft, mentioned)
     }
 
     companion object {
