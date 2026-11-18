@@ -83,6 +83,7 @@ fun HomeScreen(
     automaticCycleClose: Boolean,
     automaticCloseTime: LocalTime,
     onAdd: (TransactionType) -> Unit,
+    onVoice: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -159,6 +160,21 @@ fun HomeScreen(
                                 onClick = { onAdd(TransactionType.INCOME) },
                                 modifier = Modifier.weight(1f),
                             )
+                        }
+                    }
+
+                    add {
+                        Button(
+                            onClick = onVoice,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            com.angel.mony.ui.iconography.MonyIcon(
+                                icon = com.angel.mony.ui.iconography.MonyIcon.Voice,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Registrar con voz")
                         }
                     }
 
