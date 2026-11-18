@@ -54,4 +54,34 @@ class QwenVoiceInterpretationInstrumentedTest {
         assertEquals(TransactionType.INCOME, incomeDraft.type)
         assertEquals(100_000L, incomeDraft.amountInCents)
     }
+    @Test
+    fun variedSpanishParaphrasesKeepFinancialDirection() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val engine = OnDeviceNaturalLanguageTransactionEngine(context)
+        assumeTrue("Necesita un modelo Qwen local listo",
+            engine.prepareActiveModel() is LocalModelPreparation.Ready)
+        val categories = listOf(
+            Category(1L, "Alimentación", TransactionType.EXPENSE, "restaurant", true),
+            Category(2L, "Servicios", TransactionType.EXPENSE, "wifi", true),
+            Category(3L, "Trabajo", TransactionType.INCOME, "payments", true),
+        )
+        val cases = listOf(
+            Triple("Me gasté quinientos pesos comiendo ayer", TransactionType.EXPENSE, 50_000L),
+            Triple("Compramos la cena por RD\$500", TransactionType.EXPENSE, 50_000L),
+            Triple("Pon 500 pesos de internet", TransactionType.EXPENSE, 50_000L),
+            Triple("Pagué 800 en el supermercado", TransactionType.EXPENSE, 80_000L),
+            Triple("Me pagaron mil pesos", TransactionType.INCOME, 100_000L),
+            Triple("Recibí 2500 pesos de un trabajo", TransactionType.INCOME, 250_000L),
+            Triple("Me entraron quinientos pesos por una venta", TransactionType.INCOME, 50_000L),
+            Triple("Gasté doscientos en un almuerzo", TransactionType.EXPENSE, 20_000L),
+        )
+        for ((utterance, expectedType, expectedAmount) in cases) {
+            val result = engine.interpret(utterance, categories, VoiceTransactionDraft())
+            assertNull("Inferencia falló: $utterance", result.modelFailure)
+            val draft = (result.command as VoiceTransactionCommand.Apply).draft
+            assertEquals("Tipo incorrecto: $utterance", expectedType, draft.type)
+            assertEquals("Monto incorrecto: $utterance", expectedAmount, draft.amountInCents)
+        }
+    }
+
 }
