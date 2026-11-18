@@ -1,13 +1,13 @@
-# Registro inteligente por voz
+# Registro por voz
 
-Desde Inicio, el usuario puede dictar un gasto o ingreso sin seleccionar previamente el tipo. Android transcribe el audio y Google Gemini Nano, mediante ML Kit GenAI Prompt y AICore, interpreta el texto.
+Desde Inicio, el usuario pulsa «Registrar con voz» y describe un gasto o ingreso sin seleccionar el tipo. Android convierte voz en texto, y el motor local configurado identifica el tipo, importe, fecha, nota y categoría activa. El formulario muestra un borrador editable antes del guardado.
 
-La arquitectura es: voz → transcripción → Gemini Nano → propuesta estructurada → validaciones Kotlin → vista previa → confirmación y guardado.
+## Motores
 
-El motor activo es `GoogleVoiceTransactionEngine`. El antiguo intérprete de frases y Qwen3 no se usan como respaldo de producción. Mony no inventa importes ni categorías, y solo admite categorías activas existentes. Si falta información, se conserva un borrador revisable.
+El catálogo de modelos permite elegir **Gemini Nano (AICore)** o los modelos descargables **Qwen3 0.6B** y **Qwen3 1.7B (LiteRT-LM)**. Gemini Nano no está disponible en todos los dispositivos. Qwen tampoco está garantizado en teléfonos con memoria insuficiente.
 
-Gemini Nano requiere un teléfono compatible con AICore. Su disponibilidad se comprueba antes de la inferencia. Si no está disponible, el registro manual permanece activo y no se presenta una respuesta de IA simulada.
+Un fallo del modelo no desencadena interpretaciones basadas en frases fijas ni crea transacciones de manera automática. El registro manual continúa disponible.
 
-El reconocimiento de voz es independiente de la IA y puede requerir el servicio convencional de Android; el audio podría enviarse a ese proveedor, previa aceptación del usuario.
+El sistema debe respetar el consentimiento de reconocimiento convencional de Android, ya que el audio puede enviarse al proveedor del servicio de voz. La inferencia mediante estos motores es local.
 
-Quedan pendientes pruebas instrumentadas con dispositivo físico compatible, especialmente para español dominicano, clasificaciones ambiguas y guardado correcto.
+Quedan pendientes pruebas instrumentadas de inferencia real con teléfonos compatibles y categorías personalizadas. Las capacidades del modelo dependen del idioma, recursos del teléfono y la calidad del prompt.
