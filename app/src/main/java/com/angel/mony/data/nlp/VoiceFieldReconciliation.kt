@@ -37,7 +37,7 @@ internal object VoiceFieldReconciliation {
         }
         val chosen = mentioned.singleOrNull() ?: modelMatches.singleOrNull() ?: semanticAlias(phrase, active)
         return Verified(type, amount, chosen?.id, date,
-            categoryUnresolved = chosen == null && (modelCategory?.isNotBlank() == true || mentioned.size > 1))
+            categoryUnresolved = chosen == null && type != null)
     }
 
     private fun relativeDate(text: String, today: LocalDate): LocalDate? {
@@ -89,6 +89,7 @@ internal object VoiceFieldReconciliation {
             "almuerzo" to setOf("alimentacion", "comida"),
             "trabajo" to setOf("trabajo", "ingresos laborales"),
             "compra" to setOf("compras", "compra"),
+            "compramos" to setOf("compras", "compra"),
         )
         val targets = aliases.filterKeys { containsName(text, it) }.values.flatten().toSet()
         return active.filter { normalized(it.name) in targets }.singleOrNull()
