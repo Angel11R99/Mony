@@ -60,11 +60,12 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val budget by viewModel.budget.collectAsStateWithLifecycle()
+    // Experimental AI settings remain in source but are not exposed to users.
     val activeLanguageModelName by viewModel.activeLanguageModelName.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshActiveLanguageModel()
+            if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED && event == Lifecycle.Event.ON_RESUME) viewModel.refreshActiveLanguageModel()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -160,6 +161,7 @@ fun SettingsScreen(
                                     description = "Organiza ingresos y gastos",
                                     onClick = { onNavigate(SettingsRoutes.CATEGORIES) },
                                 )
+                                if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
                                 HorizontalDivider()
                                 SettingsGroupRow(
                                     icon = MonyIcon.Download,
@@ -168,6 +170,7 @@ fun SettingsScreen(
                                     summary = activeLanguageModelName,
                                     onClick = { onNavigate(SettingsRoutes.LANGUAGE_MODELS) },
                                 )
+                                }
                             }
                         }
                     }

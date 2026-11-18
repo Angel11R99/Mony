@@ -111,7 +111,7 @@ fun AddTransactionScreen(
     val periodDateFormatter = remember {
         DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-DO"))
     }
-    var voicePanelVisible by rememberSaveable { mutableStateOf(voiceEntry) }
+    var voicePanelVisible by rememberSaveable { mutableStateOf(voiceEntry && com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner, viewModel, voicePanelVisible) {
@@ -536,14 +536,14 @@ fun AddTransactionScreen(
             contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            if (voiceEntry) {
+            if (voiceEntry && com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
                 item {
                     VoiceTypeBadge(
                         state = voiceTypeBadgeState(transactionType, typeNeedsConfirmation),
                     )
                 }
             }
-            if (!voiceEntry && !viewModel.isEditing) {
+            if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED && !voiceEntry && !viewModel.isEditing) {
                 item {
                     Row(
                         horizontalArrangement = Arrangement.End,
@@ -572,7 +572,7 @@ fun AddTransactionScreen(
                     }
                 }
             }
-            if (voicePanelVisible) item {
+            if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED && voicePanelVisible) item {
                 VoiceDraftPanel(
                     status = voiceStatus,
                     example = if (voiceEntry) {
@@ -725,7 +725,7 @@ fun AddTransactionScreen(
             expenseAmountInCents = request.expenseAmountInCents,
             sourceDescription = fundingSource,
             onSourceDescriptionChange = { fundingSource = it; saveDispatched = false },
-            onVoice = ::requestVoiceRecognition,
+            onVoice = if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) ::requestVoiceRecognition else null,
             onConfirm = {
                 fundingSource = it
                 saveDispatched = true

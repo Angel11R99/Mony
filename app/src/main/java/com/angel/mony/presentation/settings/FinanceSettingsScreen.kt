@@ -261,6 +261,7 @@ fun FinanceSettingsScreen(
             )
         }
 
+        if (com.angel.mony.core.ExperimentalFeatures.AI_ENABLED) {
         item {
             SectionTitle("REGISTRO POR VOZ", "Controla los avisos del servicio de reconocimiento.")
         }
@@ -289,6 +290,7 @@ fun FinanceSettingsScreen(
                     )
                 }
             }
+        }
         }
 
                 }
