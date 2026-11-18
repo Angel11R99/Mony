@@ -899,6 +899,12 @@ private fun CategorySearchSelect(
     // Null while untouched so the field mirrors the current selection;
     // typing takes over the text until a new category is picked.
     var draftQuery by remember { mutableStateOf<String?>(null) }
+    // A voice suggestion changes selectedCategoryId externally, but the editable
+    // search field may still have stale text. Clear it only when a real category
+    // is selected, not while the user types and selection becomes null.
+    LaunchedEffect(selectedCategoryId) {
+        if (selectedCategoryId != null) draftQuery = null
+    }
     val selectedName = categories.firstOrNull { it.id == selectedCategoryId }?.name.orEmpty()
     val query = draftQuery ?: selectedName
     val matchingCategories = remember(categories, query) {
