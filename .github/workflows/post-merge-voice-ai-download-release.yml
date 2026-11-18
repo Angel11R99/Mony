@@ -1,0 +1,42 @@
+name: Publicar y limpiar mejora de IA por voz
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/post-merge-voice-ai-download-release.yml
+
+permissions:
+  contents: write
+  actions: write
+  pull-requests: read
+
+jobs:
+  signed-release:
+    name: Solicitar release firmado y limpiar rama fusionada
+    runs-on: ubuntu-latest
+    steps:
+      - name: Solicitar release de parche al flujo oficial
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run release.yml --ref master -f version_bump=patch
+      - name: Eliminar rama fusionada si no tiene PR abierto
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const branch = 'feature/voice-ai-download-ux-and-interpretation';
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: 24 });
+            if (!pr.merged_at || pr.head.ref !== branch) {
+              core.warning('Sin merge confirmado. No se elimina la rama.');
+              return;
+            }
+            const { data: open } = await github.rest.pulls.list({
+              owner, repo, state: 'open', head: owner + ':' + branch,
+            });
+            if (open.length === 0) {
+              await github.rest.git.deleteRef({ owner, repo, ref: 'heads/' + branch });
+              core.info('Rama fusionada eliminada: ' + branch);
+            }
