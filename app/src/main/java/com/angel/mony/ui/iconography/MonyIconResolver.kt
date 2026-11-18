@@ -249,6 +249,7 @@ object MonyIconResolver {
         MonyIcon.TrendDown -> Icons.Outlined.ArrowDropDown
         MonyIcon.TrendFlat -> Icons.Outlined.Remove
         MonyIcon.Voice -> Icons.Outlined.Mic
+        MonyIcon.Sparkles -> Icons.Outlined.AutoAwesome
     }
 
     private fun resolveLucide(icon: MonyIcon): ImageVector? = when (icon) {
@@ -312,7 +313,7 @@ object MonyIconResolver {
         MonyIcon.TrendDown, MonyIcon.TrendFlat -> null
         MonyIcon.AlertsEnabled -> Lucide.Bell
         MonyIcon.Reopen -> Lucide.RefreshCw
-        MonyIcon.Voice -> null // Material fallback: this dependency version has no microphone glyph.
+        MonyIcon.Voice, MonyIcon.Sparkles -> null // Material fallback.
     }
 
     private fun resolvePhosphor(icon: MonyIcon): ImageVector? = when (icon) {
@@ -375,7 +376,7 @@ object MonyIconResolver {
         MonyIcon.TrendDown, MonyIcon.TrendFlat -> null
         MonyIcon.AlertsEnabled -> PhosphorIcons.Regular.Bell
         MonyIcon.Reopen -> PhosphorIcons.Regular.ArrowsClockwise
-        MonyIcon.Voice -> null // Material fallback: this dependency version has no microphone glyph.
+        MonyIcon.Voice, MonyIcon.Sparkles -> null // Material fallback.
     }
 }
 

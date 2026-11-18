@@ -63,6 +63,48 @@ class StatisticsReportTest {
         assertEquals(2, report.transactionCount)
     }
 
+    @Test fun `recommendation prompt uses visible period totals and categories`() {
+        val report = calculateStatistics(
+            transactions = listOf(
+                transaction(1, 12_000, TransactionType.INCOME, 3, LocalDate.of(2026, 8, 2)),
+                transaction(2, 4_000, TransactionType.EXPENSE, food.id, LocalDate.of(2026, 8, 3)),
+                transaction(3, 1_500, TransactionType.EXPENSE, transport.id, LocalDate.of(2026, 8, 4)),
+                transaction(4, 99_000, TransactionType.EXPENSE, food.id, LocalDate.of(2026, 7, 31)),
+            ),
+            categories = mapOf(food.id to food, transport.id to transport),
+            startDate = LocalDate.of(2026, 8, 1),
+            endDate = LocalDate.of(2026, 8, 31),
+        )
+
+        val prompt = statisticsRecommendationPrompt("Agosto", report, null, null)
+
+        org.junit.Assert.assertTrue(prompt.contains("120.00"))
+        org.junit.Assert.assertTrue(prompt.contains("55.00"))
+        org.junit.Assert.assertTrue(prompt.contains("Alimentación"))
+        org.junit.Assert.assertTrue(prompt.contains("Transporte"))
+        org.junit.Assert.assertFalse(prompt.contains("RD$ 990.00"))
+    }
+
+    @Test fun `category recommendation prompt excludes other category totals and income`() {
+        val report = calculateStatistics(
+            transactions = listOf(
+                transaction(1, 12_000, TransactionType.INCOME, 3, LocalDate.of(2026, 8, 2)),
+                transaction(2, 4_000, TransactionType.EXPENSE, food.id, LocalDate.of(2026, 8, 3)),
+                transaction(3, 1_500, TransactionType.EXPENSE, transport.id, LocalDate.of(2026, 8, 4)),
+            ),
+            categories = mapOf(food.id to food, transport.id to transport),
+            startDate = LocalDate.of(2026, 8, 1),
+            endDate = LocalDate.of(2026, 8, 31),
+        )
+
+        val prompt = statisticsRecommendationPrompt("Agosto", report, food, null)
+
+        org.junit.Assert.assertTrue(prompt.contains("categoría Alimentación"))
+        org.junit.Assert.assertTrue(prompt.contains("40.00"))
+        org.junit.Assert.assertFalse(prompt.contains("15.00"))
+        org.junit.Assert.assertFalse(prompt.contains("Ingresos del periodo"))
+    }
+
     @Test fun `creates expected quick filter periods`() {
         val today = LocalDate.of(2026, 8, 13)
 

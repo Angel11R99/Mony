@@ -2,12 +2,25 @@ package com.angel.mony.presentation.statistics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.angel.mony.core.FinanceDataCache
+import com.angel.mony.core.MoneyFormatter
+import com.angel.mony.core.showToast
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.BudgetConfig
 import com.angel.mony.domain.model.BudgetCycleSchedule
 import com.angel.mony.domain.model.BudgetPeriod
 import com.angel.mony.domain.model.FinanceTransaction
+import com.angel.mony.domain.model.FixedEntry
+import com.angel.mony.domain.model.PendingEntry
+import com.angel.mony.domain.model.SavingsGoalProgress
+import com.angel.mony.domain.model.ShoppingList
+import com.angel.mony.domain.model.ShoppingListStatus
+import com.angel.mony.domain.model.FortnightPlanSummary
+import com.angel.mony.domain.model.LocalLanguageModelManager
 import com.angel.mony.domain.model.TransactionType
 import com.angel.mony.domain.model.activeBudgetPeriod
 import com.angel.mony.domain.model.budgetPeriodForSchedule
@@ -17,6 +30,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -27,6 +44,23 @@ data class StatisticsUiState(
     val categories: Map<Long, Category> = emptyMap(),
     val budget: BudgetConfig? = null,
     val isReady: Boolean = false,
+    val fixedEntries: List<FixedEntry> = emptyList(),
+    val pendingEntries: List<PendingEntry> = emptyList(),
+    val savingsGoals: List<SavingsGoalProgress> = emptyList(),
+    val shoppingLists: List<ShoppingList> = emptyList(),
+    val fortnightPlans: List<FortnightPlanSummary> = emptyList(),
+)
+
+data class RecommendationHistoryEntry(
+    val createdAt: Long,
+    val scope: String,
+    val response: String,
+)
+
+data class RecommendationUiState(
+    val isGenerating: Boolean = false,
+    val text: String? = null,
+    val error: String? = null,
 )
 
 data class CategoryStatistic(
@@ -129,20 +163,123 @@ data class StatisticsReport(
         if (incomeInCents <= 0) 0f else (expenseInCents.toFloat() / incomeInCents).coerceAtLeast(0f)
 }
 
+internal fun statisticsRecommendationPrompt(
+    periodLabel: String,
+    report: StatisticsReport,
+    selectedCategory: Category?,
+    previousReport: StatisticsReport?,
+    moduleContext: List<String> = emptyList(),
+): String {
+    val categoryStatistic = selectedCategory?.let { category ->
+        report.expenseByCategory.firstOrNull { it.category.id == category.id }
+    }
+    val visibleCategories = if (selectedCategory != null) listOfNotNull(categoryStatistic) else report.expenseByCategory
+    val categorySummary = visibleCategories.joinToString("\n") {
+        "- ${it.category.name}: ${MoneyFormatter.format(it.amountInCents)}"
+    }.ifBlank { "No se registraron gastos por categoría en el periodo." }
+    val scopedMetrics = if (selectedCategory != null) {
+        "Filtro activo: categoría ${selectedCategory.name}. Gasto registrado en esa categoría: ${MoneyFormatter.format(categoryStatistic?.amountInCents ?: 0)}. No uses los totales generales de otras categorías."
+    } else {
+        "Ingresos del periodo: ${MoneyFormatter.format(report.incomeInCents)}. Gastos del periodo: ${MoneyFormatter.format(report.expenseInCents)}. Balance: ${MoneyFormatter.format(report.balanceInCents)}. Movimientos: ${report.transactionCount}. Gasto promedio por movimiento: ${MoneyFormatter.format(report.averageExpenseInCents)}."
+    }
+    val comparison = if (selectedCategory == null && previousReport != null) {
+        "En el periodo anterior hubo ${MoneyFormatter.format(previousReport.expenseInCents)} en gastos y ${MoneyFormatter.format(previousReport.incomeInCents)} en ingresos."
+    } else ""
+    val modules = moduleContext.filter(String::isNotBlank).joinToString("\n").ifBlank { "No hay datos adicionales disponibles en otros módulos." }
+    return """Eres un asistente de finanzas personales. Habla de forma llana, breve y natural en español. Analiza SOLO los datos visibles del periodo "$periodLabel". $scopedMetrics $comparison
+Gastos por categoría visibles:
+$categorySummary
+Datos relevantes de otros módulos:
+$modules
+Da como máximo 3 recomendaciones concretas, priorizando las que conecten resultados entre módulos. Usa solo los datos entregados y cita la cifra o estado que justifica cada recomendación. No inventes causas, hábitos, objetivos ni datos. Solo recomienda sobre un módulo si tiene datos relevantes; no sugieras gastos cuando no hay gastos registrados. Si hay pocos datos, explica brevemente qué falta. Evita consejos genéricos y listas de módulos sin hallazgos. Sin Markdown, sin introducciones largas."""
+}
+
 @HiltViewModel
 class StatisticsViewModel @Inject constructor(
     dataCache: FinanceDataCache,
+    private val languageModels: LocalLanguageModelManager,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
+    private val historyPreferences = context.getSharedPreferences("statistics_recommendations", Context.MODE_PRIVATE)
+    private val _recommendationHistory = MutableStateFlow(readRecommendationHistory())
+    val recommendationHistory: StateFlow<List<RecommendationHistoryEntry>> = _recommendationHistory
+    private val _recommendationState = MutableStateFlow(RecommendationUiState())
+    val recommendationState: StateFlow<RecommendationUiState> = _recommendationState
+
+    fun generateRecommendation(prompt: String, scope: String) {
+        if (_recommendationState.value.isGenerating) return
+        if (prompt.isBlank()) {
+            _recommendationState.value = RecommendationUiState()
+            return
+        }
+        _recommendationState.value = RecommendationUiState(isGenerating = true)
+        viewModelScope.launch {
+            try {
+                val result = languageModels.generateText(prompt).trim()
+                if (result.isNotBlank()) {
+                    _recommendationHistory.value = (listOf(RecommendationHistoryEntry(System.currentTimeMillis(), scope, result)) + _recommendationHistory.value).take(30)
+                    writeRecommendationHistory(_recommendationHistory.value)
+                    _recommendationState.value = RecommendationUiState(text = result)
+                    context.showToast("La recomendación terminó correctamente. Puedes verla en el historial.")
+                } else {
+                    _recommendationState.value = RecommendationUiState(error = "El modelo no generó una recomendación. Inténtalo otra vez.")
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                val message = failure.message
+                    ?.takeIf { it.startsWith("Descarga") || it.startsWith("Gemini") || it.startsWith("No hay") }
+                    ?: "No se pudieron generar recomendaciones. Comprueba que haya un modelo local disponible e inténtalo de nuevo."
+                _recommendationState.value = RecommendationUiState(error = message)
+            } finally {
+                if (_recommendationState.value.isGenerating) _recommendationState.value = RecommendationUiState()
+            }
+        }
+    }
+
+    private fun readRecommendationHistory(): List<RecommendationHistoryEntry> = try {
+        val json = JSONArray(historyPreferences.getString("entries", "[]"))
+        (0 until json.length()).mapNotNull { index ->
+            json.optJSONObject(index)?.let { item ->
+                RecommendationHistoryEntry(
+                    createdAt = item.optLong("createdAt"),
+                    scope = item.optString("scope"),
+                    response = item.optString("response"),
+                ).takeIf { it.response.isNotBlank() }
+            }
+        }
+    } catch (_: Exception) {
+        emptyList()
+    }
+
+    private fun writeRecommendationHistory(entries: List<RecommendationHistoryEntry>) {
+        val json = JSONArray().apply {
+            entries.forEach { entry ->
+                put(JSONObject().put("createdAt", entry.createdAt).put("scope", entry.scope).put("response", entry.response))
+            }
+        }
+        historyPreferences.edit().putString("entries", json.toString()).apply()
+    }
     val state = combine(
         dataCache.transactions,
         dataCache.categories,
         dataCache.budget,
-    ) { items, categoryList, budgetConfig ->
+        dataCache.fixedEntries,
+        dataCache.pendingEntries,
+        dataCache.savingsGoals,
+        dataCache.shoppingLists,
+        dataCache.fortnightPlans,
+    ) { values ->
         StatisticsUiState(
-            transactions = items,
-            categories = categoryList.associateBy(Category::id),
-            budget = budgetConfig,
+            transactions = values[0] as List<FinanceTransaction>,
+            categories = (values[1] as List<Category>).associateBy(Category::id),
+            budget = values[2] as BudgetConfig?,
             isReady = true,
+            fixedEntries = values[3] as List<FixedEntry>,
+            pendingEntries = values[4] as List<PendingEntry>,
+            savingsGoals = values[5] as List<SavingsGoalProgress>,
+            shoppingLists = values[6] as List<ShoppingList>,
+            fortnightPlans = values[7] as List<FortnightPlanSummary>,
         )
     }.stateIn(
         viewModelScope,

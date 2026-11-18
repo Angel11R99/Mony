@@ -1,6 +1,7 @@
 package com.angel.mony.presentation.statistics
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -34,10 +35,12 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,7 +65,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,13 +78,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.angel.mony.core.MoneyFormatter
 import com.angel.mony.domain.model.Category
 import com.angel.mony.domain.model.BudgetCycleSchedule
+import com.angel.mony.domain.model.ShoppingListStatus
 import com.angel.mony.domain.model.TransactionType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.Instant
+import java.time.ZoneId
 import com.angel.mony.presentation.components.FinanceCard
 import com.angel.mony.presentation.components.PrimaryButton
 import com.angel.mony.presentation.components.SecondaryButton
 import com.angel.mony.presentation.components.GlobalSettingsButton
+import com.angel.mony.presentation.components.GlobalOutlinedIconButton
 import com.angel.mony.presentation.components.LoadingContent
 import com.angel.mony.presentation.components.ModuleTitle
 import com.angel.mony.presentation.components.SkeletonBox
@@ -87,6 +98,7 @@ import com.angel.mony.presentation.components.SkeletonHost
 import com.angel.mony.presentation.components.SkeletonLine
 import com.angel.mony.presentation.components.SkeletonTone
 import com.angel.mony.presentation.components.StaggeredReveal
+import com.angel.mony.ui.iconography.MonyIcon
 import com.angel.mony.presentation.components.localDateNullableSaver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -103,12 +115,24 @@ fun StatisticsScreen(
     viewModel: StatisticsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val recommendationState by viewModel.recommendationState.collectAsStateWithLifecycle()
+    val isGeneratingRecommendation = recommendationState.isGenerating
+    val recommendationHistory by viewModel.recommendationHistory.collectAsStateWithLifecycle()
     var range by rememberSaveable { mutableStateOf(StatisticsRange.CURRENT_BUDGET) }
     var cycleIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var categoryId by rememberSaveable { mutableStateOf<Long?>(null) }
     var customStart by rememberSaveable(stateSaver = localDateNullableSaver) { mutableStateOf<LocalDate?>(null) }
     var customEnd by rememberSaveable(stateSaver = localDateNullableSaver) { mutableStateOf<LocalDate?>(null) }
     var showFilters by remember { mutableStateOf(false) }
+    var showRecommendations by remember { mutableStateOf(false) }
+    var showRecommendationHistory by remember { mutableStateOf(false) }
+    var recommendationHistorySearch by rememberSaveable { mutableStateOf("") }
+    var expandedRecommendationId by remember { mutableStateOf<Long?>(null) }
+    val visibleRecommendationHistory = remember(recommendationHistory, recommendationHistorySearch) {
+        val query = recommendationHistorySearch.trim()
+        if (query.isBlank()) recommendationHistory.take(5)
+        else recommendationHistory.filter { it.scope.contains(query, ignoreCase = true) || it.response.contains(query, ignoreCase = true) }
+    }
     var draftRange by remember { mutableStateOf(range) }
     var draftCycleIndex by remember { mutableStateOf(cycleIndex) }
     var draftCategoryId by remember { mutableStateOf(categoryId) }
@@ -200,6 +224,40 @@ fun StatisticsScreen(
             TopAppBar(
                 title = { ModuleTitle("Estadísticas") },
                 actions = {
+                    GlobalOutlinedIconButton(
+                        semanticIcon = MonyIcon.Sparkles,
+                        contentDescription = if (isGeneratingRecommendation) "Recomendaciones con IA; analizando" else "Recomendaciones con IA",
+                        loading = isGeneratingRecommendation,
+                        onClick = {
+                        showRecommendations = true
+                        if (!isGeneratingRecommendation && report.transactionCount > 0 && (categoryId == null || selectedStatistic != null)) {
+                            val moduleContext = if (selectedCategory == null) buildList {
+                                state.budget?.let { add("Presupuesto configurado: ${MoneyFormatter.format(it.amountInCents)}.") }
+                                state.fixedEntries.filter { it.isActive }.takeIf { it.isNotEmpty() }?.let { entries ->
+                                    add("Fijos activos: ${entries.size}; total registrado como referencia ${MoneyFormatter.format(entries.sumOf { it.amountInCents })}.")
+                                }
+                                state.pendingEntries.filterNot { it.isDone }.takeIf { it.isNotEmpty() }?.let { entries ->
+                                    add("Pendientes abiertos: ${entries.size}; monto ${MoneyFormatter.format(entries.sumOf { it.amountInCents })}.")
+                                }
+                                state.savingsGoals.filter { it.isActive }.takeIf { it.isNotEmpty() }?.let { goals ->
+                                    add("Metas de ahorro activas: ${goals.size}; ${goals.joinToString { "${it.goal.name} (${it.percent}%)" }}.")
+                                }
+                                state.shoppingLists.filter { it.status != ShoppingListStatus.COMPLETED }.takeIf { it.isNotEmpty() }?.let { lists ->
+                                    add("Listas de compra sin completar: ${lists.size}; presupuestos disponibles ${MoneyFormatter.format(lists.mapNotNull { it.budgetInCents }.sum())}.")
+                                }
+                                state.fortnightPlans.filter { !it.plan.isClosed }.takeIf { it.isNotEmpty() }?.let { plans ->
+                                    add("Planes de ciclo abiertos: ${plans.size}; pendiente planificado ${MoneyFormatter.format(plans.sumOf { it.totalPendingInCents })}.")
+                                }
+                            } else emptyList()
+                            val prompt = statisticsRecommendationPrompt(periodLabel, report, selectedCategory, previousReport, moduleContext)
+                            viewModel.generateRecommendation(prompt, "$periodLabel · ${selectedCategory?.name ?: "Todas las categorías"}")
+                        } else {
+                            viewModel.generateRecommendation("", "")
+                        }
+                    },
+                        size = 54.dp,
+                    )
+                    Spacer(Modifier.width(8.dp))
                     GlobalSettingsButton(onClick = onSettings)
                     Spacer(Modifier.width(14.dp))
                 },
@@ -320,6 +378,127 @@ fun StatisticsScreen(
         }
     }
 
+    if (showRecommendations) {
+        ModalBottomSheet(
+            onDismissRequest = { showRecommendations = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 22.dp, end = 22.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (showRecommendationHistory) {
+                        GlobalOutlinedIconButton(
+                            semanticIcon = MonyIcon.Back,
+                            contentDescription = "Volver a recomendaciones",
+                            onClick = { showRecommendationHistory = false },
+                            size = 42.dp,
+                        )
+                    } else {
+                        com.angel.mony.ui.iconography.MonyIcon(MonyIcon.Sparkles, contentDescription = null, size = 26.dp)
+                    }
+                    Text(
+                        if (showRecommendationHistory) "Historial de recomendaciones" else "Recomendaciones",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (!showRecommendationHistory) GlobalOutlinedIconButton(
+                        semanticIcon = MonyIcon.History,
+                        contentDescription = "Historial de recomendaciones",
+                        onClick = { showRecommendationHistory = true },
+                        size = 42.dp,
+                    )
+                }
+                if (showRecommendationHistory) {
+                    if (recommendationHistory.isEmpty()) {
+                        Text("Todavía no hay recomendaciones guardadas.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Column(
+                            Modifier.fillMaxWidth().heightIn(max = 560.dp).verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            OutlinedTextField(
+                                value = recommendationHistorySearch,
+                                onValueChange = { recommendationHistorySearch = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Buscar en el historial") },
+                                placeholder = { Text("Texto o periodo") },
+                                leadingIcon = { com.angel.mony.ui.iconography.MonyIcon(MonyIcon.Search, contentDescription = null) },
+                                singleLine = true,
+                            )
+                            if (recommendationHistorySearch.isBlank()) {
+                                Text("Últimas ${visibleRecommendationHistory.size} recomendaciones · busca para ver anteriores", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } else {
+                                Text("${visibleRecommendationHistory.size} resultados", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (visibleRecommendationHistory.isEmpty()) {
+                                Text("No hay recomendaciones que coincidan con la búsqueda.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            visibleRecommendationHistory.forEach { entry ->
+                                val expanded = expandedRecommendationId == entry.createdAt
+                                FinanceCard(Modifier.fillMaxWidth()) {
+                                    Column(
+                                        Modifier.fillMaxWidth().clickable(onClickLabel = if (expanded) "Contraer recomendación" else "Ver recomendación completa") {
+                                            expandedRecommendationId = if (expanded) null else entry.createdAt
+                                        }.padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text(
+                                            Instant.ofEpochMilli(entry.createdAt).atZone(ZoneId.systemDefault())
+                                                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy · HH:mm")),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(entry.scope, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                                        if (expanded) RecommendationText(entry.response)
+                                        else Text(
+                                            entry.response,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            maxLines = 3,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Text(
+                                            if (expanded) "Toca para resumir" else "Toca para leer completa",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                Text("Generadas en este dispositivo a partir de las estadísticas visibles.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                when {
+                    isGeneratingRecommendation -> Row(
+                        Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                        Text("Analizando tus estadísticas…", Modifier.padding(start = 12.dp))
+                    }
+                    recommendationState.error != null -> Text(
+                        recommendationState.error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    recommendationState.text != null -> RecommendationText(recommendationState.text!!)
+                    report.transactionCount == 0 || (selectedCategory != null && selectedStatistic == null) -> Text("No hay movimientos en este filtro para analizar. Registra uno y vuelve a intentarlo.",
+                        style = MaterialTheme.typography.bodyMedium)
+                }
+                }
+                }
+            }
+        }
+
     if (showFilters) {
         val draftValid = draftRange != StatisticsRange.CUSTOM ||
             (draftCustomStart != null && draftCustomEnd != null && !draftCustomStart!!.isAfter(draftCustomEnd!!))
@@ -370,6 +549,31 @@ fun StatisticsScreen(
             onDismiss = { showFilters = false },
         )
     }
+}
+
+@Composable
+private fun RecommendationText(text: String) {
+    val formatted = buildAnnotatedString {
+        var cursor = 0
+        while (cursor < text.length) {
+            val opening = text.indexOf("**", cursor)
+            if (opening < 0) {
+                append(text.substring(cursor))
+                break
+            }
+            append(text.substring(cursor, opening))
+            val closing = text.indexOf("**", opening + 2)
+            if (closing < 0) {
+                append(text.substring(opening))
+                break
+            }
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(text.substring(opening + 2, closing))
+            }
+            cursor = closing + 2
+        }
+    }
+    Text(formatted, style = MaterialTheme.typography.bodyLarge)
 }
 
 @Composable

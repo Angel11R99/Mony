@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
@@ -26,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -229,31 +233,41 @@ fun GlobalOutlinedIconButton(
     enabled: Boolean = true,
     size: Dp = 54.dp,
     selected: Boolean = false,
+    loading: Boolean = false,
 ) {
     val selectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-    OutlinedIconButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.size(size).then(modifier),
-        shape = LocalAppShapes.current.buttonShape,
-        border = BorderStroke(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-        ),
-        colors = IconButtonDefaults.outlinedIconButtonColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                Color.Transparent
-            },
-            contentColor = if (selected) selectedContentColor else MaterialTheme.colorScheme.onSurface,
-        ),
-    ) {
-        MonyIcon(
-            icon = semanticIcon,
-            contentDescription = contentDescription,
-            tint = if (selected) selectedContentColor else Color.Unspecified,
-            role = if (selected || !enabled) MonyIconRole.STATE else MonyIconRole.NORMAL,
+    Box(Modifier.size(size).then(modifier)) {
+        OutlinedIconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier.fillMaxSize(),
+            shape = LocalAppShapes.current.buttonShape,
+            border = BorderStroke(
+                1.dp,
+                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+            ),
+            colors = IconButtonDefaults.outlinedIconButtonColors(
+                containerColor = if (selected) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    Color.Transparent
+                },
+                contentColor = if (selected) selectedContentColor else MaterialTheme.colorScheme.onSurface,
+            ),
+        ) {
+            MonyIcon(
+                icon = semanticIcon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(24.dp),
+                tint = if (selected) selectedContentColor else Color.Unspecified,
+                role = if (selected || !enabled) MonyIconRole.STATE else MonyIconRole.NORMAL,
+            )
+        }
+        if (loading) CircularProgressIndicator(
+            modifier = Modifier.align(Alignment.TopEnd).offset(x = (-2).dp, y = 2.dp).size(12.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surface,
+            strokeWidth = 1.5.dp,
         )
     }
 }

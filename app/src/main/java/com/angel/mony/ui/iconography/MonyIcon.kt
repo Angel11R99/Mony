@@ -76,6 +76,7 @@ enum class MonyIcon {
     TrendDown,
     TrendFlat,
     Voice,
+    Sparkles,
 }
 
 enum class IconPack(
