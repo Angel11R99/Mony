@@ -11,6 +11,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.work.WorkInfo
+import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -49,21 +56,35 @@ class LanguageModelsSettingsViewModel @Inject constructor(
     val selection = MutableStateFlow(manager.activeModelId)
     val status = MutableStateFlow("Verificando IA...")
     val busy = MutableStateFlow(false)
+    val jobs = MutableStateFlow<Map<String, WorkInfo>>(emptyMap())
+    val pauses = MutableStateFlow<Set<String>>(emptySet())
     val installedIds = MutableStateFlow(models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet())
     val googleId = "gemini-nano-aicore"
 
-    init { refresh() }
+    init {
+        models.filter { it.id != googleId }.forEach { model ->
+            viewModelScope.launch {
+                WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(
+                    LanguageModelDownloadWorker.uniqueWorkName(model.id)
+                ).collectLatest { infos ->
+                    val current = infos.firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }
+                        ?: infos.lastOrNull()
+                    if (current != null) jobs.value = jobs.value + (model.id to current)
+                    if (current?.state == WorkInfo.State.SUCCEEDED) refresh()
+                }
+            }
+        }
+        refresh()
+    }
 
     fun refresh() {
-        viewModelScope.launch {
-            installedIds.value = models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet()
-            selection.value = manager.activeModelId
-            val preparation = manager.prepareActiveModel()
-            status.value = when (preparation) {
-                is LocalModelPreparation.Ready -> "Motor disponible: " + models.firstOrNull { it.id == preparation.modelId }?.name.orEmpty()
-                LocalModelPreparation.NoInstalledModel -> "Instala un modelo compatible para interpretar la voz."
-                is LocalModelPreparation.Failed -> "No se pudo iniciar el modelo seleccionado; puedes elegir otra alternativa."
-            }
+        installedIds.value = models.filter { manager.isModelInstalled(it.id) }.map { it.id }.toSet()
+        selection.value = manager.activeModelId
+        // Browsing settings should not load a gigabyte-sized LLM.
+        status.value = if (models.any { it.id != googleId && it.id in installedIds.value }) {
+            "Modelos locales instalados. Selecciona uno para registrar por voz."
+        } else {
+            "Elige un modelo descargable. Gemini Nano requiere AICore."
         }
     }
 
@@ -76,6 +97,7 @@ class LanguageModelsSettingsViewModel @Inject constructor(
 
     fun download(modelId: String) {
         if (busy.value) return
+        if (jobs.value[modelId]?.state in listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)) return
         if (modelId == googleId) {
             viewModelScope.launch {
                 busy.value = true
@@ -97,12 +119,44 @@ class LanguageModelsSettingsViewModel @Inject constructor(
                 .build()
             WorkManager.getInstance(context).enqueueUniqueWork(
                 LanguageModelDownloadWorker.uniqueWorkName(modelId),
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.REPLACE,
                 request,
             )
-            status.value = "Descarga iniciada. Mony te avisará cuando finalice."
+            pauses.value = pauses.value - modelId
+            status.value = "Descargando modelo…"
+
         }
     }
+    fun partialBytes(modelId: String): Long = manager.partialDownloadBytes(modelId)
+
+    fun pause(modelId: String) {
+        viewModelScope.launch {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                WorkManager.getInstance(context).cancelUniqueWork(
+                    LanguageModelDownloadWorker.uniqueWorkName(modelId)
+                ).result.get()
+            }
+            pauses.value = pauses.value + modelId
+            status.value = "Descarga pausada. Puedes reanudarla."
+        }
+    }
+
+    fun remove(modelId: String) {
+        if (modelId == googleId) return
+        viewModelScope.launch {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                WorkManager.getInstance(context).cancelUniqueWork(
+                    LanguageModelDownloadWorker.uniqueWorkName(modelId)
+                ).result.get()
+                manager.resetDownload(modelId)
+                manager.removeModel(modelId)
+            }
+            jobs.value = jobs.value - modelId
+            pauses.value = pauses.value - modelId
+            refresh()
+        }
+    }
+
 }
 
 @Composable
@@ -114,6 +168,7 @@ fun LanguageModelsSettingsScreen(
     val installed by viewModel.installedIds.collectAsStateWithLifecycle()
     val status by viewModel.status.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
+    val jobs by viewModel.jobs.collectAsStateWithLifecycle()
     Scaffold(topBar = { FinanceModuleTopAppBar(title = "Modelos de IA", onBack = onBack) }) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
@@ -130,6 +185,15 @@ fun LanguageModelsSettingsScreen(
             items(viewModel.models, key = { it.id }) { model ->
                 val isGoogle = model.id == viewModel.googleId
                 val available = model.id in installed
+                val job = jobs[model.id]
+                val downloading = job?.state in listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)
+                val progress = job?.progress?.getInt(LanguageModelDownloadWorker.KEY_PROGRESS, 0) ?: 0
+                val transferred = viewModel.partialBytes(model.id)
+                val percent = if (progress > 0) progress else if (model.sizeBytes > 0) ((transferred * 100L) / model.sizeBytes).toInt().coerceIn(0, 100) else 0
+                val partial = transferred > 0L
+                val downloadError = if (job?.state == WorkInfo.State.FAILED)
+                    job.outputData.getString(LanguageModelDownloadWorker.KEY_ERROR) ?: "La descarga falló. Puedes reanudarla."
+                    else null
                 FinanceCard(Modifier.fillMaxWidth()) {
                     Column(
                         Modifier.fillMaxWidth().padding(16.dp),
@@ -140,6 +204,21 @@ fun LanguageModelsSettingsScreen(
                             if (selected == model.id) Text("Seleccionado", style = MaterialTheme.typography.labelSmall)
                         }
                         Text(model.description, style = MaterialTheme.typography.bodySmall)
+                        if (downloading || partial && !available) {
+                            if (percent > 0) LinearProgressIndicator(
+                                progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
+                            else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            Text(
+                                (if (downloading) "Descargando" else "Descarga pausada") +
+                                    " · $percent% · ${transferred / 1048576L} MB de ${model.sizeBytes / 1048576L} MB",
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (downloading) {
+                            TextButton(onClick = { viewModel.pause(model.id) },
+                                modifier = Modifier.fillMaxWidth()) { Text("Pausar descarga") }
+                        }
+                        downloadError?.let { Text(it, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error) }
                         if (available || isGoogle) {
                             PrimaryButton(
                                 if (selected == model.id) "Comprobar disponibilidad" else "Elegir modelo",
@@ -150,13 +229,17 @@ fun LanguageModelsSettingsScreen(
                                 enabled = !busy,
                             )
                         }
-                        if (!available) {
+                        if (!available && !downloading) {
                             PrimaryButton(
-                                if (isGoogle) "Preparar con AICore" else "Descargar modelo",
+                                if (isGoogle) "Preparar con AICore" else if (partial) "Reanudar descarga" else "Descargar modelo",
                                 onClick = { viewModel.download(model.id) },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !busy,
                             )
+                        }
+                        if (!isGoogle && (available || partial) && !downloading) {
+                            TextButton(onClick = { viewModel.remove(model.id) },
+                                modifier = Modifier.fillMaxWidth()) { Text("Eliminar archivos del modelo") }
                         }
                     }
                 }
